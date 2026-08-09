@@ -1,9 +1,16 @@
-import { DICE_PER_TURN, legalKeeps } from '@farkle/engine';
+import { BALANCED_DIE, CHEAT_DIE, DEVIL_DIE, DICE_PER_TURN, legalKeeps, type DieSpec } from '@farkle/engine';
 import { describe, expect, it } from 'vitest';
 
+import { balancedFarkleProbability, farkleProbability } from '../src/odds.js';
 import type { BotParams } from '../src/threshold-bot.js';
 import { ThresholdBot } from '../src/threshold-bot.js';
 import { fakeView } from './helpers/fake-view.js';
+
+function fixedDie(face: 1 | 2 | 3 | 4 | 5 | 6): DieSpec {
+  const weights: [number, number, number, number, number, number] = [0, 0, 0, 0, 0, 0];
+  weights[face - 1] = 1;
+  return { id: `always-${face}`, name: `Always ${face}`, weights };
+}
 
 const params = (overrides: Partial<BotParams> = {}): BotParams => ({
   bankAt: 300,
@@ -189,5 +196,96 @@ describe('decideAfterKeep', () => {
     ];
     const view = fakeView({ turnScore: 300, diceInPlay: 3, players, target: 2000 });
     expect(bot.decideAfterKeep(view)).toBe('Bank');
+  });
+
+  describe('risk-aware dice-count floor', () => {
+    it('falls back to the plain count check when inPlayDice is not given (fakeView default)', () => {
+      // Sanity check on the fallback itself: fakeView's default `inPlayDice: []`
+      // never matches a positive `diceInPlay`, so every test above this point
+      // in the file exercises the pre-M5 count-only behaviour untouched.
+      const bot = new ThresholdBot('legacy', params({ bankAt: 100_000, minDiceToThrow: 2 }), 1);
+      expect(fakeView({ diceInPlay: 3 }).inPlayDice).toEqual([]);
+      expect(bot.decideAfterKeep(fakeView({ turnScore: 50, diceInPlay: 1 }))).toBe('Bank');
+      expect(bot.decideAfterKeep(fakeView({ turnScore: 50, diceInPlay: 2 }))).toBe('Throw');
+    });
+
+    it('throws below the raw dice-count floor when the dice left are safe enough', () => {
+      const inPlayDice = [DEVIL_DIE, DEVIL_DIE];
+      // Two Devil's Head dice farkle less often than three ordinary ones —
+      // verified directly rather than assumed, since that's the premise the
+      // rest of this test depends on.
+      expect(farkleProbability(inPlayDice)).toBeLessThan(balancedFarkleProbability(3));
+
+      const bot = new ThresholdBot('risk-aware', params({ bankAt: 100_000, minDiceToThrow: 3 }), 1);
+      const view = fakeView({ turnScore: 50, diceInPlay: 2, inPlayDice });
+      // The old count-only rule would bank here (2 < minDiceToThrow of 3).
+      expect(bot.decideAfterKeep(view)).toBe('Throw');
+    });
+
+    it('banks at or above the raw dice-count floor when the dice left are too risky', () => {
+      const inPlayDice = [CHEAT_DIE, CHEAT_DIE];
+      // Two cheat dice farkle more often than two ordinary ones.
+      expect(farkleProbability(inPlayDice)).toBeGreaterThan(balancedFarkleProbability(2));
+
+      const bot = new ThresholdBot('risk-averse', params({ bankAt: 100_000, minDiceToThrow: 2 }), 1);
+      const view = fakeView({ turnScore: 50, diceInPlay: 2, inPlayDice });
+      // The old count-only rule would throw here (2 is not < minDiceToThrow of 2).
+      expect(bot.decideAfterKeep(view)).toBe('Bank');
+    });
+
+    it('is identical to the pre-M5 count check on an all-balanced loadout', () => {
+      for (const minDiceToThrow of [1, 2, 3]) {
+        for (const diceInPlay of [1, 2, 3, 4, 5, 6]) {
+          const bot = new ThresholdBot('control', params({ bankAt: 100_000, minDiceToThrow }), 1);
+          const inPlayDice = new Array(diceInPlay).fill(BALANCED_DIE) as DieSpec[];
+          const withDice = bot.decideAfterKeep(fakeView({ turnScore: 50, diceInPlay, inPlayDice }));
+          const withoutDice = bot.decideAfterKeep(fakeView({ turnScore: 50, diceInPlay }));
+          expect(withDice, `minDiceToThrow=${minDiceToThrow} diceInPlay=${diceInPlay}`).toBe(
+            withoutDice,
+          );
+        }
+      }
+    });
+  });
+});
+
+describe('rankOf risk-awareness (via chooseKeep)', () => {
+  // Two dice both show a 5 this throw, but they are not the same die: one is
+  // an ordinary die, the other a Devil's Head that simply rolled its
+  // non-wild face. Keeping either one scores the same 50 points and leaves
+  // the same number of dice (5) — the only difference is which die is left
+  // behind, and that difference is exactly what `safetyRatio` should weigh.
+  const rest = [fixedDie(2), fixedDie(3), fixedDie(4), fixedDie(6)];
+  const dice: DieSpec[] = [BALANCED_DIE, DEVIL_DIE, ...rest];
+  const thrown = [5, 5, 2, 3, 4, 6] as const;
+
+  it('a set that leaves the Devil\'s Head behind really is safer, as the test below assumes', () => {
+    expect(farkleProbability([DEVIL_DIE, ...rest])).toBeLessThan(
+      farkleProbability([BALANCED_DIE, ...rest]),
+    );
+  });
+
+  it('a dice-hoarding bot prefers to leave the Devil\'s Head in play over an ordinary die', () => {
+    const options = legalKeeps([...thrown], dice).filter(
+      (option) => option.points === 50 && option.faces.length === 1,
+    );
+    expect(options).toHaveLength(2);
+
+    const hoarder = new ThresholdBot('hoarder', params({ diceValue: 50, mistakeRate: 0 }), 1);
+    const chosen = hoarder.chooseKeep(fakeView(), options);
+    const leftoverIds = chosen.diceLeftSpecs!.map((die) => die.id);
+    expect(leftoverIds).toContain(DEVIL_DIE.id);
+    expect(leftoverIds).not.toContain(BALANCED_DIE.id);
+  });
+
+  it('a purely greedy bot (diceValue 0) is indifferent between them, as before M5', () => {
+    const options = legalKeeps([...thrown], dice).filter(
+      (option) => option.points === 50 && option.faces.length === 1,
+    );
+    const greedy = new ThresholdBot('greedy', params({ diceValue: 0, mistakeRate: 0 }), 1);
+    // Tied rank falls back to the pre-existing face-string tie-break, not to
+    // die identity — diceValue 0 means safetyRatio never enters the ranking.
+    const chosen = greedy.chooseKeep(fakeView(), options);
+    expect(chosen.points).toBe(50);
   });
 });

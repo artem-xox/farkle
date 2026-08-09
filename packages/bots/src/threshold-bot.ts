@@ -1,5 +1,6 @@
 import { DICE_PER_TURN, nextBelow, seedRng, type ClientView, type KeepOption, type RngState } from '@farkle/engine';
 
+import { balancedFarkleProbability, farkleProbability, safetyRatio } from './odds.js';
 import type { BotPolicy } from './policy.js';
 
 /**
@@ -30,8 +31,21 @@ export interface BotParams {
   readonly mistakeRate: number;
 }
 
+/**
+ * `points + diceValue * diceLeft`, same as always, except the dice-hoarding
+ * term is scaled by how much safer (or riskier) the specific dice left
+ * behind are than an equal number of ordinary ones — see
+ * `packages/bots/src/odds.ts`. `safetyRatio` is exactly 1 on an all-balanced
+ * loadout, so this is a strict extension of the M2 formula: nothing changes
+ * for a bot that never sees a die outside `DICE.balanced`. Skipped whenever
+ * it can't matter (`diceValue` is 0) or can't be computed (`legalKeeps` was
+ * called without die identities, as some tests do directly).
+ */
 function rankOf(option: KeepOption, params: BotParams): number {
-  return option.points + params.diceValue * option.diceLeft;
+  if (params.diceValue === 0 || option.diceLeft === 0 || option.diceLeftSpecs === undefined) {
+    return option.points + params.diceValue * option.diceLeft;
+  }
+  return option.points + params.diceValue * option.diceLeft * safetyRatio(option.diceLeftSpecs);
 }
 
 function leadingOpponentTotal(view: ClientView): number {
@@ -87,7 +101,7 @@ export class ThresholdBot implements BotPolicy {
     if (view.diceInPlay === DICE_PER_TURN && this.params.hotDiceAlwaysThrow) {
       return 'Throw';
     }
-    if (view.diceInPlay < this.params.minDiceToThrow) {
+    if (this.tooRiskyToThrow(view)) {
       return 'Bank';
     }
 
@@ -102,6 +116,26 @@ export class ThresholdBot implements BotPolicy {
     }
 
     return view.turnScore >= threshold ? 'Bank' : 'Throw';
+  }
+
+  /**
+   * `minDiceToThrow` read as a farkle-risk ceiling rather than a bare count:
+   * refuse to throw once the actual dice in play are riskier than
+   * `minDiceToThrow` ordinary dice would be. A loadout with a Devil's Head
+   * left in play can therefore be thrown below the old raw-count floor, and a
+   * loadout of only cheat dice can be refused above it.
+   *
+   * Falls back to the plain count check whenever `view.inPlayDice` doesn't
+   * actually describe `view.diceInPlay` dice — which is every `ClientView`
+   * built by hand rather than by `viewOf` (`fakeView` in tests defaults to no
+   * dice at all), since there is then no die identity to price risk from.
+   */
+  private tooRiskyToThrow(view: ClientView): boolean {
+    if (view.diceInPlay > 0 && view.inPlayDice.length === view.diceInPlay) {
+      const ceiling = balancedFarkleProbability(this.params.minDiceToThrow);
+      return farkleProbability(view.inPlayDice) > ceiling;
+    }
+    return view.diceInPlay < this.params.minDiceToThrow;
   }
 
   /** Uniform [0, 1). */

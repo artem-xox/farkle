@@ -4,6 +4,7 @@ import { PRESET_NAMES, type PresetName } from '@farkle/bots';
 import { BALANCED_DIE, DICE_PER_TURN, type DieSpec, type PlayerConfig } from '@farkle/engine';
 
 import { capitalize, PRESET_DESCRIPTIONS } from '../presets';
+import { LoadoutStep } from './LoadoutStep';
 
 export interface NewMatchOptions {
   readonly players: readonly [PlayerConfig, PlayerConfig];
@@ -27,23 +28,32 @@ const DEFAULT_TARGET_CHOICE = 3000;
 const randomSeed = (): number => (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0;
 const defaultLoadout = (): DieSpec[] => new Array(DICE_PER_TURN).fill(BALANCED_DIE);
 
+type Step = 'basics' | 'loadout';
+
 export function SetupScreen({ onStart }: SetupScreenProps) {
+  const [step, setStep] = useState<Step>('basics');
   const [mode, setMode] = useState<'bot' | 'friend'>('bot');
   const [yourName, setYourName] = useState('You');
   const [friendName, setFriendName] = useState('Friend');
   const [preset, setPreset] = useState<PresetName>('balanced');
   const [target, setTarget] = useState(DEFAULT_TARGET_CHOICE);
+  const [yourLoadout, setYourLoadout] = useState<DieSpec[]>(defaultLoadout());
+  const [opponentLoadout, setOpponentLoadout] = useState<DieSpec[]>(defaultLoadout());
 
-  function handleSubmit(event: FormEvent): void {
+  function handleContinue(event: FormEvent): void {
     event.preventDefault();
+    setStep('loadout');
+  }
+
+  function handleStart(): void {
     const you = yourName.trim() || 'You';
     const seed = randomSeed();
 
     if (mode === 'bot') {
       onStart({
         players: [
-          { name: you, loadout: defaultLoadout() },
-          { name: capitalize(preset), loadout: defaultLoadout() },
+          { name: you, loadout: yourLoadout },
+          { name: capitalize(preset), loadout: opponentLoadout },
         ],
         target,
         seed,
@@ -54,8 +64,8 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
       const friend = friendName.trim() || 'Friend';
       onStart({
         players: [
-          { name: you, loadout: defaultLoadout() },
-          { name: friend, loadout: defaultLoadout() },
+          { name: you, loadout: yourLoadout },
+          { name: friend, loadout: opponentLoadout },
         ],
         target,
         seed,
@@ -65,12 +75,27 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
     }
   }
 
+  if (step === 'loadout') {
+    return (
+      <LoadoutStep
+        yourLoadout={yourLoadout}
+        opponentLoadout={opponentLoadout}
+        opponentLabel={mode === 'bot' ? `${capitalize(preset)}’s dice` : "Friend’s dice"}
+        opponentEditable={mode === 'friend'}
+        onChangeYours={setYourLoadout}
+        onChangeOpponent={setOpponentLoadout}
+        onBack={() => setStep('basics')}
+        onStart={handleStart}
+      />
+    );
+  }
+
   return (
     <div className="setup">
       <h1 className="setup__title">Farkle</h1>
       <p className="setup__subtitle">Kingdom Come: Deliverance II rules</p>
 
-      <form className="setup__form" onSubmit={handleSubmit}>
+      <form className="setup__form" onSubmit={handleContinue}>
         <label className="field">
           <span className="field__label">Your name</span>
           <input
@@ -149,7 +174,7 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
         </div>
 
         <button type="submit" className="setup__start">
-          Start match
+          Choose dice
         </button>
       </form>
     </div>

@@ -35,12 +35,21 @@ export interface ClientView {
   readonly thrown: readonly Face[];
   readonly keptThisTurn: readonly Face[];
   readonly diceInPlay: number;
-  /** Legal keeps for the current throw, best first. Empty outside `AwaitingKeep`. */
+  /** Specs of the dice still in play for the current player, parallel to nothing in particular. */
+  readonly inPlayDice: readonly DieSpec[];
+  /**
+   * Legal keeps for the current throw, best first, each aware of which dice
+   * they leave behind — see `legalKeeps`'s `dice` parameter. Empty outside
+   * `AwaitingKeep`.
+   */
   readonly keeps: readonly KeepOption[];
   readonly winner: PlayerId | null;
 }
 
 export function viewOf(state: GameState, you: PlayerId): ClientView {
+  const currentPlayer = state.config.players[state.current]!;
+  const inPlayDice = state.inPlay.map((index) => currentPlayer.loadout[index]!);
+
   return {
     you,
     phase: state.phase,
@@ -58,7 +67,8 @@ export function viewOf(state: GameState, you: PlayerId): ClientView {
     thrown: state.thrown,
     keptThisTurn: state.keptThisTurn,
     diceInPlay: state.inPlay.length,
-    keeps: state.thrown.length > 0 ? legalKeeps(state.thrown) : [],
+    inPlayDice,
+    keeps: state.thrown.length > 0 ? legalKeeps(state.thrown, inPlayDice) : [],
     winner: state.winner,
   };
 }

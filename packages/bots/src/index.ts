@@ -16,6 +16,8 @@ export { summarizeMatch, type MatchSummary, type PlayerMatchStats } from './anal
 
 export { wilsonInterval } from './stats.js';
 
+export { balancedFarkleProbability, farkleProbability, safetyRatio } from './odds.js';
+
 export {
   runSimulation,
   type SideReport,

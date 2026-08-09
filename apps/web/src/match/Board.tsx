@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import type { Face } from '@farkle/engine';
+import type { DieSpec, Face } from '@farkle/engine';
 
 import { Die } from './Die';
 import { TUMBLE_MS } from './pacing';
@@ -8,10 +8,18 @@ import { TUMBLE_MS } from './pacing';
 export interface BoardProps {
   /** The current throw. Empty between throws. */
   thrown: readonly Face[];
-  /** Indices into `thrown` the player has set aside but not yet committed. */
+  /**
+   * The dice that produced `thrown`, parallel to it — drives each die's
+   * identity colour. Omitted (or shorter than `thrown`) falls back to the
+   * plain look, which is all a farkle hold can offer — see MatchScreen.
+   */
+  thrownDice?: readonly DieSpec[];
+  /** Indices into `thrown` the player has picked, but not yet committed with an action button. */
   selection: readonly number[];
   /** Faces already committed earlier in this turn — no longer takeable back. */
   keptThisTurn: readonly Face[];
+  /** The dice that produced `keptThisTurn`, parallel to it. */
+  keptDiceThisTurn?: readonly DieSpec[];
   /** Bumped by the parent each time a fresh throw lands, to replay the tumble. */
   spinToken: number;
   selectable: boolean;
@@ -22,19 +30,20 @@ export interface BoardProps {
 }
 
 /**
- * The table: a board holding the dice still live in the current throw, and a
- * rail beside it holding dice that are out of play — the ones the player has
- * clicked this throw (still retractable) and the ones already committed
- * earlier in the turn (not).
+ * The table: a board holding every die from the current throw, and a rail
+ * beside it holding dice already committed earlier in the turn (via Keep) —
+ * no longer retractable.
  *
- * Clicking a die physically moves it between the two, which is the whole
- * point: "set aside" is what keeping dice actually is, so the layout says so
- * rather than relying on a highlight colour.
+ * Picking dice for this throw only outlines them in place; nothing moves to
+ * the rail until the player actually presses "Keep & throw" or "Keep &
+ * bank", so a click is reversible right up to the moment it isn't.
  */
 export function Board({
   thrown,
+  thrownDice,
   selection,
   keptThisTurn,
+  keptDiceThisTurn,
   spinToken,
   selectable,
   farkled = false,
@@ -51,12 +60,14 @@ export function Board({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spinToken]);
 
-  const staged = selection.map((index) => ({ index, face: thrown[index]! }));
-  const onBoard = thrown
-    .map((face, index) => ({ face, index }))
-    .filter((die) => !selection.includes(die.index));
+  const onBoard = thrown.map((face, index) => ({
+    face,
+    index,
+    dieId: thrownDice?.[index]?.id,
+    picked: selection.includes(index),
+  }));
 
-  const asideEmpty = staged.length === 0 && keptThisTurn.length === 0;
+  const asideEmpty = keptThisTurn.length === 0;
 
   return (
     <div className="board">
@@ -69,8 +80,9 @@ export function Board({
               <Die
                 key={`${spinToken}-${die.index}`}
                 face={die.face}
+                dieId={die.dieId}
                 tumbling={!settled}
-                tone={farkled ? 'dead' : 'default'}
+                tone={farkled ? 'dead' : die.picked ? 'selected' : 'default'}
                 disabled={!selectable || !settled}
                 {...(selectable ? { onClick: () => onToggle(die.index) } : {})}
               />
@@ -86,16 +98,7 @@ export function Board({
         ) : (
           <div className="board__aside-dice">
             {keptThisTurn.map((face, position) => (
-              <Die key={`kept-${position}`} face={face} tone="kept" />
-            ))}
-            {staged.map((die) => (
-              <Die
-                key={`staged-${spinToken}-${die.index}`}
-                face={die.face}
-                tone="staged"
-                disabled={!selectable}
-                {...(selectable ? { onClick: () => onToggle(die.index) } : {})}
-              />
+              <Die key={`kept-${position}`} face={face} dieId={keptDiceThisTurn?.[position]?.id} tone="kept" />
             ))}
           </div>
         )}
