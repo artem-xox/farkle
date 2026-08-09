@@ -13,8 +13,10 @@ import type { Readable, Writable } from 'node:stream';
  * listener, and are silently dropped. Keeping one permanent 'line' listener and
  * a queue makes every line reach its `ask()` call regardless of pacing.
  *
- * Also avoids `readline/promises`, which arrived in Node 17 — this toolchain
- * still targets Node 16.
+ * Also avoids `readline/promises`: its `question()` is a promisified wrapper
+ * around the same one-shot 'line' listener, so it has the identical drop bug
+ * in a call-await-call loop — it's not an alternative to this class, just a
+ * different-looking way to write the same mistake.
  */
 export class Prompt {
   private readonly rl: Interface;

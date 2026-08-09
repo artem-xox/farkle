@@ -104,18 +104,6 @@ node apps/cli/dist/main.js --help
 During a turn: type die positions to keep them (`1 4`), `?` to list every legal
 keep with its point value, `t`/`b` to throw or bank, `q` to quit.
 
-## Toolchain note
-
-This machine has only Node 16.14.2, which is end-of-life. `npm` runs and warns
-on every command; TypeScript and Vitest are pinned to the last versions that
-still support Node 16 (Vitest 0.34). Once Node 20+ is available:
-
-1. `nvm install 20` (or however Node is managed here)
-2. Bump `vitest` to latest, drop the Node-16-specific bits — notably
-   `apps/cli/src/prompt.ts` could switch to `node:readline/promises`
-   (Node 17+) instead of hand-rolling the promise wrapper
-3. Remove this note and the one in the README
-
 ## Things worth knowing before touching the engine
 
 - **Scoring must stay provably maximal.** `scoreKeep` exists because greedy

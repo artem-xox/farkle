@@ -24,7 +24,3 @@ npm run play       # build and launch the terminal game
 
 See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for the full layout and how
 things fit together.
-
-The toolchain is pinned to versions that still run on Node 16, which is what
-this machine has. Node 16 is end-of-life; once Node 20+ is available, Vitest and
-TypeScript should be upgraded and this note removed.

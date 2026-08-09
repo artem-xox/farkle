@@ -16,9 +16,8 @@
     "forceConsistentCasingInFileNames": true,
     "noEmit": true,
     "types": ["node"],
-    "baseUrl": ".",
     "paths": {
-      "@farkle/engine": ["packages/engine/src/index.ts"]
+      "@farkle/engine": ["./packages/engine/src/index.ts"]
     }
   },
   "include": [
