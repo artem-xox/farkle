@@ -1,3 +1,4 @@
+import type { SideReport, SimulationReport } from '@farkle/bots';
 import type { ClientView, Combo, Face, KeepOption, PlayerView } from '@farkle/engine';
 
 const ESC = String.fromCharCode(27);
@@ -82,4 +83,27 @@ export function renderScoreboard(view: ClientView): string {
 
 export function renderKeptThisTurn(view: ClientView): string {
   return view.keptThisTurn.length === 0 ? dim('nothing yet') : view.keptThisTurn.join(' ');
+}
+
+const pct = (fraction: number): string => `${(fraction * 100).toFixed(1)}%`;
+
+function renderSideReport(label: string, side: SideReport): string {
+  const [low, high] = side.winRateCI95;
+  return [
+    `   ${bold(label)}`,
+    `     win rate        ${pct(side.winRate)}  ${dim(`(95% CI ${pct(low)}–${pct(high)})`)}`,
+    `     avg per bank     ${Math.round(side.avgBankedPerBank)}`,
+    `     farkle rate      ${pct(side.farkleRate)}`,
+    `     turns per match  ${side.avgTurnsPlayed.toFixed(1)}`,
+  ].join('\n');
+}
+
+export function renderSimReport(nameA: string, nameB: string, report: SimulationReport): string {
+  return [
+    `  ${bold(String(report.matches))} matches, avg ${report.avgTurnsPerMatch.toFixed(1)} turns/match`,
+    '',
+    renderSideReport(nameA, report.a),
+    '',
+    renderSideReport(nameB, report.b),
+  ].join('\n');
 }

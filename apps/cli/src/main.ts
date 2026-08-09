@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { chooseBotAction, createPreset, isPresetName, PRESET_NAMES, type PresetName } from '@farkle/bots';
 import {
   BALANCED_DIE,
   createMatch,
@@ -24,31 +25,41 @@ import {
   renderScoreboard,
   yellow,
 } from './render.js';
+import { runSimCommand } from './sim.js';
 
 interface Options {
   readonly names: readonly string[];
   readonly target: number;
   readonly seed: number;
+  readonly opponent: PresetName | null;
 }
+
+const PRESET_LIST = PRESET_NAMES.join(', ');
 
 const USAGE = `
   farkle — hot-seat dice, KCD2 rules
 
   Usage: farkle [options]
+         farkle sim --a <preset> --b <preset> [options]
 
     --players <a,b,...>   player names (default: "Player 1,Player 2")
+    --opponent <preset>   play against a bot instead of a second human
+                           (${PRESET_LIST}) — makes it a two-player match
     --target <n>          score to win (default: 2000)
     --seed <n>            replay a previous match exactly
     --help                this message
 
   During a turn: enter die positions to keep them (e.g. "1 4"),
   "?" to list every legal keep, "q" to quit.
+
+  "farkle sim" runs headless bot-vs-bot matches — see "farkle sim --help".
 `;
 
 function parseArgs(argv: readonly string[]): Options | 'help' | Error {
   let names = ['Player 1', 'Player 2'];
   let target = 2000;
   let seed = ((Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0);
+  let opponent: PresetName | null = null;
 
   for (let index = 0; index < argv.length; index++) {
     const flag = argv[index]!;
@@ -72,6 +83,13 @@ function parseArgs(argv: readonly string[]): Options | 'help' | Error {
         }
         break;
       }
+      case '--opponent': {
+        if (!isPresetName(value)) {
+          return new Error(`unknown bot preset "${value}" — choose from ${PRESET_LIST}`);
+        }
+        opponent = value;
+        break;
+      }
       case '--target': {
         target = Number(value);
         if (!Number.isInteger(target) || target <= 0) {
@@ -92,7 +110,7 @@ function parseArgs(argv: readonly string[]): Options | 'help' | Error {
     }
   }
 
-  return { names, target, seed };
+  return { names, target, seed, opponent };
 }
 
 function parsePositions(text: string, diceCount: number): number[] | string {
@@ -240,6 +258,11 @@ async function nextAction(prompt: Prompt, host: LocalHost): Promise<GameAction |
   }
 }
 
+const capitalize = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);
+
+/** Derives a bot seed from the match seed so `--seed` alone still replays exactly. */
+const botSeedFrom = (matchSeed: number): number => (matchSeed ^ 0x9e3779b9) >>> 0;
+
 async function main(): Promise<number> {
   const parsed = parseArgs(process.argv.slice(2));
   if (parsed === 'help') {
@@ -251,15 +274,20 @@ async function main(): Promise<number> {
     return 1;
   }
 
-  const players: PlayerConfig[] = parsed.names.map((name) => ({
+  // --opponent makes it a two-player match: a human seat and a bot seat.
+  const names = parsed.opponent
+    ? [parsed.names[0] ?? 'You', capitalize(parsed.opponent)]
+    : parsed.names;
+  const bot = parsed.opponent ? createPreset(parsed.opponent, botSeedFrom(parsed.seed)) : null;
+  const botSeat = bot === null ? null : 1;
+
+  const players: PlayerConfig[] = names.map((name) => ({
     name,
     loadout: new Array(DICE_PER_TURN).fill(BALANCED_DIE),
   }));
 
-  const host = new LocalHost(
-    createMatch({ players, target: parsed.target, seed: parsed.seed }),
-  );
-  const printEvent = makeEventPrinter(parsed.names);
+  const host = new LocalHost(createMatch({ players, target: parsed.target, seed: parsed.seed }));
+  const printEvent = makeEventPrinter(names);
   host.subscribe((events) => events.forEach(printEvent));
 
   console.log(`\n  ${bold('FARKLE')} ${dim(`· first to ${parsed.target} · seed ${parsed.seed}`)}`);
@@ -268,7 +296,11 @@ async function main(): Promise<number> {
   const prompt = new Prompt();
   try {
     while (host.state.phase !== 'MatchOver') {
-      const action = await nextAction(prompt, host);
+      const action =
+        bot !== null && host.state.current === botSeat
+          ? chooseBotAction(host.view(botSeat), bot)
+          : await nextAction(prompt, host);
+
       if (action === null) {
         console.log(dim(`\n  stopped. replay this match with --seed ${parsed.seed}\n`));
         return 0;
@@ -290,7 +322,12 @@ async function main(): Promise<number> {
   return 0;
 }
 
-main().then(
+async function run(): Promise<number> {
+  const [command, ...rest] = process.argv.slice(2);
+  return command === 'sim' ? runSimCommand(rest) : main();
+}
+
+run().then(
   (code) => {
     process.exit(code);
   },
