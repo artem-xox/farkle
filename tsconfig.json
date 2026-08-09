@@ -17,7 +17,8 @@
     "noEmit": true,
     "types": ["node"],
     "paths": {
-      "@farkle/engine": ["./packages/engine/src/index.ts"]
+      "@farkle/engine": ["./packages/engine/src/index.ts"],
+      "@farkle/bots": ["./packages/bots/src/index.ts"]
     }
   },
   "include": [
