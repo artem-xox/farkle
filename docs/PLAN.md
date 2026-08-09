@@ -177,9 +177,16 @@ Blocking — required before a first deploy:
    `.github/workflows/ci.yml`'s `setup-node` use.
 4. ~~**`.do/app.yaml` committed to the repo.**~~ Done — one `static_sites`
    component, build command, `output_dir: apps/web/dist`,
-   `catchall_document: index.html`, and `deploy_on_push: false` so DigitalOcean
-   never deploys off its own webhook — only GitHub Actions triggers a deploy,
-   and only after tests pass (see item 7 and DEVELOPMENT.md's "Deploying").
+   `catchall_document: index.html`, and an explicit
+   `environment_slug: node-js`, without which DigitalOcean auto-detects an
+   invalid `typescript:default` runtime off the tsconfig files and fails the
+   deploy after an otherwise successful build. The file is kept identical to
+   the spec the dashboard shows, so the two can't drift.
+
+   Currently `deploy_on_push: true`, so DigitalOcean deploys off its own
+   webhook *in addition to* the workflow — two deployments per push to `main`,
+   the first of them ungated by tests. Flipping it to `false` makes CI the sole
+   trigger, which is what this milestone originally specified.
 5. **Cache headers.** Hashed assets `immutable, max-age=31536000`;
    `index.html` explicitly `no-cache`, or players keep an old build after every
    deploy. Not yet confirmed whether App Platform's static-site serving needs
