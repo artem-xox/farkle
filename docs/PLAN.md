@@ -182,10 +182,10 @@ Blocking — required before a first deploy:
 1. **`apps/web` itself (M3).** There is nothing to deploy until it exists.
 2. **A production build.** `npm run build -w @farkle/web` emitting `dist/`,
    wired into the root `build` script alongside the engine and the CLI.
-3. **Node version.** The toolchain is currently pinned to what Node 16 supports
-   (DEVELOPMENT.md, "Toolchain note"); App Platform builds on Node 18+. Pin the
-   version explicitly via `engines` or `.node-version` and confirm the build is
-   green there. This is the likeliest thing to break the first deploy.
+3. **Node version.** The toolchain is on Node 20+ (#4), which App Platform
+   supports. Still needs pinning explicitly via `engines` or `.node-version` so
+   the build platform matches what's tested locally rather than picking a
+   default that happens to also work.
 4. **`.do/app.yaml` committed to the repo** — source repo and branch, build
    command, output directory, `catchall_document: index.html` so a client-side
    route or a refresh does not 404, and an error document.
