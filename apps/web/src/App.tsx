@@ -4,6 +4,7 @@ import type { PresetName } from '@farkle/bots';
 import { createMatch, LocalHost, type GameState } from '@farkle/engine';
 
 import { MatchScreen } from './match/MatchScreen';
+import { RulesScreen } from './rules/RulesScreen';
 import { SetupScreen, type NewMatchOptions } from './setup/SetupScreen';
 import { clearMatch, loadMatch } from './storage';
 
@@ -13,6 +14,8 @@ interface MatchSession {
   readonly botSeat: number | null;
   readonly botPreset: PresetName | null;
 }
+
+type Tab = 'play' | 'rules';
 
 function freshId(): string {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -45,23 +48,58 @@ function resumeFromStorage(): MatchSession | null {
 
 export function App() {
   const [session, setSession] = useState<MatchSession | null>(() => resumeFromStorage());
+  const [tab, setTab] = useState<Tab>('play');
 
   function startMatch(options: NewMatchOptions): void {
     const initial = createMatch({ players: options.players, target: options.target, seed: options.seed });
     setSession({ id: freshId(), initial, botSeat: options.botSeat, botPreset: options.botPreset });
   }
 
-  if (session === null) {
-    return <SetupScreen onStart={startMatch} />;
-  }
-
   return (
-    <MatchScreen
-      key={session.id}
-      initial={session.initial}
-      botSeat={session.botSeat}
-      botPreset={session.botPreset}
-      onExit={() => setSession(null)}
-    />
+    <div className="app">
+      <nav className="tabs" aria-label="Sections">
+        <button
+          type="button"
+          className={`tabs__tab${tab === 'play' ? ' tabs__tab--active' : ''}`}
+          aria-current={tab === 'play'}
+          onClick={() => setTab('play')}
+        >
+          Play
+        </button>
+        <button
+          type="button"
+          className={`tabs__tab${tab === 'rules' ? ' tabs__tab--active' : ''}`}
+          aria-current={tab === 'rules'}
+          onClick={() => setTab('rules')}
+        >
+          Rules
+        </button>
+      </nav>
+
+      {/*
+        The play tab stays mounted while the rules are open: MatchScreen owns
+        the LocalHost, the event log and the bot's timers, none of which
+        survive an unmount. Reading the rules mid-match must not forfeit it.
+      */}
+      <main className="app__panel" hidden={tab !== 'play'}>
+        {session === null ? (
+          <SetupScreen onStart={startMatch} />
+        ) : (
+          <MatchScreen
+            key={session.id}
+            initial={session.initial}
+            botSeat={session.botSeat}
+            botPreset={session.botPreset}
+            onExit={() => setSession(null)}
+          />
+        )}
+      </main>
+
+      {tab === 'rules' && (
+        <main className="app__panel">
+          <RulesScreen />
+        </main>
+      )}
+    </div>
   );
 }

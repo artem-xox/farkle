@@ -12,30 +12,64 @@ const PIP_LAYOUTS: Record<Face, readonly number[]> = {
   6: [0, 2, 3, 5, 6, 8],
 };
 
+export type DieTone = 'default' | 'staged' | 'kept' | 'dead';
+
 export interface DieProps {
   face: Face;
-  selected: boolean;
-  disabled: boolean;
+  /**
+   * Play the tumble-in animation. Only true for dice that just landed on the
+   * board: a die moving between the board and the set-aside rail remounts, and
+   * without this it would re-tumble on every click.
+   */
+  tumbling?: boolean;
+  tone?: DieTone;
+  disabled?: boolean;
   onClick?: () => void;
 }
 
-export function Die({ face, selected, disabled, onClick }: DieProps) {
+export function Die({ face, tumbling = false, tone = 'default', disabled = false, onClick }: DieProps) {
   const active = new Set(PIP_LAYOUTS[face]);
+  const interactive = onClick !== undefined;
+  const className = [
+    'die',
+    tone !== 'default' ? `die--${tone}` : '',
+    tumbling ? 'die--tumbling' : '',
+    interactive ? '' : 'die--static',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const pips = (
+    <span className="die__pips">
+      {Array.from({ length: 9 }, (_, cell) => (
+        <span key={cell} className={`die__pip${active.has(cell) ? ' die__pip--on' : ''}`} />
+      ))}
+    </span>
+  );
+
+  if (!interactive) {
+    return (
+      <span
+        className={className}
+        style={tumbling ? { animationDuration: `${TUMBLE_MS}ms` } : undefined}
+        aria-label={`die showing ${face}`}
+        role="img"
+      >
+        {pips}
+      </span>
+    );
+  }
+
   return (
     <button
       type="button"
-      className={`die${selected ? ' die--selected' : ''}`}
-      style={{ animationDuration: `${TUMBLE_MS}ms` }}
+      className={className}
+      style={tumbling ? { animationDuration: `${TUMBLE_MS}ms` } : undefined}
       disabled={disabled}
       onClick={onClick}
-      aria-pressed={selected}
       aria-label={`die showing ${face}`}
     >
-      <span className="die__pips">
-        {Array.from({ length: 9 }, (_, cell) => (
-          <span key={cell} className={`die__pip${active.has(cell) ? ' die__pip--on' : ''}`} />
-        ))}
-      </span>
+      {pips}
     </button>
   );
 }

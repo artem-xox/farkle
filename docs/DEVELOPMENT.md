@@ -12,10 +12,11 @@ doesn't reflect), fix it before adding more to it.
 
 ## Status
 
-M0 through M3 are done. The game is playable end to end both from the terminal
-and in the browser — hot-seat human vs human, or human vs a bot personality —
-with full KCD2 scoring, hot dice, farkle, win detection. `farkle sim` runs
-headless bot-vs-bot matches from the CLI.
+M0 through M3 are done, plus a round of web UI polish on top. The game is
+playable end to end both from the terminal and in the browser — hot-seat human
+vs human, or human vs a bot personality — with full KCD2 scoring, hot dice,
+farkle, win detection. `farkle sim` runs headless bot-vs-bot matches from the
+CLI.
 
 M8 (deployment) has a plan on record — [PLAN.md](PLAN.md#m8--deployment-on-digitalocean).
 `apps/web` now exists, so the one hard blocker it named is gone; what's left
@@ -23,7 +24,7 @@ there is `.do/app.yaml`, cache headers, and a domain — see the plan for the
 full checklist.
 
 Merged: #1 (M0), #2 (M1), #3 (M8 plan), #4 (Node 20 toolchain upgrade), #5
-(docs sync), #6 (M2). M3 (this work) not yet merged.
+(docs sync), #6 (M2), #7 (M3). The web UI polish pass is not yet merged.
 
 ## Layout
 
@@ -118,23 +119,43 @@ development — see below.
 | File | What's in it |
 |---|---|
 | `main.tsx` | Mounts `<App>` |
-| `App.tsx` | Setup screen vs match screen, resuming a saved match from `localStorage` on load |
+| `App.tsx` | The Play / Rules tab shell, setup vs match screen, resuming a saved match from `localStorage` on load |
 | `storage.ts` | `saveMatch`/`loadMatch`/`clearMatch` — `GameState` is already plain, JSON-safe data (DESIGN.md §1), so this is a thin, error-swallowing wrapper, not a serialisation layer |
 | `presets.ts` | Preset display blurbs for the setup screen (`PRESET_DESCRIPTIONS`) |
-| `setup/SetupScreen.tsx` | Name, bot personality or hot-seat friend, target score |
-| `match/MatchScreen.tsx` | Owns the `LocalHost` for one match session, drives a bot seat via `chooseBotAction` on a timer, persists on every change |
+| `setup/SetupScreen.tsx` | Name, bot personality or hot-seat friend, target score (1500 / 3000 / 8000) |
+| `rules/RulesScreen.tsx` | The rules, written out for players rather than for implementers — the player-facing counterpart to RULES.md |
+| `match/MatchScreen.tsx` | Owns the `LocalHost` for one match session, drives a bot seat via `chooseBotAction` on a timer, holds farkles on screen, persists on every change |
 | `match/selection.ts` | `matchingKeepOption` — is the player's current die selection a legal keep? Compares by *face multiset*, not by the literal indices `legalKeeps` picked as its representative, since two dice showing the same value are interchangeable for scoring (see the comment in the file for why this matters, and why the *dispatched* action still uses the literal clicked indices) |
-| `match/Die.tsx`, `DiceTray.tsx` | One die (pip layout, tumble-in animation) and the row of them; dice are unclickable until the tumble settles |
-| `match/KeepOptions.tsx` | Every legal keep as a clickable row — the fast path; clicking commits immediately, unlike the manual dice-then-"Keep" path |
-| `match/pacing.ts` | `botThinkTime(phase)` and `TUMBLE_MS` — the only place "how long things take" is defined |
-| `match/eventLine.ts`, `describeCombo.ts` | Pure `GameEvent`/`Combo` → text, used by `TurnLog` |
-| `match/Scoreboard.tsx`, `TurnLog.tsx`, `MatchOverOverlay.tsx` | The rest of the board |
+| `match/Board.tsx`, `Die.tsx` | The board and one die. Dice physically move between the board and the "set aside" rail when clicked, rather than just changing colour — see below |
+| `match/KeepOptions.tsx` | Every legal keep as a clickable row. Clicking *selects* those dice; committing is a separate choice (keep & throw / keep & bank) |
+| `match/FarkleNotice.tsx` | The farkle hold's panel — explanation plus a Continue button and its countdown |
+| `match/pacing.ts` | `botThinkTime(phase)`, `TUMBLE_MS`, `FARKLE_PAUSE_MS` — the only place "how long things take" is defined |
+| `match/logEntry.ts` | `buildLog` turns a flat `GameEvent[]` into per-turn blocks for display, plus `diceGlyphs` (⚀–⚅) |
+| `match/describeCombo.ts` | Pure `Combo` → text |
+| `match/Scoreboard.tsx`, `TurnLog.tsx`, `MatchOverOverlay.tsx` | The rest of the screen |
 | `styles.css` | One stylesheet, no CSS-in-JS or modules — small enough not to need either |
 
 The UI never scores a selection itself: `MatchScreen` reads `view.keeps`
 (computed by the engine inside `viewOf`) and `matchingKeepOption` only compares
 against it, per DESIGN.md §3's rule that the UI never computes a score by any
 path other than asking the engine.
+
+**Keeping dice is two clicks, not three.** The engine's turn goes
+`AwaitingKeep` → `AwaitingBankOrThrow`, but the UI collapses that: "keep &
+throw" and "keep & bank" each dispatch `Keep` and then the follow-up action
+back to back (`keepThen` in `MatchScreen`). The middle phase still exists in
+the engine and is still rendered as a fallback if a chain is ever interrupted
+— it just isn't a screen the player has to walk through, since by the time
+they have chosen a combination they have already decided what to do next.
+
+**The farkle hold is presentation, not an engine phase.** A farkle resolves
+inside one `reduce()` — the throw, the farkle and the handover all arrive in a
+single event batch — so by the time the UI hears about it, play has already
+moved on. `MatchScreen` captures the busted dice out of that batch and holds
+them on the board (`FARKLE_PAUSE_MS`, or until "Continue"), and the bot effect
+takes `farkleHold` as a dependency so the opponent doesn't play on underneath
+a notice the player is still reading. Nothing about the underlying state is
+paused or rewound.
 
 **Bot pacing**, since it looks like it could be a `setInterval` loop but isn't:
 `MatchScreen` has one `useEffect` keyed on `events` (which changes exactly once
@@ -145,13 +166,16 @@ turn is a chain of these, not a loop — which is what makes each step
 individually cancellable (see the cleanup function) if the component unmounts
 mid-turn (e.g. "Quit to menu").
 
+**The Play tab stays mounted while the Rules tab is open** (`hidden`, not
+unmounted). `MatchScreen` owns the `LocalHost`, the event log and the bot's
+timers, none of which survive an unmount — reading the rules mid-match must
+not forfeit it.
+
 `apps/web` doesn't have its own test directory yet. The pure helpers
-(`selection.ts`, `eventLine.ts`, `describeCombo.ts`, `storage.ts`) are
+(`selection.ts`, `logEntry.ts`, `describeCombo.ts`, `storage.ts`) are
 straightforward candidates if they grow non-obvious logic; the interactive
-parts were verified by hand in a browser (dice selection, keep options,
-farkle, hot dice, a full bot turn, reload-persistence, the win overlay, and
-the mobile layout) rather than with component tests — there's no
-testing-library set up in this repo yet.
+parts were verified by hand in a browser rather than with component tests —
+there's no testing-library set up in this repo yet.
 
 ### Root
 
