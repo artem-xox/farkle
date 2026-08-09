@@ -86,48 +86,11 @@ fixing before building more on top:
 - **Target scores of 1500 / 3000 / 8000** rather than 500 / 2000 / 4000. 8000
   is exactly six 1s, so the longest match is still winnable in one throw.
 
-## M4 — Loadouts and more dice
+## M4 — Deployment on DigitalOcean
 
-- Loadout screen: six slots, dice chosen from a collection.
-- Per-die distribution shown honestly in the UI.
-- More dice specs, balanced by simulation rather than by feel.
-- Opponents carry their own loadouts, visible before the match.
-
-## M5 — Optimal play and hints
-
-Deferred until a prototype exists. Kept here so the shape is on record.
-
-Optimal Farkle play is computable rather than heuristic. The state
-`(own banked score, opponent banked score, turn score, dice in play)` is small
-enough to solve by value iteration — on the order of a few hundred thousand
-states at the default target with a 50-point grid — giving the exact
-throw-or-bank decision and the exact value of every keep.
-
-What that unlocks: an opponent that plays correctly instead of plausibly,
-especially in endgames where the right move is to keep throwing far past any
-sensible threshold; a hint overlay showing the player what optimal play would do
-and what their choice cost; and a yardstick that converts every personality's
-strength into a number.
-
-Two complications to expect. The solution depends on the dice loadout, so it must
-be recomputed or memoised per loadout rather than shipped as one table. And it
-must run off the main thread.
-
-## M6 — Meta-game
-
-Opponents with names, loadouts and personalities; wagers and a purse; dice won
-and collected; progression through increasingly strong opponents; saves.
-
-## M7 — Online multiplayer
-
-A server owning the engine and treating client actions as untrusted, `RemoteHost`
-on the client, matchmaking, reconnection, spectating. The `GameHost` seam from
-M1 is what makes this an addition rather than a rewrite.
-
-## M8 — Deployment on DigitalOcean
-
-Listed last, but it is not sequenced last: it depends only on M3 and can land the
-day the web UI does. Everything below assumes the v1 architecture — no server.
+Sequenced right after the web UI on purpose: it depends only on M3, and the
+sooner a real URL exists, the sooner "play it" means clicking a link rather
+than cloning a repo. Everything below assumes the v1 architecture — no server.
 
 ### What is actually being deployed
 
@@ -187,16 +150,16 @@ line appears at roughly 4 000 cold loads a month, and it is $0.02 per further
 |---|---|---|
 | App Platform static site | $0 | Chosen. Cheapest and least to operate. |
 | Spaces + built-in CDN | $5/mo — 250 GiB storage, 1 TiB transfer | Pays for capacity we would need thousands of times our traffic to use. Becomes right if presentation work lands heavy assets: 3D dice, audio. |
-| Droplet, 512 MB, nginx | $4/mo | Buys nothing for static files and costs the most attention: patching, cert renewal, a hand-written deploy. Justified only when M7 needs a process running. |
+| Droplet, 512 MB, nginx | $4/mo | Buys nothing for static files and costs the most attention: patching, cert renewal, a hand-written deploy. Justified only when M8 needs a process running. |
 | Cloudflare Pages / Netlify free tier | $0 | Comparable, with far more generous bandwidth. Named here so that "we're on DigitalOcean" stays a decision rather than an assumption. |
 
-### If M7 ever lands
+### If M8 ever lands
 
 Outside this budget, but worth having the number on record. A WebSocket server
 for the same 100 players is one App Platform basic service ($5/mo, 1 vCPU,
 512 MiB) or a $6 Droplet — matches live in memory and a hundred players a month
 will not trouble either. Managed Postgres ($15/mo) is needed only once accounts
-and persistent progression exist, which is M6 territory. So multiplayer moves
+and persistent progression exist, which is M7 territory. So multiplayer moves
 this site from ~$1 to ~$6–7/month, and to ~$22 with a database.
 
 ### What still has to be written
@@ -209,23 +172,26 @@ Blocking — required before a first deploy:
 2. **A live look at the production build.** `vite build` output hasn't been
    served and clicked through yet — only `vite dev`. Worth a `vite preview`
    pass before the first real deploy, in case dev and build ever diverge.
-3. **Node version.** The toolchain is on Node 20+ (#4), which App Platform
-   supports. Still needs pinning explicitly via `engines` or `.node-version` so
-   the build platform matches what's tested locally rather than picking a
-   default that happens to also work.
-4. **`.do/app.yaml` committed to the repo** — source repo and branch, build
-   command, output directory, `catchall_document: index.html` so a client-side
-   route or a refresh does not 404, and an error document.
+3. ~~**Node version.**~~ Done — `.node-version` and `engines.node` in the root
+   `package.json` both pin `>=20`, matching what App Platform's buildpack and
+   `.github/workflows/ci.yml`'s `setup-node` use.
+4. ~~**`.do/app.yaml` committed to the repo.**~~ Done — one `static_sites`
+   component, build command, `output_dir: apps/web/dist`,
+   `catchall_document: index.html`, and `deploy_on_push: false` so DigitalOcean
+   never deploys off its own webhook — only GitHub Actions triggers a deploy,
+   and only after tests pass (see item 7 and DEVELOPMENT.md's "Deploying").
 5. **Cache headers.** Hashed assets `immutable, max-age=31536000`;
    `index.html` explicitly `no-cache`, or players keep an old build after every
-   deploy.
+   deploy. Not yet confirmed whether App Platform's static-site serving needs
+   this set explicitly or already does the sane thing for hashed filenames.
 6. **Domain.** Register it, point the nameservers at DigitalOcean DNS, attach it
    to the app, wait for the certificate.
 
 Worth doing, not blocking:
 
-7. **A CI gate.** GitHub Actions running `npm test` and `npm run typecheck` on
-   push, so a red scoring suite cannot ship. The whole suite is ~1.3 s.
+7. ~~**A CI gate.**~~ Done — `.github/workflows/ci.yml` runs typecheck, tests
+   and the build on every branch push; on `main` a second job deploys via
+   `digitalocean/app_action`, gated on the test job succeeding first.
 8. **Static-site basics.** Favicon, page title, `robots.txt`, OG and meta tags
    so a shared link is not a bare URL.
 9. **Security headers** in the app spec: CSP, `X-Content-Type-Options`,
@@ -235,8 +201,7 @@ Worth doing, not blocking:
     banner. Self-hosting Plausible would cost several times the site itself.
 11. **Error reporting.** Sentry's free tier, or nothing. An engine that throws
     in someone's browser is otherwise invisible to us.
-12. **A deploy section in DEVELOPMENT.md** covering how to ship and how to roll
-    back.
+12. ~~**A deploy section in DEVELOPMENT.md**~~ Done — see "Deploying" there.
 
 Deliberately absent, and staying absent while v1 is static: environment
 variables and secrets (there are no keys), a database (state is `localStorage`,
@@ -246,6 +211,44 @@ serves identical files to any number of players).
 Done when a push to `main` publishes the game on its own domain over HTTPS
 within minutes, a bad build can be rolled back from the DigitalOcean console,
 and the monthly bill is the domain.
+
+## M5 — Loadouts and more dice
+
+- Loadout screen: six slots, dice chosen from a collection.
+- Per-die distribution shown honestly in the UI.
+- More dice specs, balanced by simulation rather than by feel.
+- Opponents carry their own loadouts, visible before the match.
+
+## M6 — Optimal play and hints
+
+Deferred until a prototype exists. Kept here so the shape is on record.
+
+Optimal Farkle play is computable rather than heuristic. The state
+`(own banked score, opponent banked score, turn score, dice in play)` is small
+enough to solve by value iteration — on the order of a few hundred thousand
+states at the default target with a 50-point grid — giving the exact
+throw-or-bank decision and the exact value of every keep.
+
+What that unlocks: an opponent that plays correctly instead of plausibly,
+especially in endgames where the right move is to keep throwing far past any
+sensible threshold; a hint overlay showing the player what optimal play would do
+and what their choice cost; and a yardstick that converts every personality's
+strength into a number.
+
+Two complications to expect. The solution depends on the dice loadout, so it must
+be recomputed or memoised per loadout rather than shipped as one table. And it
+must run off the main thread.
+
+## M7 — Meta-game
+
+Opponents with names, loadouts and personalities; wagers and a purse; dice won
+and collected; progression through increasingly strong opponents; saves.
+
+## M8 — Online multiplayer
+
+A server owning the engine and treating client actions as untrusted, `RemoteHost`
+on the client, matchmaking, reconnection, spectating. The `GameHost` seam from
+M1 is what makes this an addition rather than a rewrite.
 
 ## Out of scope
 

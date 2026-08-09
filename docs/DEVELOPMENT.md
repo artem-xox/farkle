@@ -18,13 +18,15 @@ vs human, or human vs a bot personality — with full KCD2 scoring, hot dice,
 farkle, win detection. `farkle sim` runs headless bot-vs-bot matches from the
 CLI.
 
-M8 (deployment) has a plan on record — [PLAN.md](PLAN.md#m8--deployment-on-digitalocean).
-`apps/web` now exists, so the one hard blocker it named is gone; what's left
-there is `.do/app.yaml`, cache headers, and a domain — see the plan for the
-full checklist.
+M4 (deployment) has a plan on record — [PLAN.md](PLAN.md#m4--deployment-on-digitalocean),
+moved up to sit right after M3 rather than at the end of the file. `apps/web`
+now exists, so the one hard blocker it named is gone; what's left is CI, a
+DigitalOcean App Platform app, `.do/app.yaml`, cache headers, and a domain —
+see the plan for the full checklist.
 
-Merged: #1 (M0), #2 (M1), #3 (M8 plan), #4 (Node 20 toolchain upgrade), #5
-(docs sync), #6 (M2), #7 (M3). The web UI polish pass is not yet merged.
+Merged: #1 (M0), #2 (M1), #3 (M4 plan, filed as M8 before the renumber), #4
+(Node 20 toolchain upgrade), #5 (docs sync), #6 (M2), #7 (M3). The web UI
+polish pass is not yet merged.
 
 ## Layout
 
@@ -230,6 +232,35 @@ The web app needs no build step in dev — `npm run dev:web` and open the printe
 `localhost` URL. Click dice to select them, or click a listed option to commit
 it immediately; `Bank`/`Throw` appear once at least one die is kept.
 
+## Deploying
+
+`apps/web` ships as a static site on DigitalOcean App Platform. Plan and cost
+model: [PLAN.md#m4](PLAN.md#m4--deployment-on-digitalocean).
+
+- **`.do/app.yaml`** is the app spec: one `static_sites` component, built with
+  `npm ci && npm run build -w @farkle/web`, serving `apps/web/dist`, with
+  `catchall_document: index.html` so client-side routes and page refreshes
+  don't 404.
+- **`deploy_on_push: false`** in that spec on purpose — DigitalOcean's own
+  push webhook never deploys anything. The only thing that ever triggers a
+  deployment is `.github/workflows/ci.yml`.
+- **`.github/workflows/ci.yml`** has two jobs. `test` runs on every branch push:
+  typecheck, the full test suite, and a build — this is the only thing that
+  happens on a feature branch. `deploy` runs only on push to `main`, `needs:
+  test`, so a red suite blocks the deploy job entirely; it then calls
+  `digitalocean/app_action/deploy@v2` against the existing `farkle` app, which
+  reads `.do/app.yaml` from the checked-out commit and redeploys it.
+- **Rolling back** a bad deploy: DigitalOcean dashboard → the `farkle` app →
+  **Activity** tab → pick a previous successful deployment → **Rebuild and
+  Deploy** (or **Revert to this deployment** if offered). This does not touch
+  `main` — no `git revert` is required to get the site back, only to fix the
+  branch itself.
+- **Secrets this depends on**: a `DIGITALOCEAN_ACCESS_TOKEN` repository secret
+  (Settings → Secrets and variables → Actions in GitHub), and an app named
+  `farkle` already existing in the DigitalOcean project of the same name
+  (created once by hand in the dashboard — the action updates it, it doesn't
+  create the first one from scratch against a fresh GitHub authorization).
+
 ## Toolchain
 
 Node 20+, TypeScript 7, Vitest 4, React 19, Vite 8. Upgraded from the
@@ -296,10 +327,14 @@ guidance.
   Fixed by keeping one permanent listener and a queue; see the comment at the
   top of `prompt.ts`. Worth remembering if `Prompt` is ever rewritten.
 
-## Next: M4
+## Next: M4, then M5
 
-Loadouts and more dice. Plan is in [PLAN.md](PLAN.md#m4--loadouts-and-more-dice):
-a six-slot loadout screen, per-die distributions shown honestly in the UI, more
-dice specs balanced by simulation, and opponents with their own visible
-loadouts. This is also when the index-vs-face-value distinction noted above
-starts to matter functionally rather than just in principle.
+M4 is deployment — in progress; see [PLAN.md](PLAN.md#m4--deployment-on-digitalocean)
+and the "Deploying" section above.
+
+After that, M5 is loadouts and more dice. Plan is in
+[PLAN.md](PLAN.md#m5--loadouts-and-more-dice): a six-slot loadout screen,
+per-die distributions shown honestly in the UI, more dice specs balanced by
+simulation, and opponents with their own visible loadouts. This is also when
+the index-vs-face-value distinction noted above starts to matter functionally
+rather than just in principle.
