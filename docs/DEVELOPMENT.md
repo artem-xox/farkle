@@ -18,11 +18,15 @@ vs human, or human vs a bot personality — with full KCD2 scoring, hot dice,
 farkle, win detection. `farkle sim` runs headless bot-vs-bot matches from the
 CLI.
 
-M4 (deployment) has a plan on record — [PLAN.md](PLAN.md#m4--deployment-on-digitalocean),
-moved up to sit right after M3 rather than at the end of the file. `apps/web`
-now exists, so the one hard blocker it named is gone; what's left is CI, a
-DigitalOcean App Platform app, `.do/app.yaml`, cache headers, and a domain —
-see the plan for the full checklist.
+M4 (deployment) is live: the game is served from
+<https://farkle-game-frkhm.ondigitalocean.app/>, built and deployed by CI on
+every push to `main`. What remains of that milestone is a domain, and analytics
+and error reporting — all three need an account somewhere rather than a commit.
+Cache and security headers turned out not to be a checklist item at all: App
+Platform cannot set custom response headers on a static site, so the CSP and
+referrer policy travel in `index.html` and the caching defaults stand. See
+[PLAN.md](PLAN.md#m4--deployment-on-digitalocean) for the full checklist and
+the "Deploying" section below for the operational details.
 
 Merged: #1 (M0), #2 (M1), #3 (M4 plan, filed as M8 before the renumber), #4
 (Node 20 toolchain upgrade), #5 (docs sync), #6 (M2), #7 (M3). The web UI
@@ -120,7 +124,8 @@ development — see below.
 
 | File | What's in it |
 |---|---|
-| `main.tsx` | Mounts `<App>` |
+| `main.tsx` | Mounts `<App>` inside `<ErrorBoundary>` |
+| `ErrorBoundary.tsx` | The last line of defence: turns a throw during render into a readable panel with a reload and a "discard the saved match" escape hatch, instead of a blank page. No error reporting service behind it (PLAN.md M4 item 11) — the console is the only record |
 | `App.tsx` | The Play / Rules tab shell, setup vs match screen, resuming a saved match from `localStorage` on load |
 | `storage.ts` | `saveMatch`/`loadMatch`/`clearMatch` — `GameState` is already plain, JSON-safe data (DESIGN.md §1), so this is a thin, error-swallowing wrapper, not a serialisation layer |
 | `presets.ts` | Preset display blurbs for the setup screen (`PRESET_DESCRIPTIONS`) |
@@ -195,9 +200,11 @@ there's no testing-library set up in this repo yet.
   siblings the way a consumer actually would. Build order matters because of
   this: `engine` → `bots` → `cli`/`web`.
 - `vitest.config.ts` — picks up `packages/*/test` and `apps/*/test`.
-- `.claude/launch.json` — dev-server config so the web app can be opened in a
-  preview pane by name (`farkle-web`); `.claude/settings.local.json` is
-  machine-local tool permissions and is gitignored.
+- `.claude/launch.json` — server config so the web app can be opened in a
+  preview pane by name: `farkle-web` (Vite dev, 5173) and `farkle-web-preview`
+  (`vite preview` over `dist/`, 4173, for checking what actually deploys).
+  `.claude/settings.local.json` is machine-local tool permissions and is
+  gitignored.
 
 ## Running things
 
@@ -211,7 +218,13 @@ npm run typecheck     # tsc across packages + apps/cli, then apps/web's own tsc
 npm run build         # compiles engine, then bots, then cli, then web, to dist/
 npm run play          # builds, then launches the interactive CLI
 npm run dev:web       # launches the Vite dev server for the browser app
+
+npm run preview -w @farkle/web   # serves dist/ — what actually deploys
 ```
+
+`preview` needs `npm run build` first; it serves the built output rather than
+compiling on the fly, which is the only way to see the production bundle, the
+real `index.html` (CSP included) and the `public/` assets behave together.
 
 Playing the CLI directly, once built:
 
@@ -256,12 +269,27 @@ is `artem-xox/farkle`. `app_name` in the workflow must match the *app*
   test`, so a red suite blocks that job entirely; it then calls
   `digitalocean/app_action/deploy@v2` against the `farkle-game` app, which reads
   `.do/app.yaml` from the checked-out commit and redeploys it.
-- **`deploy_on_push: true`** means DigitalOcean *also* deploys off its own
-  GitHub webhook. A push to `main` therefore produces two deployments: DO's,
-  which starts immediately and is not gated on tests, and the workflow's, which
-  runs after the suite passes. Setting it to `false` makes CI the only trigger
-  and is the arrangement PLAN.md's M4 describes; it is `true` by choice, not by
-  oversight.
+- **`deploy_on_push: false`** is deliberate and load-bearing. Set to `true`,
+  DigitalOcean *also* deploys off its own GitHub webhook, so a push to `main`
+  produces two deployments: DO's, which starts immediately and is not gated on
+  tests, and the workflow's, which runs after the suite passes. With it off,
+  CI is the only path to production.
+- **No custom response headers.** App Platform static sites can't set them —
+  the spec offers CORS and an edge-cache toggle, nothing per-path. Two
+  consequences. Caching is whatever DO serves by default,
+  `public,max-age=10,s-maxage=86400`, which is fine (`index.html` goes stale in
+  10s; hashed assets can't go stale at all). And the security policy has to
+  live in the document: `apps/web/index.html` carries a strict CSP as
+  `<meta http-equiv>` plus `<meta name="referrer">`. The CSP allows no inline
+  script or style, which the build currently satisfies — adding an inline
+  `<script>`, or a React `style={{…}}` attribute, will break the page in
+  production while dev looks fine. `X-Content-Type-Options` and
+  `frame-ancestors` are unavailable via meta and are therefore absent.
+- **Social preview.** `apps/web/public/og.jpg` is the 1200×630 card, generated
+  from the checked-in source `apps/web/branding/og.svg` — regenerate with
+  `sips -s format jpeg -s formatOptions 85 apps/web/branding/og.svg --out apps/web/public/og.jpg`.
+  The `og:url` and `og:image` tags are absolute and currently point at the
+  `ondigitalocean.app` hostname; they have to change when a domain is attached.
 - **Rolling back** a bad deploy: DigitalOcean dashboard → the `farkle-game` app
   → **Activity** tab → pick a previous successful deployment → **Rebuild and
   Deploy** (or **Revert to this deployment** if offered). This does not touch
@@ -345,12 +373,14 @@ guidance.
   Fixed by keeping one permanent listener and a queue; see the comment at the
   top of `prompt.ts`. Worth remembering if `Prompt` is ever rewritten.
 
-## Next: M4, then M5
+## Next: M5
 
-M4 is deployment — in progress; see [PLAN.md](PLAN.md#m4--deployment-on-digitalocean)
-and the "Deploying" section above.
+M4 is deployment, and everything in it that is a code change has landed; what's
+left needs an account (a domain, analytics, error reporting) rather than a
+commit. See [PLAN.md](PLAN.md#m4--deployment-on-digitalocean) and the
+"Deploying" section above.
 
-After that, M5 is loadouts and more dice. Plan is in
+So next is M5 is loadouts and more dice. Plan is in
 [PLAN.md](PLAN.md#m5--loadouts-and-more-dice): a six-slot loadout screen,
 per-die distributions shown honestly in the UI, more dice specs balanced by
 simulation, and opponents with their own visible loadouts. This is also when

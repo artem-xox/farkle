@@ -169,9 +169,11 @@ Blocking — required before a first deploy:
 1. ~~**`apps/web` itself (M3).**~~ Done — `npm run build -w @farkle/web`
    emits `dist/` (~210 KB JS, ~66 KB gzipped) and is already wired into the
    root `build` script alongside the engine, bots and the CLI.
-2. **A live look at the production build.** `vite build` output hasn't been
-   served and clicked through yet — only `vite dev`. Worth a `vite preview`
-   pass before the first real deploy, in case dev and build ever diverge.
+2. ~~**A live look at the production build.**~~ Done — `npm run preview -w
+   @farkle/web` (also a named entry in `.claude/launch.json`) was served and
+   played through: setup, throw, keep, bank, a bot turn and the turn log all
+   behave as they do in dev, with a clean console. Dev and build have not
+   diverged.
 3. ~~**Node version.**~~ Done — `.node-version` and `engines.node` in the root
    `package.json` both pin `>=20`, matching what App Platform's buildpack and
    `.github/workflows/ci.yml`'s `setup-node` use.
@@ -183,31 +185,63 @@ Blocking — required before a first deploy:
    deploy after an otherwise successful build. The file is kept identical to
    the spec the dashboard shows, so the two can't drift.
 
-   Currently `deploy_on_push: true`, so DigitalOcean deploys off its own
-   webhook *in addition to* the workflow — two deployments per push to `main`,
-   the first of them ungated by tests. Flipping it to `false` makes CI the sole
-   trigger, which is what this milestone originally specified.
-5. **Cache headers.** Hashed assets `immutable, max-age=31536000`;
-   `index.html` explicitly `no-cache`, or players keep an old build after every
-   deploy. Not yet confirmed whether App Platform's static-site serving needs
-   this set explicitly or already does the sane thing for hashed filenames.
+   `deploy_on_push` is now `false`: DigitalOcean no longer deploys off its own
+   webhook, so CI is the sole trigger and nothing reaches the site without the
+   suite passing first. It was `true` until then, which meant two deployments
+   per push to `main`, the first of them ungated by tests.
+5. ~~**Cache headers.**~~ Resolved as *nothing to do, and nothing we can do*.
+   App Platform has no way to set custom response headers on a static site —
+   the app spec covers CORS and edge caching on/off, not `Cache-Control` per
+   path, and it is [a standing feature
+   request](https://ideas.digitalocean.com/app-platform/p/static-site-headers-and-routing).
+   What it serves by default is `public,max-age=10,s-maxage=86400` on
+   everything: 10 seconds in the browser, 24 hours at the CDN edge, purged on
+   deploy. That is the safe side of the trade for `index.html` — a new build
+   reaches players within seconds — and merely wasteful for content-hashed
+   assets, which revalidate more often than they need to but can never be
+   served stale. Revisit only if the site ever sits behind something that can
+   set headers.
 6. **Domain.** Register it, point the nameservers at DigitalOcean DNS, attach it
-   to the app, wait for the certificate.
+   to the app, wait for the certificate. Deferred deliberately — the game lives
+   at `farkle-game-frkhm.ondigitalocean.app` until then, which is also the
+   absolute URL in the `og:` tags, so both change together.
 
 Worth doing, not blocking:
 
 7. ~~**A CI gate.**~~ Done — `.github/workflows/ci.yml` runs typecheck, tests
    and the build on every branch push; on `main` a second job deploys via
    `digitalocean/app_action`, gated on the test job succeeding first.
-8. **Static-site basics.** Favicon, page title, `robots.txt`, OG and meta tags
-   so a shared link is not a bare URL.
-9. **Security headers** in the app spec: CSP, `X-Content-Type-Options`,
-   `Referrer-Policy`. Cheap to maintain when there is no API and no user data.
+8. ~~**Static-site basics.**~~ Done — a descriptive `<title>`, a description,
+   `theme-color`, an SVG favicon and an `apple-touch-icon`, `robots.txt`, and
+   OG/Twitter tags pointing at a 1200×630 card (`apps/web/public/og.jpg`,
+   generated from `apps/web/branding/og.svg`). A shared link now previews as
+   the game rather than as a bare URL.
+9. ~~**Security headers**~~ — as far as a static site can carry them. Same
+   constraint as item 5: no custom response headers, so the policy travels in
+   the document as a `<meta http-equiv="Content-Security-Policy">`. It is
+   strict (`default-src 'self'`, no `unsafe-inline` anywhere) and the app
+   passes it unchanged, because Vite emits no inline script for this build and
+   the UI uses no inline `style` attributes — worth remembering before adding
+   either. `Referrer-Policy` ships as `<meta name="referrer">`.
+   `X-Content-Type-Options` and `frame-ancestors` have no meta equivalent and
+   are simply absent until something upstream can set headers.
 10. **Analytics**, if we want to know whether it really is 100 visitors.
     Cloudflare Web Analytics or hosted Plausible — no cookies, so no consent
     banner. Self-hosting Plausible would cost several times the site itself.
+    Still open, and it needs an account rather than a code change: whichever is
+    picked, its beacon host must be added to the CSP in `index.html`, which
+    currently allows scripts from `'self'` only.
 11. **Error reporting.** Sentry's free tier, or nothing. An engine that throws
-    in someone's browser is otherwise invisible to us.
+    in someone's browser is otherwise invisible to us — still true, and still
+    open on the reporting side, since a DSN means an account.
+
+    What did land is the half that needs no service: an `ErrorBoundary` around
+    the app. Before it, anything thrown during render unmounted the tree and
+    left a blank page — indistinguishable from a failed deploy, with no way
+    out. Now the player gets an explanation, the error message, a reload, and a
+    "discard the saved match" escape hatch for the case where a stored
+    `GameState` is what poisons the render. Wiring a DSN in later is a change
+    to one component plus a CSP entry.
 12. ~~**A deploy section in DEVELOPMENT.md**~~ Done — see "Deploying" there.
 
 Deliberately absent, and staying absent while v1 is static: environment
@@ -218,6 +252,12 @@ serves identical files to any number of players).
 Done when a push to `main` publishes the game on its own domain over HTTPS
 within minutes, a bad build can be rolled back from the DigitalOcean console,
 and the monthly bill is the domain.
+
+Where that stands: everything above is done except the domain (6) and the two
+items that need an account rather than a commit (10, 11). A push to `main`
+publishes the game within minutes, gated on the test suite, at
+<https://farkle-game-frkhm.ondigitalocean.app/>; rollback from the console
+works; the bill is $0 until a domain is registered.
 
 ## M5 — Loadouts and more dice
 

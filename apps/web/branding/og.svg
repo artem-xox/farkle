@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <radialGradient id="felt" cx="50%" cy="0%" r="100%">
+      <stop offset="0%" stop-color="#0f3d2e" />
+      <stop offset="100%" stop-color="#0a2b20" />
+    </radialGradient>
+    <g id="die">
+      <rect x="0" y="0" width="112" height="112" rx="22" fill="#f3e9d2" stroke="#2a2118" stroke-width="3" />
+    </g>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#felt)" />
+
+  <!-- die 1: a single gold pip -->
+  <g transform="translate(392 150)">
+    <use href="#die" />
+    <circle cx="56" cy="56" r="11" fill="#c8952e" />
+  </g>
+  <!-- die 2: four -->
+  <g transform="translate(530 150)" fill="#2a2118">
+    <use href="#die" fill="none" />
+    <circle cx="34" cy="34" r="11" /><circle cx="78" cy="34" r="11" />
+    <circle cx="34" cy="78" r="11" /><circle cx="78" cy="78" r="11" />
+  </g>
+  <!-- die 3: six -->
+  <g transform="translate(668 150)" fill="#2a2118">
+    <use href="#die" fill="none" />
+    <circle cx="34" cy="30" r="11" /><circle cx="78" cy="30" r="11" />
+    <circle cx="34" cy="56" r="11" /><circle cx="78" cy="56" r="11" />
+    <circle cx="34" cy="82" r="11" /><circle cx="78" cy="82" r="11" />
+  </g>
+  <!-- die 4: two -->
+  <g transform="translate(806 150)" fill="#2a2118">
+    <use href="#die" fill="none" />
+    <circle cx="34" cy="34" r="11" /><circle cx="78" cy="78" r="11" />
+  </g>
+
+  <text x="600" y="420" text-anchor="middle" fill="#f3e9d2"
+        font-family="Helvetica-Bold, Helvetica Neue, Helvetica, Arial, sans-serif"
+        font-size="104" letter-spacing="6" stroke="#f3e9d2" stroke-width="3" paint-order="stroke">FARKLE</text>
+  <text x="600" y="484" text-anchor="middle" fill="#e6b84f"
+        font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+        font-size="36">Push your luck. Bank before you bust.</text>
+</svg>

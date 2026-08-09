@@ -3,7 +3,45 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-    <title>Farkle</title>
+
+    <!--
+      App Platform serves static sites without custom response headers, so the
+      policy has to travel in the document. `frame-ancestors` is ignored in a
+      meta CSP and has no meta equivalent; neither does X-Content-Type-Options.
+      Both come back the day this sits behind something that can set headers.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'"
+    />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+
+    <title>Farkle — push your luck, bank before you bust</title>
+    <meta
+      name="description"
+      content="A dice game of pressing your luck: throw, keep the scoring dice, and bank before a farkle wipes the turn. Play a full match against bots with distinct personalities, in the browser, free."
+    />
+    <meta name="theme-color" content="#0f3d2e" />
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Farkle" />
+    <meta property="og:title" content="Farkle — push your luck, bank before you bust" />
+    <meta
+      property="og:description"
+      content="Throw, keep the scoring dice, bank before a farkle wipes the turn. Play a full match against bots in the browser."
+    />
+    <meta property="og:url" content="https://farkle-game-frkhm.ondigitalocean.app/" />
+    <meta
+      property="og:image"
+      content="https://farkle-game-frkhm.ondigitalocean.app/og.jpg"
+    />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Four dice on a green felt table above the word FARKLE" />
+    <meta name="twitter:card" content="summary_large_image" />
   </head>
   <body>
     <div id="root"></div>

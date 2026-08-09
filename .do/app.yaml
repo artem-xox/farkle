@@ -24,7 +24,11 @@ static_sites:
   github:
     repo: artem-xox/farkle
     branch: main
-    deploy_on_push: true
+    # CI is the only deploy trigger: .github/workflows/ci.yml pushes this spec
+    # after typecheck, tests and the build pass. With DigitalOcean's own webhook
+    # enabled as well, every push to main deployed twice — the first of them
+    # ungated by tests.
+    deploy_on_push: false
   source_dir: /
   build_command: npm ci && npm run build -w @farkle/web
   output_dir: apps/web/dist

@@ -1037,3 +1037,75 @@ button:disabled {
     min-height: 9rem;
   }
 }
+
+/* ---------- crash screen ---------- */
+
+.crash {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.crash__card {
+  background: var(--parchment);
+  color: var(--ink);
+  border-radius: 1rem;
+  padding: 2rem;
+  max-width: 32rem;
+  box-shadow: 0 10px 40px rgb(0 0 0 / 0.4);
+}
+
+.crash__card h2 {
+  margin: 0 0 0.5rem;
+  color: var(--danger);
+}
+
+.crash__card p {
+  margin: 0 0 1rem;
+  color: var(--ink-soft);
+}
+
+.crash__detail {
+  margin: 0 0 1.25rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background: var(--parchment-dim);
+  color: var(--ink);
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.crash__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.crash__button {
+  padding: 0.7rem 1.6rem;
+  border: none;
+  border-radius: 0.6rem;
+  background: var(--gold);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.crash__button:hover {
+  background: var(--gold-bright);
+}
+
+.crash__link {
+  border: none;
+  background: none;
+  color: var(--ink-soft);
+  text-decoration: underline;
+  padding: 0.2rem;
+}
+
+.crash__link:hover {
+  color: var(--ink);
+}
