@@ -179,9 +179,12 @@ this site from ~$1 to ~$6–7/month, and to ~$22 with a database.
 
 Blocking — required before a first deploy:
 
-1. **`apps/web` itself (M3).** There is nothing to deploy until it exists.
-2. **A production build.** `npm run build -w @farkle/web` emitting `dist/`,
-   wired into the root `build` script alongside the engine and the CLI.
+1. ~~**`apps/web` itself (M3).**~~ Done — `npm run build -w @farkle/web`
+   emits `dist/` (~210 KB JS, ~66 KB gzipped) and is already wired into the
+   root `build` script alongside the engine, bots and the CLI.
+2. **A live look at the production build.** `vite build` output hasn't been
+   served and clicked through yet — only `vite dev`. Worth a `vite preview`
+   pass before the first real deploy, in case dev and build ever diverge.
 3. **Node version.** The toolchain is on Node 20+ (#4), which App Platform
    supports. Still needs pinning explicitly via `engines` or `.node-version` so
    the build platform matches what's tested locally rather than picking a

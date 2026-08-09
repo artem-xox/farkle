@@ -9,9 +9,10 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc -p tsconfig.json",
-    "build": "npm run build -w @farkle/engine && npm run build -w @farkle/bots && npm run build -w @farkle/cli",
-    "play": "npm run build --silent && node apps/cli/dist/main.js"
+    "typecheck": "tsc -p tsconfig.json && npm run typecheck -w @farkle/web",
+    "build": "npm run build -w @farkle/engine && npm run build -w @farkle/bots && npm run build -w @farkle/cli && npm run build -w @farkle/web",
+    "play": "npm run build --silent && node apps/cli/dist/main.js",
+    "dev:web": "npm run dev -w @farkle/web"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",

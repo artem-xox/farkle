@@ -12,17 +12,18 @@ doesn't reflect), fix it before adding more to it.
 
 ## Status
 
-M0, M1 and M2 are done. The game is playable end to end from the terminal —
-hot-seat human vs human, or human vs a bot (`--opponent <preset>`) — with full
-KCD2 scoring, hot dice, farkle, win detection, seeded replay. Headless
-bot-vs-bot simulation is available via `farkle sim`. No browser UI yet — that's
-M3.
+M0 through M3 are done. The game is playable end to end both from the terminal
+and in the browser — hot-seat human vs human, or human vs a bot personality —
+with full KCD2 scoring, hot dice, farkle, win detection. `farkle sim` runs
+headless bot-vs-bot matches from the CLI.
 
-M8 (deployment) has a plan on record — [PLAN.md](PLAN.md#m8--deployment-on-digitalocean) —
-but nothing to deploy until `apps/web` exists.
+M8 (deployment) has a plan on record — [PLAN.md](PLAN.md#m8--deployment-on-digitalocean).
+`apps/web` now exists, so the one hard blocker it named is gone; what's left
+there is `.do/app.yaml`, cache headers, and a domain — see the plan for the
+full checklist.
 
 Merged: #1 (M0), #2 (M1), #3 (M8 plan), #4 (Node 20 toolchain upgrade), #5
-(docs sync). M2 (this work) not yet merged.
+(docs sync), #6 (M2). M3 (this work) not yet merged.
 
 ## Layout
 
@@ -32,12 +33,13 @@ packages/
   bots/       BotPolicy, ThresholdBot, presets, the bot-vs-bot match driver and sim harness
 apps/
   cli/        terminal client — depends on @farkle/engine and @farkle/bots
+  web/        React + Vite browser client — depends on the same two packages
 docs/         RULES / DESIGN / PLAN / this file
 ```
 
-`apps/web` doesn't exist yet — it's M3. When it lands, it depends on
-`@farkle/engine` and `@farkle/bots` the way `apps/cli` does, and on nothing
-else in this repo.
+`apps/cli` and `apps/web` don't know about each other. Both are thin shells
+over `LocalHost`/`ClientView` from `@farkle/engine` and `BotPolicy` from
+`@farkle/bots` — neither app computes a score or drives bot logic itself.
 
 ### `packages/engine/src`
 
@@ -81,6 +83,9 @@ Read them in that order; each one builds on the last.
 | `simulate.ts` | `runSimulation` — runs N headless matches between two policies and aggregates win rate, farkle rate, points per bank, turns per match |
 | `index.ts` | Public API |
 
+`chooseBotAction` is also what `apps/web` uses to drive a bot's seat one step
+at a time in the browser — see below.
+
 ### `packages/bots/test`
 
 - `threshold-bot.test.ts` — `chooseKeep`'s ranking and mistake-rate behaviour,
@@ -108,19 +113,65 @@ Read them in that order; each one builds on the last.
 `apps/cli/test/prompt.test.ts` exists because `Prompt` had a real bug during
 development — see below.
 
+### `apps/web/src`
+
+| File | What's in it |
+|---|---|
+| `main.tsx` | Mounts `<App>` |
+| `App.tsx` | Setup screen vs match screen, resuming a saved match from `localStorage` on load |
+| `storage.ts` | `saveMatch`/`loadMatch`/`clearMatch` — `GameState` is already plain, JSON-safe data (DESIGN.md §1), so this is a thin, error-swallowing wrapper, not a serialisation layer |
+| `presets.ts` | Preset display blurbs for the setup screen (`PRESET_DESCRIPTIONS`) |
+| `setup/SetupScreen.tsx` | Name, bot personality or hot-seat friend, target score |
+| `match/MatchScreen.tsx` | Owns the `LocalHost` for one match session, drives a bot seat via `chooseBotAction` on a timer, persists on every change |
+| `match/selection.ts` | `matchingKeepOption` — is the player's current die selection a legal keep? Compares by *face multiset*, not by the literal indices `legalKeeps` picked as its representative, since two dice showing the same value are interchangeable for scoring (see the comment in the file for why this matters, and why the *dispatched* action still uses the literal clicked indices) |
+| `match/Die.tsx`, `DiceTray.tsx` | One die (pip layout, tumble-in animation) and the row of them; dice are unclickable until the tumble settles |
+| `match/KeepOptions.tsx` | Every legal keep as a clickable row — the fast path; clicking commits immediately, unlike the manual dice-then-"Keep" path |
+| `match/pacing.ts` | `botThinkTime(phase)` and `TUMBLE_MS` — the only place "how long things take" is defined |
+| `match/eventLine.ts`, `describeCombo.ts` | Pure `GameEvent`/`Combo` → text, used by `TurnLog` |
+| `match/Scoreboard.tsx`, `TurnLog.tsx`, `MatchOverOverlay.tsx` | The rest of the board |
+| `styles.css` | One stylesheet, no CSS-in-JS or modules — small enough not to need either |
+
+The UI never scores a selection itself: `MatchScreen` reads `view.keeps`
+(computed by the engine inside `viewOf`) and `matchingKeepOption` only compares
+against it, per DESIGN.md §3's rule that the UI never computes a score by any
+path other than asking the engine.
+
+**Bot pacing**, since it looks like it could be a `setInterval` loop but isn't:
+`MatchScreen` has one `useEffect` keyed on `events` (which changes exactly once
+per dispatched action). Each time it fires, if it's the bot's turn it schedules
+*one* action after `botThinkTime(phase)` ms. Dispatching that action produces
+new events, which reruns the effect, which schedules the next one. A whole bot
+turn is a chain of these, not a loop — which is what makes each step
+individually cancellable (see the cleanup function) if the component unmounts
+mid-turn (e.g. "Quit to menu").
+
+`apps/web` doesn't have its own test directory yet. The pure helpers
+(`selection.ts`, `eventLine.ts`, `describeCombo.ts`, `storage.ts`) are
+straightforward candidates if they grow non-obvious logic; the interactive
+parts were verified by hand in a browser (dice selection, keep options,
+farkle, hot dice, a full bot turn, reload-persistence, the win overlay, and
+the mobile layout) rather than with component tests — there's no
+testing-library set up in this repo yet.
+
 ### Root
 
 - `package.json` — npm workspaces (`packages/*`, `apps/*`); scripts are `test`,
-  `test:watch`, `typecheck`, `build`, `play`.
-- `tsconfig.json` — shared compiler options; each package extends it via its own
-  `tsconfig.build.json`. The path aliases `@farkle/engine` and `@farkle/bots`
-  point straight at each package's `src/index.ts`, so typecheck and Vitest work
-  against source without a build step. Each package's own
-  `tsconfig.build.json` clears `paths` so its *build* resolves sibling packages
-  via `node_modules` (the real built `dist/`) instead — matching what actually
-  happens when the package is consumed. Build order matters because of this:
-  `engine` → `bots` → `cli`.
+  `test:watch`, `typecheck`, `build`, `play`, `dev:web`.
+- `tsconfig.json` — shared compiler options for **`packages/*` and `apps/cli`
+  only**. `apps/web` has its own `tsconfig.json` (DOM lib, `jsx: react-jsx`,
+  `moduleResolution: bundler`) because a browser app's compiler settings
+  genuinely diverge from the Node-oriented rest of the repo — it's excluded
+  from the root `include` list rather than shoehorned in. The path aliases
+  `@farkle/engine` and `@farkle/bots` point straight at each package's
+  `src/index.ts`, so typecheck and Vitest work against source without a build
+  step. Each package's own `tsconfig.build.json` (and `apps/web/vite.config.ts`
+  via `resolve.alias`) clears/redirects that so a real *build* resolves
+  siblings the way a consumer actually would. Build order matters because of
+  this: `engine` → `bots` → `cli`/`web`.
 - `vitest.config.ts` — picks up `packages/*/test` and `apps/*/test`.
+- `.claude/launch.json` — dev-server config so the web app can be opened in a
+  preview pane by name (`farkle-web`); `.claude/settings.local.json` is
+  machine-local tool permissions and is gitignored.
 
 ## Running things
 
@@ -129,13 +180,14 @@ npm install
 
 npm test              # vitest run — everything, ~2s
 npm run test:watch    # vitest, watch mode
-npm run typecheck     # tsc --noEmit across the whole workspace
+npm run typecheck     # tsc across packages + apps/cli, then apps/web's own tsc
 
-npm run build         # compiles engine, then bots, then cli, to dist/
+npm run build         # compiles engine, then bots, then cli, then web, to dist/
 npm run play          # builds, then launches the interactive CLI
+npm run dev:web       # launches the Vite dev server for the browser app
 ```
 
-Playing directly, once built:
+Playing the CLI directly, once built:
 
 ```bash
 node apps/cli/dist/main.js --players "Alice,Bob" --target 2000
@@ -147,17 +199,22 @@ node apps/cli/dist/main.js sim --a cautious --b aggressive -n 100000 --seed 42
 node apps/cli/dist/main.js sim --help
 ```
 
-During a turn: type die positions to keep them (`1 4`), `?` to list every legal
-keep with its point value, `t`/`b` to throw or bank, `q` to quit.
+During a CLI turn: type die positions to keep them (`1 4`), `?` to list every
+legal keep with its point value, `t`/`b` to throw or bank, `q` to quit.
+
+The web app needs no build step in dev — `npm run dev:web` and open the printed
+`localhost` URL. Click dice to select them, or click a listed option to commit
+it immediately; `Bank`/`Throw` appear once at least one die is kept.
 
 ## Toolchain
 
-Node 20+, TypeScript 7, Vitest 4. Upgraded from the Node-16-pinned versions M0
-and M1 shipped with (#4) — if you find a stray reference to Node 16 or to
-version pins in a comment, it's leftover from before that upgrade and should be
-corrected on sight, not treated as current guidance.
+Node 20+, TypeScript 7, Vitest 4, React 19, Vite 8. Upgraded from the
+Node-16-pinned versions M0 and M1 shipped with (#4) — if you find a stray
+reference to Node 16 or to version pins in a comment, it's leftover from
+before that upgrade and should be corrected on sight, not treated as current
+guidance.
 
-## Things worth knowing before touching the engine or the bots
+## Things worth knowing before touching the engine, the bots, or the UIs
 
 - **Scoring must stay provably maximal.** `scoreKeep` exists because greedy
   partitioning is wrong (`1-2-3-4-5-5` is 550, not 200 — see RULES.md §5). Any
@@ -170,12 +227,25 @@ corrected on sight, not treated as current guidance.
   confirmed wrong, that test is where it will announce itself.
 - **`GameState` is plain data, `reduce` is pure.** No `Date.now()`, no direct
   `Math.random()` — randomness only ever advances through the `RngState`
-  threaded in `GameState.rng`. This is what makes `replay()` exact and is a
-  hard requirement, not a style preference (see DESIGN.md §1).
-- **The CLI never computes a score itself, and neither does a bot.** Both read
-  `ClientView.keeps` and act on what the engine already decided. A `BotPolicy`
-  is never given `GameState` — only `ClientView`, the same projection a human
-  seat gets (DESIGN.md §6).
+  threaded in `GameState.rng`. This is what makes `replay()` exact, and is what
+  makes `localStorage.setItem(key, JSON.stringify(state))` in `apps/web`
+  correct with no custom serialisation. Not a style preference — see
+  DESIGN.md §1.
+- **Neither UI computes a score itself, and neither does a bot.** All three
+  read `ClientView.keeps` (or, for the web app's manual-selection path,
+  compare against it via `matchingKeepOption`) and act on what the engine
+  already decided. A `BotPolicy` is never given `GameState` — only
+  `ClientView`, the same projection a human seat gets (DESIGN.md §6).
+- **Physically identical dice are not the same *index*.** Two dice showing a 1
+  are interchangeable for scoring, but `legalKeeps` still has to pick one
+  representative index per distinct face-multiset (dedup has to pick
+  *something*). `apps/web`'s `matchingKeepOption` compares selections by face
+  values for this reason, not by set-equality on indices — see the comment in
+  `match/selection.ts`. It matters more than it looks: once dice can have
+  different weights per physical die (M4), which literal die gets removed from
+  play actually changes future throw odds, so the web app dispatches the
+  user's *literal* clicked indices, not the matched option's representative
+  ones, even though the two are interchangeable today.
 - **A simulation harness that always starts the same side first is measuring
   first-move advantage, not the personalities.** `runSimulation` alternates
   `startingPlayer` by match index (`match % 2`) for exactly this reason — an
@@ -202,8 +272,10 @@ corrected on sight, not treated as current guidance.
   Fixed by keeping one permanent listener and a queue; see the comment at the
   top of `prompt.ts`. Worth remembering if `Prompt` is ever rewritten.
 
-## Next: M3
+## Next: M4
 
-Web UI. Plan is in [PLAN.md](PLAN.md#m3--web-ui): a React + Vite app talking to
-`LocalHost` through `GameHost`, dice you click to select, a bot opponent in the
-browser using the same `@farkle/bots` package the CLI uses.
+Loadouts and more dice. Plan is in [PLAN.md](PLAN.md#m4--loadouts-and-more-dice):
+a six-slot loadout screen, per-die distributions shown honestly in the UI, more
+dice specs balanced by simulation, and opponents with their own visible
+loadouts. This is also when the index-vs-face-value distinction noted above
+starts to matter functionally rather than just in principle.
