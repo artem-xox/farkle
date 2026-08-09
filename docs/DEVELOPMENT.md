@@ -237,29 +237,47 @@ it immediately; `Bank`/`Throw` appear once at least one die is kept.
 `apps/web` ships as a static site on DigitalOcean App Platform. Plan and cost
 model: [PLAN.md#m4](PLAN.md#m4--deployment-on-digitalocean).
 
-- **`.do/app.yaml`** is the app spec: one `static_sites` component, built with
+**Names, since they don't all match.** The DigitalOcean app is called
+**`farkle-game`**; its single component is called **`farkle`**; the GitHub repo
+is `artem-xox/farkle`. `app_name` in the workflow must match the *app*
+(`farkle-game`), and the `ingress` rule in the spec must match the *component*
+(`farkle`). Getting either wrong fails at deploy time, not at review time.
+
+- **`.do/app.yaml`** is the app spec, and it is kept byte-identical to what the
+  dashboard's App Spec editor shows — one `static_sites` component, built with
   `npm ci && npm run build -w @farkle/web`, serving `apps/web/dist`, with
   `catchall_document: index.html` so client-side routes and page refreshes
-  don't 404.
-- **`deploy_on_push: false`** in that spec on purpose — DigitalOcean's own
-  push webhook never deploys anything. The only thing that ever triggers a
-  deployment is `.github/workflows/ci.yml`.
+  don't 404. Its `environment_slug: node-js` is load-bearing: left unset,
+  DigitalOcean auto-detects a runtime from the repo and has picked an invalid
+  `typescript:default` off the tsconfig files.
 - **`.github/workflows/ci.yml`** has two jobs. `test` runs on every branch push:
   typecheck, the full test suite, and a build — this is the only thing that
   happens on a feature branch. `deploy` runs only on push to `main`, `needs:
-  test`, so a red suite blocks the deploy job entirely; it then calls
-  `digitalocean/app_action/deploy@v2` against the existing `farkle` app, which
-  reads `.do/app.yaml` from the checked-out commit and redeploys it.
-- **Rolling back** a bad deploy: DigitalOcean dashboard → the `farkle` app →
-  **Activity** tab → pick a previous successful deployment → **Rebuild and
+  test`, so a red suite blocks that job entirely; it then calls
+  `digitalocean/app_action/deploy@v2` against the `farkle-game` app, which reads
+  `.do/app.yaml` from the checked-out commit and redeploys it.
+- **`deploy_on_push: true`** means DigitalOcean *also* deploys off its own
+  GitHub webhook. A push to `main` therefore produces two deployments: DO's,
+  which starts immediately and is not gated on tests, and the workflow's, which
+  runs after the suite passes. Setting it to `false` makes CI the only trigger
+  and is the arrangement PLAN.md's M4 describes; it is `true` by choice, not by
+  oversight.
+- **Rolling back** a bad deploy: DigitalOcean dashboard → the `farkle-game` app
+  → **Activity** tab → pick a previous successful deployment → **Rebuild and
   Deploy** (or **Revert to this deployment** if offered). This does not touch
   `main` — no `git revert` is required to get the site back, only to fix the
   branch itself.
 - **Secrets this depends on**: a `DIGITALOCEAN_ACCESS_TOKEN` repository secret
-  (Settings → Secrets and variables → Actions in GitHub), and an app named
-  `farkle` already existing in the DigitalOcean project of the same name
-  (created once by hand in the dashboard — the action updates it, it doesn't
-  create the first one from scratch against a fresh GitHub authorization).
+  (Settings → Secrets and variables → Actions in GitHub), and the `farkle-game`
+  app already existing in DigitalOcean (created once by hand in the dashboard —
+  the action updates an app, it doesn't create the first one from scratch
+  against a fresh GitHub authorization).
+- **The component must be a Static Site, not a Web Service.** DigitalOcean sees
+  a Node.js repo and defaults new components to Web Service, which then
+  crash-loops with `determine start command: when there is no default process a
+  command is required` — there is no process to start, and a Web Service also
+  bills for containers a static site doesn't need. The type is changeable in
+  place: app → Settings → the component → **Resource type** → Static Site.
 
 ## Toolchain
 
