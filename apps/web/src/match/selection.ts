@@ -1,10 +1,15 @@
-import type { ClientView, KeepOption } from '@farkle/engine';
+import { isWild, type ClientView, type Face, type KeepOption } from '@farkle/engine';
 
 /** Dice the player has clicked, identified by position in `view.thrown`. */
 export type Selection = readonly number[];
 
-export function facesKey(faces: readonly number[]): string {
-  return [...faces].sort((a, b) => a - b).join(',');
+/** Sorts a Devil's Head after every pip — an arbitrary but stable order, matching `legalKeeps`. */
+function faceRank(face: Face): number {
+  return isWild(face) ? 7 : face;
+}
+
+export function facesKey(faces: readonly Face[]): string {
+  return [...faces].sort((a, b) => faceRank(a) - faceRank(b)).join(',');
 }
 
 /**

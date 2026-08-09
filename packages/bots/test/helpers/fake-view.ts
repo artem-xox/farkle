@@ -22,6 +22,7 @@ export function fakeView(overrides: Partial<ClientView> = {}): ClientView {
     thrown: [],
     keptThisTurn: [],
     diceInPlay: 3,
+    inPlayDice: [],
     keeps: [],
     winner: null,
   };

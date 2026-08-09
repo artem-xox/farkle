@@ -7,7 +7,7 @@
  * them is real evidence rather than a tautology. Bell(6) = 203 partitions, so
  * the cost is irrelevant.
  */
-import type { Face } from '../../src/types.js';
+import { isWild, type Face, type Pip } from '../../src/types.js';
 
 export function* setPartitions<T>(items: readonly T[]): Generator<T[][]> {
   if (items.length === 0) {
@@ -25,7 +25,7 @@ export function* setPartitions<T>(items: readonly T[]): Generator<T[][]> {
   }
 }
 
-const TRIPLE_POINTS: Readonly<Record<Face, number>> = {
+const TRIPLE_POINTS: Readonly<Record<Pip, number>> = {
   1: 1000,
   2: 200,
   3: 300,
@@ -35,7 +35,7 @@ const TRIPLE_POINTS: Readonly<Record<Face, number>> = {
 };
 
 /** Value of one block if it is exactly one scoring combination, else null. */
-export function comboValue(block: readonly Face[]): number | null {
+export function comboValue(block: readonly Pip[]): number | null {
   const sorted = [...block].sort((a, b) => a - b);
   const first = sorted[0]!;
 
@@ -58,7 +58,7 @@ export function comboValue(block: readonly Face[]): number | null {
 }
 
 /** Best score over all full-cover partitions, or null if the dice cannot be covered. */
-export function referenceScore(faces: readonly Face[]): number | null {
+export function referenceScore(faces: readonly Pip[]): number | null {
   if (faces.length === 0) {
     return null;
   }
@@ -82,29 +82,67 @@ export function referenceScore(faces: readonly Face[]): number | null {
 }
 
 /** Every multiset of `size` dice, as non-decreasing face arrays. */
-export function allMultisets(size: number, minFace = 1): Face[][] {
+export function allMultisets(size: number, minFace = 1): Pip[][] {
   if (size === 0) {
     return [[]];
   }
-  const result: Face[][] = [];
+  const result: Pip[][] = [];
   for (let face = minFace; face <= 6; face++) {
     for (const rest of allMultisets(size - 1, face)) {
-      result.push([face as Face, ...rest]);
+      result.push([face as Pip, ...rest]);
     }
   }
   return result;
 }
 
 /** Every ordered throw of `size` dice: 6^size of them. */
-export function* allThrows(size: number): Generator<Face[]> {
+export function* allThrows(size: number): Generator<Pip[]> {
   const total = 6 ** size;
   for (let n = 0; n < total; n++) {
-    const faces: Face[] = [];
+    const faces: Pip[] = [];
     let remainder = n;
     for (let position = 0; position < size; position++) {
-      faces.push(((remainder % 6) + 1) as Face);
+      faces.push(((remainder % 6) + 1) as Pip);
       remainder = Math.floor(remainder / 6);
     }
     yield faces;
   }
+}
+
+/**
+ * Independent oracle for a throw that may contain wildcards: brute-forces
+ * every one of the (up to 6^wildCount) ways to resolve each `WILD` position
+ * to a concrete pip — not just the distinct multisets the engine's own
+ * `wildAssignments` enumerates — and defers to `referenceScore` for each.
+ * Deliberately does not reuse anything from `src/scoring.ts`.
+ */
+export function referenceScoreWithWilds(faces: readonly Face[]): number | null {
+  const wildPositions: number[] = [];
+  const template: Pip[] = faces.map((face) => (isWild(face) ? 1 : face));
+  faces.forEach((face, index) => {
+    if (isWild(face)) {
+      wildPositions.push(index);
+    }
+  });
+
+  if (wildPositions.length === 0) {
+    return referenceScore(template);
+  }
+
+  let best: number | null = null;
+  const assign = (position: number): void => {
+    if (position === wildPositions.length) {
+      const score = referenceScore(template);
+      if (score !== null && (best === null || score > best)) {
+        best = score;
+      }
+      return;
+    }
+    for (let pip = 1; pip <= 6; pip++) {
+      template[wildPositions[position]!] = pip as Pip;
+      assign(position + 1);
+    }
+  };
+  assign(0);
+  return best;
 }

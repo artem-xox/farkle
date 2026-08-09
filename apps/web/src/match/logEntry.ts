@@ -1,4 +1,4 @@
-import type { Face, GameEvent } from '@farkle/engine';
+import { isWild, type Face, type GameEvent } from '@farkle/engine';
 
 import { describeCombos } from './describeCombo';
 
@@ -9,8 +9,10 @@ import { describeCombos } from './describeCombo';
  */
 const DIE_GLYPHS = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'] as const;
 
+const WILD_GLYPH = '👿';
+
 export function diceGlyphs(faces: readonly Face[]): string {
-  return faces.map((face) => DIE_GLYPHS[face - 1]).join(' ');
+  return faces.map((face) => (isWild(face) ? WILD_GLYPH : DIE_GLYPHS[face - 1])).join(' ');
 }
 
 export type LogEntry =

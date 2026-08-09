@@ -173,6 +173,145 @@ button:disabled {
   font-weight: 600;
 }
 
+.loadout {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.loadout__slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: 0.5rem;
+}
+
+.loadout-slot {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.5rem;
+  background: rgb(0 0 0 / 0.2);
+}
+
+.loadout-slot__select {
+  flex: 1;
+  min-width: 0;
+  padding: 0.35rem 0.4rem;
+  border-radius: 0.4rem;
+  border: 1px solid var(--parchment-dim);
+  background: var(--parchment);
+  color: var(--ink);
+  font-size: 0.75rem;
+}
+
+.loadout-slot__select:disabled {
+  opacity: 0.75;
+}
+
+/*
+ * Small colour keys matching each die's identity styling on the board
+ * (styles.css "dice" section). Ordinary and weighted dice get the neutral
+ * parchment dot — they have no special colour on the board either.
+ */
+.loadout-slot__swatch {
+  flex-shrink: 0;
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+  background: linear-gradient(160deg, #fffaf0, var(--parchment));
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.25);
+}
+
+.loadout-slot__swatch--devil {
+  background: linear-gradient(160deg, #8a564d, #40211c);
+}
+
+.loadout-slot__swatch--odd {
+  background: linear-gradient(160deg, #5e848c, #2b4348);
+}
+
+.loadout-slot__swatch--cheat {
+  background: linear-gradient(160deg, #85699a, #3d2f47);
+}
+
+/* ---------- dice stats (Rules screen) ---------- */
+
+.dice-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.75rem;
+}
+
+.dice-stats__card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 0.6rem;
+  background: rgb(0 0 0 / 0.2);
+}
+
+.dice-stats__heading {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.dice-stats__name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.die-distribution {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 3px;
+  height: 4.5rem;
+}
+
+.die-distribution__slot {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  height: 100%;
+}
+
+.die-distribution__track {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  background: rgb(255 255 255 / 0.06);
+  border-radius: 0.15rem;
+  overflow: hidden;
+}
+
+.die-distribution__bar {
+  width: 100%;
+  min-height: 1px;
+  background: var(--gold);
+  border-radius: 0.1rem 0.1rem 0 0;
+}
+
+.die-distribution__bar--wild {
+  background: var(--danger-soft);
+}
+
+.die-distribution__face {
+  font-size: 0.65rem;
+  color: var(--parchment-dim);
+}
+
+.die-distribution__percent {
+  font-size: 0.6rem;
+  color: rgb(243 233 210 / 0.5);
+  font-variant-numeric: tabular-nums;
+}
+
 .setup__start {
   margin-top: 0.5rem;
   padding: 0.85rem;
@@ -187,6 +326,22 @@ button:disabled {
 
 .setup__start:hover {
   background: var(--gold-bright);
+}
+
+.setup__step-actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+
+.setup__step-actions .action {
+  flex: 0 0 auto;
+  max-width: none;
+}
+
+.setup__step-actions .setup__start {
+  flex: 1;
+  margin-top: 0;
 }
 
 /* ---------- match ---------- */
@@ -379,13 +534,58 @@ button:disabled {
   animation-fill-mode: both;
 }
 
-.die--staged {
-  background: linear-gradient(160deg, var(--gold-bright), var(--gold));
+/*
+ * Per-die-type identity colours — matte and muted, so a mixed loadout reads
+ * at a glance. Ordinary and weighted dice are deliberately absent: they keep
+ * the plain parchment-and-black look below as the "nothing special" baseline.
+ * Placed before the state classes (staged/kept/dead/wild) so a die's current
+ * state always wins over its resting identity colour.
+ */
+.die--id-devil {
+  background: linear-gradient(160deg, #6e453e, #40211c);
   box-shadow:
-    0 2px 0 rgb(0 0 0 / 0.3),
-    0 0 0 2px rgb(230 184 79 / 0.5);
-  width: clamp(2rem, 8.5vw, 2.5rem);
-  height: clamp(2rem, 8.5vw, 2.5rem);
+    0 3px 0 rgb(0 0 0 / 0.3),
+    0 0 0 1px rgb(184 80 63 / 0.4);
+}
+
+.die--id-odd {
+  background: linear-gradient(160deg, #4d6e75, #2b4348);
+  box-shadow:
+    0 3px 0 rgb(0 0 0 / 0.3),
+    0 0 0 1px rgb(120 170 178 / 0.3);
+}
+
+.die--id-cheat {
+  background: linear-gradient(160deg, #6c5679, #3d2f47);
+  box-shadow:
+    0 3px 0 rgb(0 0 0 / 0.3),
+    0 0 0 1px rgb(180 150 200 / 0.3);
+}
+
+.die--id-devil .die__pip--on,
+.die--id-odd .die__pip--on,
+.die--id-cheat .die__pip--on {
+  background: var(--parchment);
+  box-shadow: inset 0 1px 1px rgb(0 0 0 / 0.2);
+}
+
+/*
+ * A die the player has clicked this throw but not yet committed — stays put
+ * on the board (still an ordinary click away from being un-picked) with a
+ * gold ring on top of whatever colour it already has, identity included.
+ */
+.die--selected {
+  box-shadow:
+    0 3px 0 rgb(0 0 0 / 0.3),
+    0 0 0 3px var(--gold-bright),
+    0 0 10px rgb(230 184 79 / 0.5);
+}
+
+.die--selected:not(:disabled):hover {
+  box-shadow:
+    0 6px 0 rgb(0 0 0 / 0.3),
+    0 0 0 3px var(--gold-bright),
+    0 0 14px rgb(230 184 79 / 0.65);
 }
 
 .die--kept {
@@ -394,6 +594,11 @@ button:disabled {
   background: linear-gradient(160deg, #d9cdb0, #c3b795);
   box-shadow: 0 2px 0 rgb(0 0 0 / 0.25);
   opacity: 0.85;
+}
+
+.die--kept .die__pip--on {
+  background: var(--ink);
+  box-shadow: inset 0 1px 1px rgb(255 255 255 / 0.25);
 }
 
 .die--dead {
@@ -431,6 +636,30 @@ button:disabled {
 
 .die--dead .die__pip--on {
   background: #7d3a30;
+}
+
+.die--wild {
+  background: linear-gradient(160deg, #3a1210, #1c0705);
+  box-shadow:
+    0 3px 0 rgb(0 0 0 / 0.4),
+    0 0 0 2px rgb(184 80 63 / 0.7),
+    0 0 10px rgb(184 80 63 / 0.45);
+}
+
+.die--wild:not(:disabled):hover {
+  box-shadow:
+    0 6px 0 rgb(0 0 0 / 0.4),
+    0 0 0 2px rgb(230 154 154 / 0.8),
+    0 0 14px rgb(184 80 63 / 0.6);
+}
+
+.die__wild {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 8%;
 }
 
 @keyframes tumble {

@@ -4,6 +4,7 @@ import { chooseBotAction, createPreset, type BotPolicy, type PresetName } from '
 import {
   IllegalActionError,
   LocalHost,
+  type DieSpec,
   type Face,
   type GameAction,
   type GameEvent,
@@ -53,6 +54,13 @@ export function MatchScreen({ initial, botSeat, botPreset, onExit }: MatchScreen
   const [farkleHold, setFarkleHold] = useState<FarkleHold | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [overlayDismissed, setOverlayDismissed] = useState(false);
+  /**
+   * Which die spec produced each face in `view.keptThisTurn`, parallel to it
+   * — the engine only keeps the resolved faces, not the dice that rolled
+   * them, so this is tracked alongside rather than derived. Reset whenever
+   * the engine's own `keptThisTurn` resets, i.e. at the start of a new turn.
+   */
+  const [keptDiceThisTurn, setKeptDiceThisTurn] = useState<readonly DieSpec[]>([]);
 
   // Persist on every change, and stop offering to resume a finished match.
   useEffect(() => {
@@ -61,6 +69,9 @@ export function MatchScreen({ initial, botSeat, botPreset, onExit }: MatchScreen
       setSelection([]);
       if (newEvents.some((event) => event.type === 'Thrown')) {
         setSpinToken((token) => token + 1);
+      }
+      if (newEvents.some((event) => event.type === 'TurnStarted')) {
+        setKeptDiceThisTurn([]);
       }
 
       // A farkle arrives in the same batch as the throw that caused it and the
@@ -174,8 +185,12 @@ export function MatchScreen({ initial, botSeat, botPreset, onExit }: MatchScreen
       return;
     }
     setBusy(true);
+    // Snapshot which dice are being kept before dispatching — `view` (and so
+    // `view.inPlayDice`) is stale the instant the engine state moves on.
+    const keptSpecs = selection.map((index) => view.inPlayDice[index]!);
     try {
       await dispatch({ type: 'Keep', indices: selection });
+      setKeptDiceThisTurn((prev) => [...prev, ...keptSpecs]);
       await dispatch({ type: next });
     } finally {
       setBusy(false);
@@ -183,7 +198,9 @@ export function MatchScreen({ initial, botSeat, botPreset, onExit }: MatchScreen
   }
 
   const boardFaces = farkleHold !== null ? farkleHold.faces : view.thrown;
+  const boardDice = farkleHold !== null ? undefined : view.inPlayDice;
   const boardKept = farkleHold !== null ? [] : view.keptThisTurn;
+  const boardKeptDice = farkleHold !== null ? undefined : keptDiceThisTurn;
   const selectable = canAct && view.phase === 'AwaitingKeep' && farkleHold === null;
 
   // Dice back in play after this keep — a keep that clears the board earns all
@@ -212,8 +229,10 @@ export function MatchScreen({ initial, botSeat, botPreset, onExit }: MatchScreen
       <div className="match__table">
         <Board
           thrown={boardFaces}
+          thrownDice={boardDice}
           selection={selection}
           keptThisTurn={boardKept}
+          keptDiceThisTurn={boardKeptDice}
           spinToken={spinToken}
           selectable={selectable}
           farkled={farkleHold !== null}

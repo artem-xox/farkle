@@ -1,11 +1,15 @@
 export {
   DICE_PER_TURN,
-  FACES,
+  isWild,
+  PIPS,
+  WILD,
   type Combo,
   type ComboKind,
   type Counts,
   type Face,
   type KeepOption,
+  type Pip,
+  type Wild,
 } from './types.js';
 
 export { nextBelow, nextU32, seedRng, type RngResult, type RngState } from './rng.js';
@@ -13,11 +17,15 @@ export { nextBelow, nextU32, seedRng, type RngResult, type RngState } from './rn
 export {
   assertValidDie,
   BALANCED_DIE,
+  CHEAT_DIE,
+  DEVIL_DIE,
   DICE,
   faceProbabilities,
+  ODD_DIE,
   rollDice,
   rollDie,
   WEIGHTED_DIE,
+  wildProbability,
   type DieSpec,
   type RollResult,
 } from './dice.js';

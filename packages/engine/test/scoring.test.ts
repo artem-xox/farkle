@@ -9,7 +9,7 @@ import {
   ofAKindPoints,
   scoreKeep,
 } from '../src/scoring.js';
-import type { Face } from '../src/types.js';
+import type { Face, Pip } from '../src/types.js';
 import { allMultisets, allThrows, referenceScore } from './helpers/reference.js';
 
 const dice = (text: string): Face[] => [...text].map((char) => Number(char) as Face);
@@ -30,7 +30,7 @@ function permutations(faces: readonly Face[]): Face[][] {
 
 describe('n of a kind', () => {
   it('doubles from the triple value for each extra die', () => {
-    const table: Record<Face, [number, number, number, number]> = {
+    const table: Record<Pip, [number, number, number, number]> = {
       1: [1000, 2000, 4000, 8000],
       2: [200, 400, 800, 1600],
       3: [300, 600, 1200, 2400],
@@ -40,7 +40,7 @@ describe('n of a kind', () => {
     };
     for (const [face, expected] of Object.entries(table)) {
       for (let count = 3; count <= 6; count++) {
-        expect(ofAKindPoints(Number(face) as Face, count)).toBe(expected[count - 3]);
+        expect(ofAKindPoints(Number(face) as Pip, count)).toBe(expected[count - 3]);
       }
     }
   });

@@ -47,6 +47,18 @@ describe('client view', () => {
     }
   });
 
+  it('exposes the specs of the dice in play, and threads them into each keep', () => {
+    const host = newHost();
+    expect(host.view(0).inPlayDice).toHaveLength(DICE_PER_TURN);
+
+    void host.dispatch(0, { type: 'Throw' });
+    const view = host.view(0);
+    expect(view.inPlayDice).toHaveLength(DICE_PER_TURN);
+    for (const keep of view.keeps) {
+      expect(keep.diceLeftSpecs).toHaveLength(keep.diceLeft);
+    }
+  });
+
   it('reports no current turn once the match is over', () => {
     const host = new LocalHost(
       createMatch({ players: [fixed('Alice', '111111'), balanced('Bob')], seed: 3 }),
