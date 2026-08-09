@@ -1,0 +1,16 @@
+{
+  "name": "@farkle/cli",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Terminal client for the Farkle engine",
+  "type": "module",
+  "bin": {
+    "farkle": "./dist/main.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@farkle/engine": "*"
+  }
+}

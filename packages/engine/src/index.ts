@@ -33,3 +33,32 @@ export {
   scoreKeep,
   type ScoredKeep,
 } from './scoring.js';
+
+export {
+  createMatch,
+  DEFAULT_TARGET,
+  IllegalActionError,
+  reduce,
+  replay,
+  validateAction,
+  type GameAction,
+  type GameEvent,
+  type GameState,
+  type MatchConfig,
+  type MatchLog,
+  type MatchOptions,
+  type Phase,
+  type PlayerConfig,
+  type PlayerId,
+  type ReduceResult,
+} from './match.js';
+
+export {
+  LocalHost,
+  viewOf,
+  type ClientView,
+  type EventListener,
+  type GameHost,
+  type PlayerView,
+  type Unsubscribe,
+} from './host.js';
