@@ -6,15 +6,23 @@ decisions in [DESIGN.md](DESIGN.md), milestones in [PLAN.md](PLAN.md).
 
 **This file is kept up to date as work lands.** If you land a milestone, add a
 package, or change how something is run, update the relevant section here in
-the same session — don't let it drift.
+the same session — don't let it drift. If you pick up a session and this file
+looks stale (branches merged that it doesn't mention, a toolchain change it
+doesn't reflect), fix it before adding more to it.
 
 ## Status
 
-M0 and M1 are done. The game is playable end to end from the terminal:
-hot-seat, human vs human, full KCD2 scoring, hot dice, farkle, win detection,
-seeded replay. No bots yet, no browser UI yet.
+M0 and M1 are merged to `main`. The game is playable end to end from the
+terminal: hot-seat, human vs human, full KCD2 scoring, hot dice, farkle, win
+detection, seeded replay. No bots yet, no browser UI yet — that's M2 and M3.
 
-Open branch: `m1-match-and-cli`, not yet merged.
+M8 (deployment) has a plan on record — [PLAN.md](PLAN.md#m8--deployment-on-digitalocean) —
+but nothing to deploy until `apps/web` exists. Docs only, no code, out of
+sequence with everything else because it doesn't block on M2–M7.
+
+Merged: #1 (M0), #2 (M1), #3 (M8 plan), #4 (Node 20 toolchain upgrade).
+
+In progress: M2, bots and the simulation harness.
 
 ## Layout
 
@@ -26,9 +34,9 @@ apps/
 docs/         RULES / DESIGN / PLAN / this file
 ```
 
-`apps/web` doesn't exist yet — it's M3. When it lands, it depends on
-`@farkle/engine` exactly the way `apps/cli` does, and on nothing else in this
-repo; the two apps don't know about each other.
+`packages/bots` doesn't exist yet — it's M2, in progress now. `apps/web` doesn't
+exist yet — it's M3. Both will depend on `@farkle/engine` and nothing else in
+this repo; sibling packages don't know about each other.
 
 ### `packages/engine/src`
 
@@ -64,7 +72,7 @@ Read them in that order; each one builds on the last.
 | File | What's in it |
 |---|---|
 | `main.ts` | Entry point: arg parsing, the game loop, wiring `LocalHost` events to the terminal |
-| `prompt.ts` | `Prompt` — a line-reader over `readline`. Not a thin wrapper: see the comment at the top of the file for why it keeps its own line queue rather than calling `readline.question()` in a loop |
+| `prompt.ts` | `Prompt` — a line-reader over `readline`. Not a thin wrapper: see the comment at the top of the file for why it keeps its own line queue rather than calling `readline.question()` (or `readline/promises`) in a loop |
 | `render.ts` | Pure formatting functions (dice as boxes, keep options as a table, colour). No I/O, so these are unit-testable without a terminal |
 
 `apps/cli/test/prompt.test.ts` exists because `Prompt` had a real bug during
@@ -85,7 +93,7 @@ development — see below.
 ```bash
 npm install
 
-npm test              # vitest run — everything, ~1.3s
+npm test              # vitest run — everything, ~1.5-2s
 npm run test:watch    # vitest, watch mode
 npm run typecheck     # tsc --noEmit across the whole workspace
 
@@ -104,6 +112,13 @@ node apps/cli/dist/main.js --help
 During a turn: type die positions to keep them (`1 4`), `?` to list every legal
 keep with its point value, `t`/`b` to throw or bank, `q` to quit.
 
+## Toolchain
+
+Node 20+, TypeScript 7, Vitest 4. Upgraded from the Node-16-pinned versions M0
+and M1 shipped with (#4) — if you find a stray reference to Node 16 or to
+version pins in a comment, it's leftover from before that upgrade and should be
+corrected on sight, not treated as current guidance.
+
 ## Things worth knowing before touching the engine
 
 - **Scoring must stay provably maximal.** `scoreKeep` exists because greedy
@@ -120,9 +135,9 @@ keep with its point value, `t`/`b` to throw or bank, `q` to quit.
   threaded in `GameState.rng`. This is what makes `replay()` exact and is a
   hard requirement, not a style preference (see DESIGN.md §1).
 - **The CLI never computes a score itself.** It reads `ClientView.keeps` and
-  displays what the engine already decided. If a change makes the CLI compute
-  or duplicate scoring logic, that's a sign the `ClientView` projection is
-  missing something, not a shortcut to take.
+  displays what the engine already decided. The same rule applies to bots as
+  they're built (DESIGN.md §6): a `BotPolicy` reads `ClientView`, same as a
+  human would see, and never reaches into `GameState` directly.
 - **`Prompt` had a real concurrency bug worth knowing about**: calling
   `readline.question()` in an await-loop drops input lines that arrive in the
   same chunk as an earlier one (a multi-line paste, or any piped/redirected
@@ -134,5 +149,8 @@ keep with its point value, `t`/`b` to throw or bank, `q` to quit.
 
 ## Next: M2
 
-Bots and the simulation harness (`packages/bots`, `farkle sim` in the CLI).
-Plan is in [PLAN.md](PLAN.md#m2--bots-and-the-simulation-harness).
+Bots and the simulation harness. Plan is in
+[PLAN.md](PLAN.md#m2--bots-and-the-simulation-harness):
+`BotPolicy` + the parameterised `ThresholdBot`, five personality presets,
+a `farkle sim` command for headless matches with win-rate reporting, and
+playing against a bot from the CLI.
