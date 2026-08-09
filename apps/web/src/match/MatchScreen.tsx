@@ -4,6 +4,7 @@ import { chooseBotAction, createPreset, type BotPolicy, type PresetName } from '
 import {
   IllegalActionError,
   LocalHost,
+  type Face,
   type GameAction,
   type GameEvent,
   type GameState,
@@ -11,10 +12,11 @@ import {
 } from '@farkle/engine';
 
 import { clearMatch, saveMatch } from '../storage';
-import { DiceTray } from './DiceTray';
+import { Board } from './Board';
+import { FarkleNotice } from './FarkleNotice';
 import { KeepOptions } from './KeepOptions';
 import { MatchOverOverlay } from './MatchOverOverlay';
-import { botThinkTime } from './pacing';
+import { botThinkTime, FARKLE_PAUSE_MS } from './pacing';
 import { Scoreboard } from './Scoreboard';
 import { matchingKeepOption } from './selection';
 import { TurnLog } from './TurnLog';
@@ -31,6 +33,12 @@ export interface MatchScreenProps {
  * separate seed input in the UI. */
 const botSeedFrom = (matchSeed: number): number => (matchSeed ^ 0x9e3779b9) >>> 0;
 
+interface FarkleHold {
+  readonly player: number;
+  readonly faces: readonly Face[];
+  readonly lost: number;
+}
+
 export function MatchScreen({ initial, botSeat, botPreset, onExit }: MatchScreenProps) {
   const [host] = useState(() => new LocalHost(initial));
   const [bot] = useState<BotPolicy | null>(() =>
@@ -41,6 +49,10 @@ export function MatchScreen({ initial, botSeat, botPreset, onExit }: MatchScreen
   const [events, setEvents] = useState<readonly GameEvent[]>([]);
   const [selection, setSelection] = useState<readonly number[]>([]);
   const [spinToken, setSpinToken] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [farkleHold, setFarkleHold] = useState<FarkleHold | null>(null);
+  const [secondsLeft, setSecondsLeft] = useState(0);
+  const [overlayDismissed, setOverlayDismissed] = useState(false);
 
   // Persist on every change, and stop offering to resume a finished match.
   useEffect(() => {
@@ -50,6 +62,20 @@ export function MatchScreen({ initial, botSeat, botPreset, onExit }: MatchScreen
       if (newEvents.some((event) => event.type === 'Thrown')) {
         setSpinToken((token) => token + 1);
       }
+
+      // A farkle arrives in the same batch as the throw that caused it and the
+      // handover to the next player, so by the time we see it the board has
+      // already moved on. Capture the dice that busted, and hold them on
+      // screen until the player acknowledges — see pacing.ts.
+      let lastThrow: readonly Face[] = [];
+      for (const event of newEvents) {
+        if (event.type === 'Thrown') {
+          lastThrow = event.faces;
+        } else if (event.type === 'Farkled') {
+          setFarkleHold({ player: event.player, faces: lastThrow, lost: event.lost });
+        }
+      }
+
       if (host.state.phase === 'MatchOver') {
         clearMatch();
       } else {
@@ -58,12 +84,27 @@ export function MatchScreen({ initial, botSeat, botPreset, onExit }: MatchScreen
     });
   }, [host, botSeat, botPreset]);
 
+  // Counts the farkle hold down and releases it when it expires.
+  useEffect(() => {
+    if (farkleHold === null) {
+      return;
+    }
+    setSecondsLeft(Math.round(FARKLE_PAUSE_MS / 1000));
+    const tick = setInterval(() => setSecondsLeft((left) => Math.max(0, left - 1)), 1000);
+    const release = setTimeout(() => setFarkleHold(null), FARKLE_PAUSE_MS);
+    return () => {
+      clearInterval(tick);
+      clearTimeout(release);
+    };
+  }, [farkleHold]);
+
   // Drives the bot's seat one action at a time, paced so it's watchable.
   // Re-runs whenever `events` changes, i.e. whenever the game state might
   // have — reading `host.state` directly rather than depending on it, since
-  // it isn't React state itself.
+  // it isn't React state itself. `farkleHold` is a dependency because the bot
+  // must not play on while the player is still reading a farkle.
   useEffect(() => {
-    if (bot === null || botSeat === null) {
+    if (bot === null || botSeat === null || farkleHold !== null) {
       return;
     }
     const state = host.state;
@@ -90,11 +131,12 @@ export function MatchScreen({ initial, botSeat, botPreset, onExit }: MatchScreen
       clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [events, bot, botSeat, host]);
+  }, [events, bot, botSeat, host, farkleHold]);
 
   const view = host.view(host.state.current);
+  const matchOver = view.phase === 'MatchOver';
   const isBotTurn = botSeat !== null && view.current === botSeat;
-  const canAct = !isBotTurn && view.phase !== 'MatchOver';
+  const canAct = !isBotTurn && !matchOver && farkleHold === null && !busy;
   const currentPlayer = view.players[view.current]!;
   const matchedOption = matchingKeepOption(selection, view);
 
@@ -118,97 +160,202 @@ export function MatchScreen({ initial, botSeat, botPreset, onExit }: MatchScreen
   }
 
   function pickOption(option: KeepOption): void {
-    void dispatch({ type: 'Keep', indices: option.indices });
+    setSelection(option.indices);
   }
 
-  function keepSelection(): void {
-    if (selection.length > 0) {
-      void dispatch({ type: 'Keep', indices: selection });
+  /**
+   * Commits the selection and immediately follows it with the player's real
+   * decision. The engine still passes through `AwaitingBankOrThrow` in
+   * between; chaining the two here just spares the player a screen whose only
+   * content was a choice they had already made.
+   */
+  async function keepThen(next: 'Bank' | 'Throw'): Promise<void> {
+    if (matchedOption === null || selection.length === 0) {
+      return;
+    }
+    setBusy(true);
+    try {
+      await dispatch({ type: 'Keep', indices: selection });
+      await dispatch({ type: next });
+    } finally {
+      setBusy(false);
     }
   }
+
+  const boardFaces = farkleHold !== null ? farkleHold.faces : view.thrown;
+  const boardKept = farkleHold !== null ? [] : view.keptThisTurn;
+  const selectable = canAct && view.phase === 'AwaitingKeep' && farkleHold === null;
+
+  // Dice back in play after this keep — a keep that clears the board earns all
+  // six back (hot dice) rather than leaving the player with nothing to throw.
+  const diceAfterKeep =
+    matchedOption === null ? 0 : matchedOption.diceLeft === 0 ? 6 : matchedOption.diceLeft;
+  const bankAfterKeep = matchedOption === null ? view.turnScore : view.turnScore + matchedOption.points;
+
+  const boardHint = (() => {
+    if (farkleHold !== null) {
+      return '';
+    }
+    if (matchOver) {
+      return 'Match over';
+    }
+    if (view.phase === 'AwaitingThrow') {
+      return isBotTurn ? `${currentPlayer.name} is about to throw` : 'Throw to start your turn';
+    }
+    return 'Dice set aside — throw again or bank';
+  })();
 
   return (
     <div className="match">
       <Scoreboard view={view} botSeat={botSeat} />
 
       <div className="match__table">
-        <DiceTray
-          faces={view.thrown}
-          spinToken={spinToken}
-          selectable={canAct && view.phase === 'AwaitingKeep'}
+        <Board
+          thrown={boardFaces}
           selection={selection}
+          keptThisTurn={boardKept}
+          spinToken={spinToken}
+          selectable={selectable}
+          farkled={farkleHold !== null}
+          hint={boardHint}
           onToggle={toggleDie}
         />
 
-        {view.phase === 'AwaitingKeep' && (
-          <div className="selection-status">
-            {selection.length === 0 ? (
-              <p className="selection-status__hint">Click dice to select them, or pick an option below.</p>
-            ) : matchedOption !== null ? (
-              <p className="selection-status__ok">
-                {matchedOption.points} points — click "Keep" or an option below to confirm.
-              </p>
-            ) : (
-              <p className="selection-status__bad">
-                These dice don't form a scoring combination. A single 1 or 5, three or more of a
-                kind, or a straight — see the options below.
+        <div className="turn-status">
+          <span>
+            Turn score <strong>{view.turnScore}</strong>
+          </span>
+          <span>
+            {view.diceInPlay} {view.diceInPlay === 1 ? 'die' : 'dice'} in play
+          </span>
+        </div>
+
+        {farkleHold !== null ? (
+          <FarkleNotice
+            playerName={view.players[farkleHold.player]?.name ?? 'Player'}
+            lost={farkleHold.lost}
+            secondsLeft={secondsLeft}
+            onContinue={() => setFarkleHold(null)}
+          />
+        ) : isBotTurn && !matchOver ? (
+          <p className="thinking">{currentPlayer.name} is thinking…</p>
+        ) : matchOver ? null : (
+          <>
+            {view.phase === 'AwaitingKeep' && (
+              <p
+                className={
+                  selection.length === 0
+                    ? 'selection-status selection-status--hint'
+                    : matchedOption !== null
+                      ? 'selection-status selection-status--ok'
+                      : 'selection-status selection-status--bad'
+                }
+              >
+                {selection.length === 0
+                  ? 'Click dice to set them aside, or pick a combination below.'
+                  : matchedOption !== null
+                    ? `${matchedOption.points} points set aside`
+                    : "Those dice don't score together — a 1, a 5, three of a kind, or a straight."}
               </p>
             )}
-          </div>
+
+            <div className="match__actions">
+              {view.phase === 'AwaitingThrow' && (
+                <button
+                  type="button"
+                  className="action action--primary"
+                  disabled={!canAct}
+                  onClick={() => void dispatch({ type: 'Throw' })}
+                >
+                  Throw {view.diceInPlay} dice
+                </button>
+              )}
+
+              {view.phase === 'AwaitingKeep' && (
+                <>
+                  <button
+                    type="button"
+                    className="action action--primary"
+                    disabled={!canAct || matchedOption === null}
+                    onClick={() => void keepThen('Throw')}
+                  >
+                    Keep &amp; throw {diceAfterKeep}
+                    {matchedOption?.diceLeft === 0 && <span className="action__note">hot dice</span>}
+                  </button>
+                  <button
+                    type="button"
+                    className="action"
+                    disabled={!canAct || matchedOption === null}
+                    onClick={() => void keepThen('Bank')}
+                  >
+                    Keep &amp; bank {bankAfterKeep}
+                  </button>
+                </>
+              )}
+
+              {/* Only reachable if a keep-and-act chain is interrupted. */}
+              {view.phase === 'AwaitingBankOrThrow' && (
+                <>
+                  <button
+                    type="button"
+                    className="action action--primary"
+                    disabled={!canAct}
+                    onClick={() => void dispatch({ type: 'Throw' })}
+                  >
+                    Throw {view.diceInPlay}
+                  </button>
+                  <button
+                    type="button"
+                    className="action"
+                    disabled={!canAct}
+                    onClick={() => void dispatch({ type: 'Bank' })}
+                  >
+                    Bank {view.turnScore}
+                  </button>
+                </>
+              )}
+            </div>
+
+            {view.phase === 'AwaitingKeep' && (
+              <KeepOptions
+                options={view.keeps}
+                thrown={view.thrown}
+                selection={selection}
+                disabled={!canAct}
+                onPick={pickOption}
+              />
+            )}
+          </>
         )}
-
-        {isBotTurn && <p className="thinking">{currentPlayer.name} is thinking…</p>}
-
-        <div className="match__actions">
-          {view.phase === 'AwaitingThrow' && (
-            <button type="button" disabled={!canAct} onClick={() => void dispatch({ type: 'Throw' })}>
-              Throw {view.diceInPlay} dice
-            </button>
-          )}
-          {view.phase === 'AwaitingKeep' && (
-            <button type="button" disabled={!canAct || matchedOption === null} onClick={keepSelection}>
-              Keep selected dice
-            </button>
-          )}
-          {view.phase === 'AwaitingBankOrThrow' && (
-            <>
-              <button type="button" disabled={!canAct} onClick={() => void dispatch({ type: 'Bank' })}>
-                Bank {view.turnScore}
-              </button>
-              <button type="button" disabled={!canAct} onClick={() => void dispatch({ type: 'Throw' })}>
-                Throw {view.diceInPlay} more
-              </button>
-            </>
-          )}
-        </div>
-
-        {view.phase === 'AwaitingKeep' && (
-          <KeepOptions
-            options={view.keeps}
-            thrown={view.thrown}
-            selection={selection}
-            disabled={!canAct}
-            onPick={pickOption}
-          />
-        )}
-
-        <div className="turn-status">
-          <span>Turn score: {view.turnScore}</span>
-          <span>{view.diceInPlay} dice in play</span>
-        </div>
       </div>
 
-      <TurnLog events={events} names={view.players.map((player) => player.name)} />
+      <TurnLog
+        events={events}
+        names={view.players.map((player) => player.name)}
+        autoScroll={!matchOver}
+      />
+
+      {matchOver && overlayDismissed && (
+        <div className="match__result-bar">
+          <span>
+            {view.winner !== null ? `${view.players[view.winner]!.name} won this match.` : 'Match over.'}
+          </span>
+          <button type="button" className="action action--primary" onClick={onExit}>
+            New match
+          </button>
+        </div>
+      )}
 
       <button type="button" className="match__exit" onClick={onExit}>
         Quit to menu
       </button>
 
-      {view.phase === 'MatchOver' && view.winner !== null && (
+      {matchOver && view.winner !== null && !overlayDismissed && (
         <MatchOverOverlay
           winnerName={view.players[view.winner]!.name}
           winnerTotal={view.players[view.winner]!.total}
           onNewMatch={onExit}
+          onReviewLog={() => setOverlayDismissed(true)}
         />
       )}
     </div>

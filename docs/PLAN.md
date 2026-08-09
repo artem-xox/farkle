@@ -60,7 +60,31 @@ Done when the personalities are measurably distinct and ordered by strength, and
 - State persisted across reloads.
 
 Done when a full match against a bot is playable in the browser on desktop and
-phone.
+phone. ✅ Shipped in #7.
+
+### M3.1 — Polish pass
+
+Everything M3 asked for worked, but playing it turned up rough edges worth
+fixing before building more on top:
+
+- **A rules tab**, so the game explains itself instead of assuming the player
+  already knows Farkle — and specifically that this variant does *not* score
+  three pairs.
+- **Farkles were invisible.** The engine resolves a farkle in one `reduce()`,
+  so the busted dice were replaced in the same frame they appeared and the
+  player just saw their score vanish. Now the dice stay on a red-lit board with
+  an explanation until "Continue", or ten seconds, whichever comes first.
+- **A real board.** Dice sit on a wooden surface, and clicking one physically
+  moves it to a "set aside" rail rather than merely tinting it — which is what
+  keeping a die actually is.
+- **One fewer screen per keep.** "Keep & throw" / "Keep & bank" replace a bare
+  "Keep" followed by a separate bank-or-throw prompt for a decision the player
+  had already made.
+- **A readable turn log**, grouped by turn, with dice as ⚀–⚅ glyphs and
+  colour-coded badges — and reachable after the match ends rather than buried
+  under the win overlay.
+- **Target scores of 1500 / 3000 / 8000** rather than 500 / 2000 / 4000. 8000
+  is exactly six 1s, so the longest match is still winnable in one throw.
 
 ## M4 — Loadouts and more dice
 

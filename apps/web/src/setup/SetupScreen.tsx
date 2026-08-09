@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 
 import { PRESET_NAMES, type PresetName } from '@farkle/bots';
-import { BALANCED_DIE, DEFAULT_TARGET, DICE_PER_TURN, type DieSpec, type PlayerConfig } from '@farkle/engine';
+import { BALANCED_DIE, DICE_PER_TURN, type DieSpec, type PlayerConfig } from '@farkle/engine';
 
 import { capitalize, PRESET_DESCRIPTIONS } from '../presets';
 
@@ -17,7 +17,12 @@ export interface SetupScreenProps {
   onStart: (options: NewMatchOptions) => void;
 }
 
-const TARGET_CHOICES = [500, 2000, 4000];
+/**
+ * 8000 is deliberate rather than round: it is exactly what six 1s score, so
+ * the longest match is still winnable by a single miraculous throw.
+ */
+const TARGET_CHOICES = [1500, 3000, 8000];
+const DEFAULT_TARGET_CHOICE = 3000;
 
 const randomSeed = (): number => (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0;
 const defaultLoadout = (): DieSpec[] => new Array(DICE_PER_TURN).fill(BALANCED_DIE);
@@ -27,7 +32,7 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
   const [yourName, setYourName] = useState('You');
   const [friendName, setFriendName] = useState('Friend');
   const [preset, setPreset] = useState<PresetName>('balanced');
-  const [target, setTarget] = useState(DEFAULT_TARGET);
+  const [target, setTarget] = useState(DEFAULT_TARGET_CHOICE);
 
   function handleSubmit(event: FormEvent): void {
     event.preventDefault();
