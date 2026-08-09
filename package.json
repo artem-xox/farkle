@@ -1,0 +1,19 @@
+{
+  "name": "farkle",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json",
+    "build": "npm run build --workspaces --if-present"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2",
+    "vitest": "^0.34.6"
+  }
+}
