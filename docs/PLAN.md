@@ -261,10 +261,41 @@ works; the bill is $0 until a domain is registered.
 
 ## M5 — Loadouts and more dice
 
-- Loadout screen: six slots, dice chosen from a collection.
-- Per-die distribution shown honestly in the UI.
-- More dice specs, balanced by simulation rather than by feel.
-- Opponents carry their own loadouts, visible before the match.
+- ~~**Wildcard dice as a first-class engine concept.**~~ Done — `Face` =
+  `Pip | Wild`; `scoreKeep` resolves a wildcard to whichever pip maximises the
+  keep, barred from completing a `Single` on its own (RULES.md §4a).
+  Exhaustively tested against an independent brute-force oracle. #13, #14.
+- ~~**More dice specs.**~~ Done, `DEVIL_DIE` / `ODD_DIE` / `CHEAT_DIE` ship
+  (DESIGN.md §5) — **but not yet "balanced by simulation rather than by
+  feel."** `odd` and `cheat`'s weights are reasoned, not measured; `devil`'s
+  farkle-risk properties are proven analytically (`packages/bots/src/odds.ts`
+  tests) rather than run through `farkle sim`. That command does not accept a
+  loadout argument yet — see "What's left" below.
+- ~~**`legalKeeps` dedupes by die identity, not just face value.**~~ Done —
+  two keeps worth the same points can still be different choices if they
+  leave different dice behind; `KeepOption.diceLeftSpecs` carries this
+  through to bots and the UI. Not originally itemised here, but was most of
+  the engine work this milestone actually needed.
+- ~~**Bots price risk per die, not per die count.**~~ Done —
+  `ThresholdBot`'s keep ranking and its dice-count floor are both scaled by
+  `safetyRatio` (DESIGN.md §6), falling back to the exact pre-M5 formula on
+  an all-balanced loadout (verified, not just assumed).
+- ~~**Loadout screen: six slots, dice chosen from a collection.**~~ Done — its
+  own step after match setup, tap-to-fill rather than six dropdowns
+  (`apps/web/src/setup/LoadoutStep.tsx`, `LoadoutPicker.tsx`).
+- ~~**Per-die distribution shown honestly in the UI.**~~ Done — moved off
+  Rules onto its own "Dice" tab (`apps/web/src/dice/DiceScreen.tsx`) so it
+  reads as reference material rather than one more rule to get through.
+- ~~**Opponents carry their own loadouts, visible before the match.**~~ Done
+  for what v1's bots support: a bot's loadout defaults to six balanced dice
+  and is shown read-only next to the player's own picker. Bots do not yet
+  *own* a persistent collection to choose from — that's M7 (opponents with
+  names, loadouts and personalities as identity, not a per-match default).
+
+**What's left:** `farkle sim` needs a way to specify a loadout (currently
+personality-vs-personality only, always six balanced dice each) so `odd` and
+`cheat` can get the same simulation pass the M2 presets did, and the measured
+numbers can replace the reasoned-from-the-name description in DESIGN.md §5.
 
 ## M6 — Optimal play and hints
 
@@ -300,6 +331,4 @@ M1 is what makes this an addition rather than a rewrite.
 ## Out of scope
 
 - Badges and equipment modifiers from the source game — deliberately excluded.
-- Wildcard (Devil's Head) dice — until the mechanic is confirmed in-game;
-  RULES.md §11.
 - KCD1 combinations and tabletop rule variants — later, as an optional rule set.
