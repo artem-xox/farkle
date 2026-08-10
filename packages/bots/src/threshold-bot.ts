@@ -78,6 +78,40 @@ export interface BotParams {
    * desperation rule are all applied before this comparison is reached.
    */
   readonly evBanking?: boolean;
+  /**
+   * Only meaningful with `evBanking`. `expectedKeepValue` averages over every
+   * outcome of the throw, including ones that would overshoot the target by a
+   * wide margin — points a bank-outright check already turns into a win, not
+   * extra value. This caps the expected gain used in the comparison at
+   * `target - me.total - turnScore`, so a large potential overshoot no longer
+   * inflates the case for throwing right at the edge of winning outright. An
+   * approximation (it caps the *mean*, not each outcome in the distribution
+   * that produced it), but a directionally correct one.
+   */
+  readonly evCapToTarget?: boolean;
+  /**
+   * Only meaningful with `evBanking`. Scales the expected gain by `1 +
+   * evCatchUpTurns * turnsGap`, where `turnsGap` is the leading opponent's
+   * lead over this bot, measured in units of a "typical turn" —
+   * `expectedKeepValue` of this bot's own six-die loadout thrown fresh, the
+   * same primitive the banking rule itself uses, rather than a raw point
+   * count that means something different at every target. Positive when
+   * behind (more willing to throw), negative when ahead (less willing).
+   * Untuned: the sign and rough shape follow from wanting risk tolerance to
+   * track race position, but the coefficient itself is a guess pending
+   * simulation, same as every other constant in this file.
+   */
+  readonly evCatchUpTurns?: number;
+  /**
+   * Replaces `chooseKeep`'s `diceValue`-based ranking with
+   * `points + expectedKeepValue(diceLeftSpecs)` — the same "value the dice
+   * left behind" idea `rankOf` already encodes, but priced by the actual
+   * expected value of throwing them again instead of a hand-tuned constant
+   * per die. Falls back to `rankOf` whenever an option carries no die
+   * identities to price (`diceLeftSpecs` undefined), the same fallback
+   * `rankOf` itself uses for `diceValue`.
+   */
+  readonly evKeepSelection?: boolean;
 }
 
 /**
@@ -100,6 +134,9 @@ const BANK_AT_MAX = 600;
  * called without die identities, as some tests do directly).
  */
 function rankOf(option: KeepOption, params: BotParams): number {
+  if (params.evKeepSelection === true && option.diceLeftSpecs !== undefined) {
+    return option.points + expectedKeepValue(option.diceLeftSpecs);
+  }
   if (params.diceValue === 0 || option.diceLeft === 0 || option.diceLeftSpecs === undefined) {
     return option.points + params.diceValue * option.diceLeft;
   }
@@ -200,7 +237,8 @@ export class ThresholdBot implements BotPolicy {
       return null;
     }
 
-    if (leadingOpponentTotal(view) >= view.target - this.params.desperationMargin) {
+    const opponent = leadingOpponentTotal(view);
+    if (opponent >= view.target - this.params.desperationMargin) {
       // Same reasoning as the threshold path's desperation override: with the
       // opponent a turn away from winning, a bank that doesn't win the game
       // outright is worth nothing, so what the throw risks doesn't matter.
@@ -210,7 +248,28 @@ export class ThresholdBot implements BotPolicy {
     }
 
     const dice = view.inPlayDice;
-    return expectedKeepValue(dice) > view.turnScore * farkleProbability(dice) ? 'Throw' : 'Bank';
+    let gain = expectedKeepValue(dice);
+
+    if (this.params.evCapToTarget === true) {
+      const me = view.players[view.you]!;
+      // Strictly positive: the caller already banks outright once
+      // turnScore alone would clear the target.
+      const remaining = view.target - me.total - view.turnScore;
+      gain = Math.min(gain, remaining);
+    }
+
+    if (this.params.evCatchUpTurns !== undefined && this.params.evCatchUpTurns !== 0) {
+      const loadout = view.players[view.you]!.loadout;
+      const typicalTurn = loadout.length > 0 ? expectedKeepValue(loadout) : 0;
+      if (typicalTurn > 0) {
+        const me = view.players[view.you]!;
+        const turnsGap = (opponent - me.total) / typicalTurn;
+        const multiplier = Math.max(0.1, 1 + this.params.evCatchUpTurns * turnsGap);
+        gain *= multiplier;
+      }
+    }
+
+    return gain > view.turnScore * farkleProbability(dice) ? 'Throw' : 'Bank';
   }
 
   /** `params.bankAt`, or the target-relative threshold when configured — see `bankAtTargetBase`. */
