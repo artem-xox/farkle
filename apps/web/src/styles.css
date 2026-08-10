@@ -146,6 +146,12 @@ button:disabled {
   line-height: 1.5;
 }
 
+/* The returning player's line, in the slot the pitch occupies for everyone else. */
+.setup__record {
+  color: var(--parchment);
+  font-weight: 600;
+}
+
 /* A link in prose, but a button in fact — it switches tabs, it doesn't navigate. */
 .setup__link {
   padding: 0;

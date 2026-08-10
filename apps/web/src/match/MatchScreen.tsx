@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { chooseBotAction, createPreset, type BotPolicy, type PresetName } from '@farkle/bots';
 import {
@@ -12,7 +12,7 @@ import {
   type KeepOption,
 } from '@farkle/engine';
 
-import { clearMatch, saveMatch } from '../storage';
+import { clearMatch, recordMatch, saveMatch } from '../storage';
 import { Board } from './Board';
 import { FarkleNotice } from './FarkleNotice';
 import { KeepOptions } from './KeepOptions';
@@ -26,6 +26,8 @@ export interface MatchScreenProps {
   initial: GameState;
   botSeat: number | null;
   botPreset: PresetName | null;
+  /** The player's best banked turn carried over from a resumed match — events aren't persisted, so this arrives from the save rather than from the log. */
+  initialBestTurn: number;
   onExit: () => void;
 }
 
@@ -40,7 +42,7 @@ interface FarkleHold {
   readonly lost: number;
 }
 
-export function MatchScreen({ initial, botSeat, botPreset, onExit }: MatchScreenProps) {
+export function MatchScreen({ initial, botSeat, botPreset, initialBestTurn, onExit }: MatchScreenProps) {
   const [host] = useState(() => new LocalHost(initial));
   const [bot] = useState<BotPolicy | null>(() =>
     botSeat !== null && botPreset !== null
@@ -61,6 +63,22 @@ export function MatchScreen({ initial, botSeat, botPreset, onExit }: MatchScreen
    * the engine's own `keptThisTurn` resets, i.e. at the start of a new turn.
    */
   const [keptDiceThisTurn, setKeptDiceThisTurn] = useState<readonly DieSpec[]>([]);
+
+  /**
+   * The human's seat. Every match the setup screen builds puts the player
+   * first, but deriving it rather than hardcoding 0 keeps this honest if a bot
+   * ever opens.
+   */
+  const youSeat = botSeat === 0 ? 1 : 0;
+
+  /**
+   * Best banked turn so far, in a ref rather than state: nothing renders it
+   * during the match, and it must not be part of the dependency chain that
+   * drives the bot's timer.
+   */
+  const bestTurn = useRef(initialBestTurn);
+  /** A match resolves once, but the phase stays `MatchOver` — this stops a second event batch double-counting it. */
+  const recorded = useRef(false);
 
   // Persist on every change, and stop offering to resume a finished match.
   useEffect(() => {
@@ -84,16 +102,32 @@ export function MatchScreen({ initial, botSeat, botPreset, onExit }: MatchScreen
           lastThrow = event.faces;
         } else if (event.type === 'Farkled') {
           setFarkleHold({ player: event.player, faces: lastThrow, lost: event.lost });
+        } else if (event.type === 'Banked' && event.player === youSeat) {
+          bestTurn.current = Math.max(bestTurn.current, event.points);
         }
       }
 
       if (host.state.phase === 'MatchOver') {
         clearMatch();
+        if (!recorded.current) {
+          recorded.current = true;
+          const them = youSeat === 0 ? 1 : 0;
+          recordMatch({
+            at: Date.now(),
+            target: host.state.config.target,
+            opponent: botPreset,
+            youWon: host.state.winner === youSeat,
+            yourTotal: host.state.totals[youSeat] ?? 0,
+            opponentTotal: host.state.totals[them] ?? 0,
+            turns: host.state.turn,
+            yourBestTurn: bestTurn.current,
+          });
+        }
       } else {
-        saveMatch({ state: host.state, botSeat, botPreset });
+        saveMatch({ state: host.state, botSeat, botPreset, bestTurn: bestTurn.current });
       }
     });
-  }, [host, botSeat, botPreset]);
+  }, [host, botSeat, botPreset, youSeat]);
 
   // Counts the farkle hold down and releases it when it expires.
   useEffect(() => {

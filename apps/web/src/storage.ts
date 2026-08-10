@@ -3,6 +3,14 @@ import type { GameState } from '@farkle/engine';
 
 const STORAGE_KEY = 'farkle:match:v1';
 const PREFS_KEY = 'farkle:setup:v1';
+const HISTORY_KEY = 'farkle:history:v1';
+
+/**
+ * How many finished matches are kept. The cap is the point: `localStorage` has
+ * a quota, the summary only ever reads aggregates, and nobody is scrolling to
+ * match 200. Oldest are dropped first.
+ */
+const HISTORY_LIMIT = 50;
 
 /** Matches the `maxLength` the name inputs enforce, so a hand-edited save can't smuggle in a longer one. */
 export const NAME_MAX_LENGTH = 20;
@@ -12,6 +20,13 @@ export interface StoredMatch {
   /** Player id the bot controls, or null for a hot-seat human-vs-human match. */
   readonly botSeat: number | null;
   readonly botPreset: PresetName | null;
+  /**
+   * The player's best single banked turn so far. Persisted rather than derived
+   * because it is accumulated from the event stream, and events are not saved
+   * — without this, resuming a match after a reload would silently restart the
+   * count and under-report the personal best it feeds.
+   */
+  readonly bestTurn: number;
 }
 
 /**
@@ -122,4 +137,61 @@ export function loadSetupPrefs(allowedTargets: readonly number[]): Partial<Setup
   }
 
   return prefs as Partial<SetupPrefs>;
+}
+
+/**
+ * One finished match. Only matches that actually reached `MatchOver` are
+ * recorded — quitting discards the match (see `App.tsx`'s `exitMatch`), and a
+ * walked-away-from game is not a result either way.
+ */
+export interface MatchRecord {
+  readonly at: number;
+  readonly target: number;
+  /** The bot's personality, or null for a pass & play match — which is why the summary can separate "against bots" from the rest. */
+  readonly opponent: PresetName | null;
+  readonly youWon: boolean;
+  readonly yourTotal: number;
+  readonly opponentTotal: number;
+  readonly turns: number;
+  readonly yourBestTurn: number;
+}
+
+function isMatchRecord(value: unknown): value is MatchRecord {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const record = value as Record<string, unknown>;
+  const numbers = ['at', 'target', 'yourTotal', 'opponentTotal', 'turns', 'yourBestTurn'];
+  return (
+    numbers.every((key) => typeof record[key] === 'number' && Number.isFinite(record[key])) &&
+    typeof record['youWon'] === 'boolean' &&
+    (record['opponent'] === null ||
+      (typeof record['opponent'] === 'string' && isPresetName(record['opponent'])))
+  );
+}
+
+export function loadHistory(): MatchRecord[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (raw === null) {
+      return [];
+    }
+    const parsed: unknown = JSON.parse(raw);
+    // Individually validated and filtered rather than rejected wholesale: one
+    // malformed row from an older schema should cost that row, not the
+    // player's whole record.
+    return Array.isArray(parsed) ? parsed.filter(isMatchRecord) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Appends a finished match, keeping the newest `HISTORY_LIMIT`. */
+export function recordMatch(record: MatchRecord): void {
+  try {
+    const next = [...loadHistory(), record].slice(-HISTORY_LIMIT);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+  } catch {
+    // Same trade as everything else here — losing the record must not cost the match.
+  }
 }

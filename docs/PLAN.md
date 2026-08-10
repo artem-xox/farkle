@@ -341,9 +341,8 @@ them.
   a screen reader announces as unrelated controls rather than one choice out of
   a set. `aria-current` on the tabs was passing a boolean instead of `page`.
 
-Deliberately not done here, and still open: a match history and a win/loss
-record on this screen (the cheapest reason to come back, and the natural
-front end for M7).
+Deliberately not done here: a match history and a win/loss record on this
+screen. Built in M5.3 below.
 
 ### M5.2 — Loadout presets on the setup screen
 
@@ -383,6 +382,38 @@ picker. One primary action, "Start match".
 Still open: bots that own a collection rather than borrowing the player's
 (M7), and preset loadouts built from two Gold-tier dice, which the research
 lists as untested.
+
+### M5.3 — A record worth coming back for
+
+The last thing M5.1 left open. Finished matches are kept in
+`farkle:history:v1` and reduced to one line on the setup screen:
+`3–3 against bots · 2–1 vs Balanced · best turn 1250`.
+
+- **The head-to-head follows the personality dropdown**, which is most of the
+  point. M5.1 stripped the descriptions out of that control because a native
+  `<select>` truncated them; this gives it meaning back without any prose.
+  "Aggressive" is a word — "0–2 vs Aggressive" is an opponent.
+- **The record replaces the pitch rather than joining it.** Someone who has
+  played a dozen matches does not need Farkle explained, and someone who has
+  played none has no record to show, so the same slot serves both audiences and
+  the screen doesn't grow a line for whichever is currently irrelevant.
+- **Nothing shows until three bot matches exist.** Greeting a new player with
+  "0–1 against bots" is worse than saying nothing; the line is meant to be a
+  reason to come back.
+- **Only finished matches count.** Quitting discards the match (see the fix in
+  the same change), and a walked-away-from game is not a result either way.
+  Pass & play is stored but kept out of the "against bots" tally — two humans
+  on one device produce a result, but not one that says anything about the
+  player. It still counts toward the personal best, which is a personal best.
+- **Best turn is persisted with the match, not just accumulated.** It is built
+  from the event stream and events are not saved, so without carrying it in
+  `StoredMatch` a resumed match would silently restart the count.
+- The summarising logic lives in `setup/record.ts`, deliberately free of React
+  so it is covered by real unit tests (`apps/web/test/record.test.ts` — the
+  first tests in `apps/web`, which the root Vitest `include` already matched).
+
+Deliberately absent: a detail view of past matches. The loop is the point; a
+list is a screen, and M7 is where opponents and progression get one.
 
 ## M6 — Optimal play and hints
 

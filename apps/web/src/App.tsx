@@ -14,6 +14,7 @@ interface MatchSession {
   readonly initial: GameState;
   readonly botSeat: number | null;
   readonly botPreset: PresetName | null;
+  readonly bestTurn: number;
 }
 
 type Tab = 'play' | 'dice' | 'rules';
@@ -44,7 +45,14 @@ function resumeFromStorage(): MatchSession | null {
     clearMatch();
     return null;
   }
-  return { id: 'resumed', initial: stored.state, botSeat: stored.botSeat, botPreset: stored.botPreset };
+  return {
+    id: 'resumed',
+    initial: stored.state,
+    botSeat: stored.botSeat,
+    botPreset: stored.botPreset,
+    // Saves written before best-turn tracking existed have no value here.
+    bestTurn: stored.bestTurn ?? 0,
+  };
 }
 
 export function App() {
@@ -53,7 +61,21 @@ export function App() {
 
   function startMatch(options: NewMatchOptions): void {
     const initial = createMatch({ players: options.players, target: options.target, seed: options.seed });
-    setSession({ id: freshId(), initial, botSeat: options.botSeat, botPreset: options.botPreset });
+    setSession({ id: freshId(), initial, botSeat: options.botSeat, botPreset: options.botPreset, bestTurn: 0 });
+  }
+
+  /**
+   * Quitting discards the match rather than parking it.
+   *
+   * `MatchScreen` clears the save when a match *finishes*, but leaving one
+   * unfinished only dropped the session held in memory — the save stayed
+   * behind, so the next reload resumed a match the player had explicitly
+   * walked away from. Storage is the only thing that survives a reload, so
+   * this is the one place the decision can be made stick.
+   */
+  function exitMatch(): void {
+    clearMatch();
+    setSession(null);
   }
 
   return (
@@ -99,7 +121,8 @@ export function App() {
             initial={session.initial}
             botSeat={session.botSeat}
             botPreset={session.botPreset}
-            onExit={() => setSession(null)}
+            initialBestTurn={session.bestTurn}
+            onExit={exitMatch}
           />
         )}
       </main>
