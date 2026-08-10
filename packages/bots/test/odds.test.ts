@@ -1,4 +1,13 @@
-import { BALANCED_DIE, CHEAT_DIE, DEVIL_DIE, ODD_DIE, WEIGHTED_DIE, type DieSpec } from '@farkle/engine';
+import {
+  BALANCED_DIE,
+  CHEAT_DIE,
+  DEVIL_DIE,
+  DICE,
+  IMP_DIE,
+  ODD_DIE,
+  WEIGHTED_DIE,
+  type DieSpec,
+} from '@farkle/engine';
 import { describe, expect, it } from 'vitest';
 
 import { balancedFarkleProbability, farkleProbability, safetyRatio } from '../src/odds.js';
@@ -18,30 +27,40 @@ describe('farkleProbability', () => {
   });
 
   it('a lone Devil\'s Head die farkles more often than a lone balanced die', () => {
-    // DEVIL_DIE is BALANCED_DIE with its `1` face replaced by a wildcard
-    // that can't score alone — every other face is identical, so this can
-    // only ever be a net loss, never a gain, for a single die on its own.
+    // The devil die's only scoring single is its 5 (3 weights in 16); the
+    // wildcard on its 1 face can't complete a Single alone, so on one die
+    // the wildcard is worth exactly nothing.
+    expect(farkleProbability([DEVIL_DIE])).toBeCloseTo(13 / 16, 12);
     expect(farkleProbability([DEVIL_DIE])).toBeGreaterThan(farkleProbability([BALANCED_DIE]));
   });
 
   it('a Devil\'s Head never farkles less than a balanced die in the same company', () => {
-    // Same proof, generalised: only the "did this die's `1`-or-wild face
-    // come up" outcome differs between the two dice, and a real `1` always
-    // scores while a wild only does conditionally — so for any fixed set of
-    // other dice, swapping one balanced die for a devil die can only hold
-    // steady or make the whole throw farkle more often, never less.
-    const companies: DieSpec[][] = [
-      [],
-      [BALANCED_DIE],
-      [BALANCED_DIE, BALANCED_DIE],
-      [WEIGHTED_DIE, ODD_DIE],
-      [CHEAT_DIE, CHEAT_DIE, CHEAT_DIE],
-    ];
-    for (const company of companies) {
-      expect(farkleProbability([DEVIL_DIE, ...company])).toBeGreaterThanOrEqual(
-        farkleProbability([BALANCED_DIE, ...company]),
-      );
+    // Not a construction proof — the devil die's weights differ from a
+    // balanced one's, so this is asserted over the whole roster instead:
+    // for every filler die and every company size, swapping in a devil die
+    // holds steady or farkles more, never less.
+    for (const filler of Object.values(DICE)) {
+      for (let size = 0; size <= 5; size++) {
+        const company = new Array<DieSpec>(size).fill(filler);
+        expect(
+          farkleProbability([DEVIL_DIE, ...company]),
+          `${filler.id} x${size}`,
+        ).toBeGreaterThanOrEqual(farkleProbability([BALANCED_DIE, ...company]));
+      }
     }
+  });
+
+  it('an imp die is riskier alone but safer once other imps can complete its triples', () => {
+    // The imp's wildcard sits on the 6, a face that never scored anyway, so
+    // unlike the devil it gives up nothing directly — and enough wildcards
+    // in one throw start completing three-of-a-kinds among themselves
+    // (RULES.md §4a), which is where it overtakes an ordinary die.
+    expect(farkleProbability([IMP_DIE])).toBeGreaterThan(farkleProbability([BALANCED_DIE]));
+
+    const fourImps = new Array<DieSpec>(4).fill(IMP_DIE);
+    expect(farkleProbability([IMP_DIE, ...fourImps])).toBeLessThan(
+      farkleProbability([BALANCED_DIE, ...fourImps]),
+    );
   });
 
   it('is symmetric under reordering the dice', () => {
@@ -59,8 +78,19 @@ describe('farkleProbability', () => {
   });
 
   it('cross-checks the weighted die by brute force over its own faces', () => {
-    // 10:1:1:1:1:1 — farkles only on 2,3,4,6, weight 1 each out of 15.
-    expect(farkleProbability([WEIGHTED_DIE])).toBeCloseTo(4 / 15, 12);
+    // 3:2:2:2:2:2 — farkles only on 2, 3, 4 and 6, weight 2 each out of 13.
+    expect(farkleProbability([WEIGHTED_DIE])).toBeCloseTo(8 / 13, 12);
+  });
+
+  it('ranks the whole roster on a full six-die throw', () => {
+    // The balance target is docs/DESIGN.md §5: every die in the roster is a
+    // sidegrade, so none of them may drift into "never farkles" territory
+    // the way the pre-M6 weighted die (0.01% on six) did.
+    for (const die of Object.values(DICE)) {
+      const six = new Array<DieSpec>(6).fill(die);
+      expect(farkleProbability(six), die.id).toBeLessThan(0.07);
+      expect(farkleProbability(six), die.id).toBeGreaterThan(0.005);
+    }
   });
 });
 

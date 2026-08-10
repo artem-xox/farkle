@@ -192,19 +192,91 @@ type DieSpec = {
 pip. It is still just one more weight — a die's distribution stays one
 honest set of six numbers whether or not one of them is painted differently.
 
-As of M5, five dice ship:
-
-| id | name | weights | distribution |
-|---|---|---|---|
-| `balanced` | Ordinary die | `[1,1,1,1,1,1]` | 16.67% per face |
-| `weighted` | Weighted die | `[10,1,1,1,1,1]` | 66.7% on `1`, 6.7% each on `2-6` |
-| `devil` | Devil's Head die | `[1,1,1,1,1,1]`, `wild: 1` | 16.67% wild, 16.67% each on `2-6` |
-| `odd` | Odd die | `[4,3,4,3,4,3]` | 19.0% each on `1/3/5`, 14.3% each on `2/4/6` |
-| `cheat` | Cheat's die | `[2,2,2,2,2,5]` | 13.3% each on `1-5`, 33.3% on `6` |
-
 The integer-weight model comes from the source game's own numbers: its published
 probabilities are exact fractions over denominators like 13 and 15, which is what
 a weighted bag produces and a float table does not.
+
+### The balance band
+
+Every special die is a **sidegrade, not a rung on a ladder**. They differ in
+shape, not in strength, and none of them is the die you simply switch to.
+
+The measure is not face probability but **win rate**: six of one die against six
+ordinary dice, both sides played by the same `balanced` bot, 40 000 matches
+(95% CI ≈ ±0.5pp). A die belongs in the roster if that number lands in
+**57–63%**. Anything above is a win button; anything at 50% is flavour text.
+The tooling that produces these numbers lives in
+[`scripts/dice-balance`](../scripts/dice-balance/README.md) — `roster-report.mjs`
+regenerates the table below from whatever is currently in `DICE`,
+`sweep-candidates.mjs` is the template used to tune a new die into the band,
+and `wildcard-audit.mjs` checks a wild face's safety claims against the whole
+roster rather than a few hand-picked companies.
+
+Shape is then read off two further numbers, which is what actually
+distinguishes the dice from one another:
+
+- **farkle % on three dice** — how far a turn can be pushed once most of the
+  loadout is set aside;
+- **EV of a full six-die throw** — what the die is worth when it does connect.
+
+M1–M5 shipped five dice tuned by eye, and the spread was 57% to 98%. The pre-calibration
+`weighted` die (`[10,1,1,1,1,1]`) farkled on three dice 1.8% of the time against
+an ordinary die's 27.8% and won 97.7% of matches; the pre-calibration `devil`
+(`[1,1,1,1,1,1]`, `wild: 1`) won 80.6%. Both were retuned rather than removed.
+
+### The roster
+
+As of M5, nine dice ship. Measured columns are the numbers above; `win6` is the
+balance metric, so the roster is sorted by it.
+
+| id | name | weights | distribution | farkle 6 / 3 | EV 6 | win6 |
+|---|---|---|---|---|---|---|
+| `balanced` | Ordinary die | `[1,1,1,1,1,1]` | 16.7% per face | 3.1 / 27.8 | 399 | 49.8 |
+| `odd` | Odd die | `[4,3,4,3,4,3]` | 19.0% each on `1/3/5`, 14.3% each on `2/4/6` | 1.9 / 22.2 | 431 | 56.7 |
+| `trinity` | Holy Trinity die | `[1,1,4,1,1,1]` | 44.4% on `3`, 11.1% each on the rest | 2.9 / 37.9 | 470 | 58.8 |
+| `imp` | Imp's die | `[2,7,7,7,2,2]`, `wild: 6` | 25.9% each on `2/3/4`, 7.4% each on `1`, `5` and wild | 2.7 / 50.8 | 505 | 59.9 |
+| `trader` | Trader's die | `[1,1,1,1,2,1]` | 28.6% on `5`, 14.3% each on the rest | 1.2 / 17.5 | 448 | 60.6 |
+| `devil` | Devil's Head die | `[1,3,3,3,3,3]`, `wild: 1` | 6.3% wild, 18.8% each on `2-6`, no `1` at all | 6.3 / 47.5 | 515 | 61.2 |
+| `weighted` | Weighted die | `[3,2,2,2,2,2]` | 23.1% on `1`, 15.4% each on `2-6` | 1.9 / 21.9 | 473 | 61.3 |
+| `worn` | Worn die | `[1,0,1,1,1,1]` | 20% each on `1/3/4/5/6`, never a `2` | 0.6 / 19.2 | 467 | 61.8 |
+| `cheat` | Cheat's die | `[2,2,2,2,2,5]` | 13.3% each on `1-5`, 33.3% on `6` | 3.7 / 35.0 | 514 | 62.4 |
+
+Read down the farkle and EV columns rather than the win column: the win rates
+are deliberately nearly equal, and everything interesting is in how each die
+gets there. The one die outside the band is `odd`, at 56.7% (CI
+[56.2, 57.2]) — left where it is rather than nudged up, because the shape it
+occupies, "mildly safer, mildly better", is already `weighted`'s, and the
+roster is better served by the range's floor than by a duplicate.
+
+- **`worn` and `trader` buy safety.** `worn` deletes a dead face outright and is
+  the safest die in the game on a full throw (0.6%); `trader` is the safest one
+  to still have in play when two or three dice are left (17.5% on three), which
+  is the moment that actually decides turns. Neither has much of a ceiling.
+- **`devil` and `imp` buy a ceiling.** Both farkle on roughly half of all
+  three-die throws — worse than an ordinary die by a wide margin — and pay it
+  back in combinations that a wildcard completes. `devil` and `cheat` are also
+  the only two dice in the roster that farkle *more* than an ordinary die on a
+  full six-die throw, `devil` by twice the margin.
+- **`cheat` and `trinity` bet on one face.** A `6` and a `3` are both worthless
+  alone, so these are pure three-of-a-kind plays. `trinity`'s triple is the
+  cheaper of the two (300 against 600), which is what allows its bias to run as
+  high as 4-in-9 while staying in band.
+- **`weighted` and `odd` are the plain upgrades**, and are deliberately the
+  least interesting: more of the faces that already scored, nothing given up.
+
+Two properties are worth knowing because they are not visible in the table:
+
+**`trinity` is a set die.** Six of them beat six ordinary dice (58.8%), but one
+among five ordinary dice is a *downgrade* (47.0%) — a lone heavy `3` mostly
+produces a dead face, and only a loadout full of them produces triples often
+enough to pay. It is the only die in the roster where the mixed loadout is
+worse than the pure one.
+
+**`imp` is safer in its own company.** A single imp farkles more often than an
+ordinary die in any company; five of them farkle *less*, because wildcards start
+completing three-of-a-kinds among themselves (RULES.md §4a). `devil` never
+crosses that line in any company — both facts are asserted over the whole
+roster in `packages/bots/test/odds.test.ts` rather than left as claims.
 
 A player's *loadout* is six dice drawn from their collection, assigned one slot
 at a time on its own screen after match setup. Both players default to six
@@ -217,19 +289,79 @@ distributions in a game whose entire subject is probability would be a bad
 trade for atmosphere — the full odds table for every die lives on its own
 "Dice" screen rather than folded into Rules.
 
-**`devil`'s weights are a deliberate choice, not a balance result.** The wild
-face sits on the `1` slot specifically: pairing that with the ordinary rule
+**Where `devil`'s wild face sits is a design choice, not a balance result.** It
+is on the `1` slot specifically: pairing that slot with the ordinary reading
 "a wildcard scores unconditionally" would make the die mechanically identical
 to `balanced` (a real `1` and an unconditional wildcard are interchangeable to
 `hasScoringDice`), so RULES.md §4a instead rules that a wildcard can never
-complete a single `1` or `5` on its own — only a bigger combination. Under
-that rule `devil` is provably never a *safer* throw than `balanced` in
-isolation (see `packages/bots/src/odds.ts`'s tests), trading a guaranteed
-floor for flexibility inside triples and straights instead. `odd` and `cheat`'s
-weights are reasoned from their names (favour the low/high end respectively)
-but, like `devil`, have **not** been validated by a simulation pass the way
-the M2 bot presets were — `farkle sim` does not yet accept a loadout
-argument. That is the next piece of M5 work, not a finished result.
+complete a single `1` or `5` on its own — only a bigger combination. That
+ruling is what makes a wildcard a trade rather than a gift, and it is what the
+`imp` die then exploits from the other side by sitting on the worthless `6`.
+
+Only the *weights* came out of the M5 calibration pass; every die's identity —
+which face, which rule it leans on — was chosen first and tuned afterwards.
+Dice that could not be brought into the band without losing their identity were
+dropped rather than shipped weak: an "even die" (`[1,2,1,2,1,2]`) measures 42%
+and a die biased toward the middle faces 43%, because in this rule set the
+even faces and the middle faces are simply where points aren't.
+
+### Directions for later dice
+
+Recorded so the shape of the design space is not rediscovered each time. A die
+can reach the game through exactly three levers, and the current roster uses
+only the first two:
+
+1. **What comes up** — the weights. Cheap, fully supported, and nearly
+   exhausted: it can only nudge the throw-or-bank decision, never change it.
+2. **What a face means** — `wild` is the only inhabitant so far. Still pure and
+   local to one throw, and the richest unexplored ground.
+3. **How the die behaves over time** — anything that changes between throws, or
+   that hands the player a decision. Nothing here exists yet.
+
+**Lever 1, unclaimed slots.** A polarised die (heavy on both `1` and `6`);
+per-face bets other than `3` and `6`. Filler for a collection, not new play.
+
+**Lever 2 — wildcard tiers.** The Devil's Head is currently binary. Between
+"ordinary face" and "full wildcard" there is room for a whole family at
+different prices: a wildcard that *can* close a single (stronger); one that may
+only take a value already present in the throw, so it extends a combination but
+never starts one (weaker); one that works only inside straights. Also: more than
+one wild face on a die (`DieSpec.wild` would become a set — a small change),
+and the same wildcard on each of the six slots as six differently-priced dice,
+since what a wildcard costs is exactly what it paints over.
+
+**Lever 2 — faces that aren't pips.** A **blank** face that never scores and
+can never be kept: pure downside, and therefore the currency that pays for
+something strong elsewhere. A **multiplier** face, worth nothing alone but
+doubling the keep it joins — the first die that would change how a keep is
+*assembled* rather than how often it appears, since it rewards keeping dice
+together instead of slicing them. A **flat-value** face worth a fixed 25,
+outside every combination, as farkle insurance.
+
+**Lever 3 — dice that change between throws.** A **cooling** die whose weights
+decay with each throw within a turn (its first throw is excellent, so it argues
+for banking early) and a **warming** one that improves (it argues for pushing,
+and for farkling more). These are the first dice that would disagree with a
+bot's strategy rather than merely improve its odds. Also: a die that only wakes
+up after hot dice; a **pity counter** that gains weight on the `1` face with
+every farkle and resets when it pays, smoothing variance without changing
+average strength; a die whose weights depend on the score gap, as a comeback
+mechanic carried by an item rather than by a rule.
+
+**Lever 3 — dice that grant an action.** A die that may be **re-thrown** once
+per turn after seeing the throw — statistics turned into a decision. A die that
+converts one farkle per match into "keep one die and carry on". A **wager** die
+that scores at 1.5× but puts banked points at risk on a farkle, the only idea
+here whose risk outlives the turn. A die that takes points from an opponent —
+Farkle has no player interaction at all, and this is the only way to add it,
+which also makes it the furthest from the current game.
+
+Cost rises sharply with the lever. Levers 1 and 2 are `DieSpec` and the
+partitioner. Lever 3 breaks the assumption that a die *is* six numbers: it
+needs per-die state inside `GameState`, new events, new actions for the
+action-granting cases, and bots that know what to do with all of it. Nothing in
+levers 1 and 2 requires touching the `GameHost` seam; everything in lever 3
+does.
 
 ## 6. Bots
 

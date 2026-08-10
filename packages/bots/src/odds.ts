@@ -31,12 +31,14 @@ const farkleCache = new Map<string, number>();
  * since a real game only ever throws a handful of distinct loadouts.
  *
  * A Devil's Head can never complete a `Single` on its own (docs/RULES.md
- * §11), so replacing a die's `1` face with one is never a net improvement —
- * every other face behaves identically, and the wild only scores in
- * situations a plain `1` already would have. A loadout built entirely from
- * `DEVIL_DIE` therefore farkles at least as often as the same count of
- * `BALANCED_DIE`, never less; see the `farkleProbability` tests for the
- * proof by construction.
+ * §4a), so a die that paints one over its `1` gives up the 100-point single
+ * and gets back a face that only pays inside a bigger combination. Whether
+ * that trade is a net safety loss depends on the die's weights, not on the
+ * wildcard alone: `DEVIL_DIE` farkles at least as often as `BALANCED_DIE` in
+ * any company, while `IMP_DIE` — whose wildcard sits on the already-worthless
+ * `6` — is *safer* than a balanced die once enough other wildcards are around
+ * to gang up into a triple. Both are asserted over the whole roster in the
+ * `farkleProbability` tests rather than assumed here.
  */
 export function farkleProbability(dice: readonly DieSpec[]): number {
   if (dice.length === 0) {

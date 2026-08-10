@@ -26,25 +26,90 @@ export const BALANCED_DIE: DieSpec = {
   weights: [1, 1, 1, 1, 1, 1],
 };
 
+/**
+ * A `1` comes up a little under a quarter of the time (3/13) instead of 1/6.
+ * Every point of that bias is spent on the most valuable single in the game,
+ * which makes this the roster's plainest upgrade: fewer farkles *and* more
+ * points, with no face given up in exchange.
+ */
 export const WEIGHTED_DIE: DieSpec = {
   id: 'weighted',
   name: 'Weighted die',
-  weights: [10, 1, 1, 1, 1, 1],
+  weights: [3, 2, 2, 2, 2, 2],
 };
 
 /**
- * Otherwise balanced, but its `1` face is painted as a Devil's Head — see
- * docs/RULES.md §11. A Devil's Head is *not* simply a free `1`: it can never
+ * Its `1` face is painted as a Devil's Head — see docs/RULES.md §4a — and is
+ * rare, 1 throw in 16. A Devil's Head is *not* simply a free `1`: it can never
  * complete a `Single` by itself (`scoreKeep` in scoring.ts refuses to resolve
  * a wildcard that way), only a bigger combination — three or more of a kind,
  * or a straight. A lone Devil's Head, or one thrown alongside dice it can't
  * join into such a combination, scores nothing at all.
+ *
+ * So the wildcard is not this die's only departure from ordinary: painting the
+ * `1` over *removes* the 100-point single entirely, and the low weight is what
+ * keeps a face this strong inside the band. The result farkles more often than
+ * an ordinary die on a full throw (6.3% against 3.1%) while scoring more when
+ * it does connect — the roster's clearest high-variance die.
  */
 export const DEVIL_DIE: DieSpec = {
   id: 'devil',
   name: "Devil's head die",
-  weights: [1, 1, 1, 1, 1, 1],
+  weights: [1, 3, 3, 3, 3, 3],
   wild: 1,
+};
+
+/**
+ * A lesser devil: the wildcard sits on the `6`, a face that never scores on
+ * its own, so carrying it costs nothing directly — the price is charged in
+ * weights instead. Seven throws in nine land on a dead `2`, `3` or `4`, and
+ * each scoring single turns up twice in 27. Wildcard glue on a die that is
+ * otherwise mostly rubbish: alone it farkles more often than an ordinary die,
+ * but a throw holding several of them starts completing three-of-a-kinds out
+ * of the wildcards themselves.
+ */
+export const IMP_DIE: DieSpec = {
+  id: 'imp',
+  name: "Imp's die",
+  weights: [2, 7, 7, 7, 2, 2],
+  wild: 6,
+};
+
+/**
+ * A heavy `5`: 2 throws in 7 instead of 1 in 6. The 50-point single is the
+ * cheapest thing on the scoring table, so this buys safety rather than
+ * points — it is the roster's best die to still have in play when only two or
+ * three are left, and its worst at converting a full throw into a big turn.
+ */
+export const TRADER_DIE: DieSpec = {
+  id: 'trader',
+  name: "Trader's die",
+  weights: [1, 1, 1, 1, 2, 1],
+};
+
+/**
+ * A heavy `3`, at 4 throws in 9. A lone `3` is worth nothing, so the whole die
+ * is a bet on three-of-a-kind or better, and a cheap one — three `3`s pay 300.
+ * That cheapness is what lets the bias run so high, and it makes this the one
+ * die in the roster that is worth more as a set than as a single: six of them
+ * beat six ordinary dice, while one among five ordinary dice is a downgrade.
+ */
+export const TRINITY_DIE: DieSpec = {
+  id: 'trinity',
+  name: 'Holy Trinity die',
+  weights: [1, 1, 4, 1, 1, 1],
+};
+
+/**
+ * The `2` face is worn so smooth the die never settles on it; the remaining
+ * five faces are equally likely. Nothing is added — a dead face is simply
+ * taken away, which is enough to make it the roster's safest die on a full
+ * throw (0.6% farkles against 3.1%).
+ */
+export const WORN_DIE: DieSpec = {
+  id: 'worn',
+  name: 'Worn die',
+  weights: [1, 0, 1, 1, 1, 1],
 };
 
 /**
@@ -74,8 +139,12 @@ export const DICE: Readonly<Record<string, DieSpec>> = {
   [BALANCED_DIE.id]: BALANCED_DIE,
   [WEIGHTED_DIE.id]: WEIGHTED_DIE,
   [DEVIL_DIE.id]: DEVIL_DIE,
+  [IMP_DIE.id]: IMP_DIE,
   [ODD_DIE.id]: ODD_DIE,
   [CHEAT_DIE.id]: CHEAT_DIE,
+  [TRADER_DIE.id]: TRADER_DIE,
+  [TRINITY_DIE.id]: TRINITY_DIE,
+  [WORN_DIE.id]: WORN_DIE,
 };
 
 export function assertValidDie(die: DieSpec): void {

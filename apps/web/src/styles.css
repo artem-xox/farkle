@@ -569,16 +569,31 @@ button:disabled {
 
 /*
  * Per-die-type identity colours — matte and muted, so a mixed loadout reads
- * at a glance. Ordinary and weighted dice are deliberately absent: they keep
- * the plain parchment-and-black look below as the "nothing special" baseline.
- * Placed before the state classes (staged/kept/dead/wild) so a die's current
- * state always wins over its resting identity colour.
+ * at a glance. Only the ordinary die is absent: it keeps the plain
+ * parchment-and-black look below as the "nothing special" baseline, which is
+ * exactly why no other die may share it. Placed before the state classes
+ * (staged/kept/dead/wild) so a die's current state always wins over its
+ * resting identity colour.
  */
+.die--id-weighted {
+  background: linear-gradient(160deg, #5b6068, #2b2f35);
+  box-shadow:
+    0 3px 0 rgb(0 0 0 / 0.3),
+    0 0 0 1px rgb(160 168 178 / 0.32);
+}
+
 .die--id-devil {
   background: linear-gradient(160deg, #6e453e, #40211c);
   box-shadow:
     0 3px 0 rgb(0 0 0 / 0.3),
     0 0 0 1px rgb(184 80 63 / 0.4);
+}
+
+.die--id-imp {
+  background: linear-gradient(160deg, #55703f, #2a3a1e);
+  box-shadow:
+    0 3px 0 rgb(0 0 0 / 0.3),
+    0 0 0 1px rgb(150 190 110 / 0.32);
 }
 
 .die--id-odd {
@@ -595,9 +610,35 @@ button:disabled {
     0 0 0 1px rgb(180 150 200 / 0.3);
 }
 
+.die--id-trader {
+  background: linear-gradient(160deg, #7d6435, #45351a);
+  box-shadow:
+    0 3px 0 rgb(0 0 0 / 0.3),
+    0 0 0 1px rgb(214 176 96 / 0.35);
+}
+
+.die--id-trinity {
+  background: linear-gradient(160deg, #4c5586, #242a4e);
+  box-shadow:
+    0 3px 0 rgb(0 0 0 / 0.3),
+    0 0 0 1px rgb(140 152 214 / 0.32);
+}
+
+.die--id-worn {
+  background: linear-gradient(160deg, #9a9081, #665e51);
+  box-shadow:
+    0 3px 0 rgb(0 0 0 / 0.3),
+    0 0 0 1px rgb(214 205 186 / 0.35);
+}
+
+.die--id-weighted .die__pip--on,
 .die--id-devil .die__pip--on,
+.die--id-imp .die__pip--on,
 .die--id-odd .die__pip--on,
-.die--id-cheat .die__pip--on {
+.die--id-cheat .die__pip--on,
+.die--id-trader .die__pip--on,
+.die--id-trinity .die__pip--on,
+.die--id-worn .die__pip--on {
   background: var(--parchment);
   box-shadow: inset 0 1px 1px rgb(0 0 0 / 0.2);
 }

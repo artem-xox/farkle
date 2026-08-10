@@ -15,7 +15,10 @@
     "typecheck": "tsc -p tsconfig.json && npm run typecheck -w @farkle/web",
     "build": "npm run build -w @farkle/engine && npm run build -w @farkle/bots && npm run build -w @farkle/cli && npm run build -w @farkle/web",
     "play": "npm run build --silent && node apps/cli/dist/main.js",
-    "dev:web": "npm run dev -w @farkle/web"
+    "dev:web": "npm run dev -w @farkle/web",
+    "dice:roster": "npm run build --silent && node scripts/dice-balance/roster-report.mjs",
+    "dice:sweep": "npm run build --silent && node scripts/dice-balance/sweep-candidates.mjs",
+    "dice:audit": "npm run build --silent && node scripts/dice-balance/wildcard-audit.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",

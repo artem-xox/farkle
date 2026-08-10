@@ -265,12 +265,16 @@ works; the bill is $0 until a domain is registered.
   `Pip | Wild`; `scoreKeep` resolves a wildcard to whichever pip maximises the
   keep, barred from completing a `Single` on its own (RULES.md §4a).
   Exhaustively tested against an independent brute-force oracle. #13, #14.
-- ~~**More dice specs.**~~ Done, `DEVIL_DIE` / `ODD_DIE` / `CHEAT_DIE` ship
-  (DESIGN.md §5) — **but not yet "balanced by simulation rather than by
-  feel."** `odd` and `cheat`'s weights are reasoned, not measured; `devil`'s
-  farkle-risk properties are proven analytically (`packages/bots/src/odds.ts`
-  tests) rather than run through `farkle sim`. That command does not accept a
-  loadout argument yet — see "What's left" below.
+- ~~**More dice specs, balanced by simulation rather than by feel.**~~ Done —
+  nine dice ship (DESIGN.md §5), and their weights are now measured rather
+  than reasoned. The metric is a die's win rate as a full loadout against six
+  ordinary dice with the same bot on both sides, and the band is 57–63%; the
+  first pass at `weighted` (`[10,1,1,1,1,1]`) measured 97.7% and `devil` 80.6%,
+  so both were retuned. `imp` / `trader` / `trinity` / `worn` were added to
+  fill out the shape space the band leaves open.
+- ~~**`farkle sim` takes a loadout.**~~ Done — `--loadout-a` / `--loadout-b`
+  accept one die id (all six slots) or six comma-separated ones, which is how
+  the numbers in DESIGN.md §5 are reproduced.
 - ~~**`legalKeeps` dedupes by die identity, not just face value.**~~ Done —
   two keeps worth the same points can still be different choices if they
   leave different dice behind; `KeepOption.diceLeftSpecs` carries this
@@ -292,10 +296,12 @@ works; the bill is $0 until a domain is registered.
   *own* a persistent collection to choose from — that's M7 (opponents with
   names, loadouts and personalities as identity, not a per-match default).
 
-**What's left:** `farkle sim` needs a way to specify a loadout (currently
-personality-vs-personality only, always six balanced dice each) so `odd` and
-`cheat` can get the same simulation pass the M2 presets did, and the measured
-numbers can replace the reasoned-from-the-name description in DESIGN.md §5.
+**What's left:** nothing blocking. The calibration pass only measured dice
+against the `balanced` preset — a die that is a sidegrade for a middling bot
+could still be lopsided for a `cautious` or `reckless` one, and re-running the
+band across personalities is cheap now that the flag exists. Ideas for dice
+that need more than weights and a wild face are recorded in DESIGN.md §5
+("Directions for later dice") rather than scheduled here.
 
 ## M6 — Optimal play and hints
 
