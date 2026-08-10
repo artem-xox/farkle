@@ -97,6 +97,29 @@ easy to miss among the other quick actions.
   pulled for now rather than left in half-tuned. Worth revisiting once Risk
   and Power have settled, since it would want the same underlying numbers.
 - No preset loadouts (option 3) — noted above as the natural next step.
+  **Built since**, see below.
+
+## Follow-up: option 3 shipped
+
+Presets landed on the setup screen (`setup/LoadoutChoice.tsx`,
+`setup/loadoutPresets.ts`) as this note predicted they would compose: three
+named loadouts plus a "Custom" card that opens *this* screen unchanged. The
+picker is seeded with whatever preset was showing, so Custom continues from the
+player's current dice rather than resetting to ordinary.
+
+Two things worth carrying forward from building it:
+
+- **All three presets are pure**, because research §6 measured every hand-built
+  mix as worse than the pure loadouts, with `kitchen-sink` the weakest build
+  tested. A mixed preset would have been offering something we have measured to
+  be bad.
+- **`farkle6` alone is a misleading number to show a player.** The first cut of
+  the cards showed only it, which made `devil` look ten times deadlier than
+  `worn` (6.3% vs 0.6%). Measured per *turn*, the ranking inverts: `devil` loses
+  12% of turns, `worn` 19%, ordinary 29% — the wildcard rescues throws with one
+  or two dice left, which is where turns actually die. Both numbers ship on each
+  card, since either alone tells a different lie. Same caveat as the Risk bar
+  above: this is a bar/number whose label has to be read carefully.
 - No live/analytical stat computation in the browser — the exact enumeration
   (`analyticalMetrics` in `scripts/dice-balance/lib.mjs`) does up to 6⁶
   throws per die; fine offline, not worth doing on every render for nine

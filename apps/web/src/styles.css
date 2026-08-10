@@ -235,6 +235,116 @@ button:disabled {
   max-width: 40rem;
 }
 
+/* ---------- loadout choice (setup screen) ---------- */
+
+.loadout-choice {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.loadout-choice__card {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 0.6rem;
+  border: 1px solid var(--parchment-dim);
+  background: transparent;
+  color: var(--parchment);
+  text-align: left;
+}
+
+.loadout-choice__card--active {
+  border-color: var(--gold-bright);
+  background: rgb(0 0 0 / 0.2);
+  box-shadow: inset 0 0 0 1px var(--gold-bright);
+}
+
+/*
+ * Six dice at a size that reads as "what this loadout is made of" rather than
+ * as six things to tap. They are decorative here -- the card is the control.
+ */
+.loadout-choice__strip {
+  display: flex;
+  gap: 0.22rem;
+}
+
+/* Same approach as `.loadout-slot--readonly .die` — the die sizes itself in rem, so a smaller one is an explicit override rather than an inherited scale. */
+.loadout-choice__strip .die {
+  width: clamp(1.4rem, 5vw, 1.75rem);
+  height: clamp(1.4rem, 5vw, 1.75rem);
+  padding: 0.14rem;
+  border-radius: 0.3rem;
+  box-shadow: 0 2px 0 rgb(0 0 0 / 0.28);
+}
+
+.loadout-choice__strip--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(1.4rem, 5vw, 1.75rem);
+  height: clamp(1.4rem, 5vw, 1.75rem);
+  border: 1px dashed var(--parchment-dim);
+  border-radius: 0.3rem;
+  color: var(--parchment-dim);
+  font-size: 0.9rem;
+}
+
+.loadout-choice__name {
+  font-weight: 600;
+  color: var(--gold-bright);
+}
+
+.loadout-choice__card--active .loadout-choice__name {
+  color: var(--gold-bright);
+}
+
+.loadout-choice__blurb {
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: var(--parchment-dim);
+}
+
+.loadout-choice__stat {
+  font-size: 0.72rem;
+  color: var(--parchment-dim);
+  opacity: 0.8;
+}
+
+/* ---------- bot mirror toggle ---------- */
+
+.setup__mirror {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 0.5rem;
+  background: rgb(0 0 0 / 0.18);
+  cursor: pointer;
+}
+
+.setup__mirror input {
+  margin-top: 0.15rem;
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: var(--gold);
+  flex: none;
+}
+
+.setup__mirror-label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--parchment);
+}
+
+.setup__mirror-hint {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--parchment-dim);
+}
+
 .setup__skip {
   margin-top: 0.35rem;
   padding: 0.4rem;

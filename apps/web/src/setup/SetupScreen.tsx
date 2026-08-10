@@ -6,6 +6,13 @@ import { BALANCED_DIE, DICE_PER_TURN, type DieSpec, type PlayerConfig } from '@f
 import { capitalize } from '../presets';
 import { loadSetupPrefs, NAME_MAX_LENGTH, saveSetupPrefs } from '../storage';
 import { HeroDice } from './HeroDice';
+import { LoadoutChoice } from './LoadoutChoice';
+import {
+  CUSTOM_PRESET_ID,
+  DEFAULT_PRESET_ID,
+  presetById,
+  presetLoadout,
+} from './loadoutPresets';
 import { LoadoutStep } from './LoadoutStep';
 
 export interface NewMatchOptions {
@@ -62,31 +69,59 @@ export function SetupScreen({ onStart, onShowRules }: SetupScreenProps) {
   const [friendName, setFriendName] = useState(prefs.friendName ?? '');
   const [preset, setPreset] = useState<PresetName>(prefs.preset ?? 'balanced');
   const [target, setTarget] = useState(prefs.target ?? DEFAULT_TARGET_CHOICE);
+  // A stored id is only trusted as far as it still resolves: a preset that gets
+  // renamed or dropped must not leave the row with nothing selected and the
+  // player silently on ordinary dice.
+  const [loadoutPreset, setLoadoutPreset] = useState(() => {
+    const stored = prefs.loadoutPreset;
+    if (stored === CUSTOM_PRESET_ID || (stored !== undefined && presetById(stored) !== undefined)) {
+      return stored;
+    }
+    return DEFAULT_PRESET_ID;
+  });
+  // Default on, so picking a loadout is a choice about how the match feels
+  // rather than a difficulty dial handed out by accident: six `worn` or six
+  // `devil` beat six ordinary dice about 61% of the time (DESIGN.md §5), and a
+  // player who wants that edge should be turning it on deliberately.
+  const [botMirrors, setBotMirrors] = useState(prefs.botMirrors ?? true);
   const [yourLoadout, setYourLoadout] = useState<DieSpec[]>(defaultLoadout());
   const [opponentLoadout, setOpponentLoadout] = useState<DieSpec[]>(defaultLoadout());
 
   // Saved on change rather than on start: a player who types their name and
   // then reloads without starting should not have to type it again either.
   useEffect(() => {
-    saveSetupPrefs({ yourName, friendName, mode, preset, target });
-  }, [yourName, friendName, mode, preset, target]);
+    saveSetupPrefs({ yourName, friendName, mode, preset, target, loadoutPreset, botMirrors });
+  }, [yourName, friendName, mode, preset, target, loadoutPreset, botMirrors]);
 
-  function handleContinue(event: FormEvent): void {
+  /**
+   * The single source of truth for what actually goes to the table. A named
+   * preset fills all six slots with its die; "Custom" is the only case that
+   * reads the picker's own state.
+   */
+  const chosenPreset = loadoutPreset === CUSTOM_PRESET_ID ? undefined : presetById(loadoutPreset);
+  const yoursEffective = chosenPreset === undefined ? yourLoadout : presetLoadout(chosenPreset);
+  const botLoadout = botMirrors ? yoursEffective : defaultLoadout();
+  const opponentEffective = mode === 'friend' ? opponentLoadout : botLoadout;
+
+  /** Nothing to mirror when both sides would play ordinary dice anyway, so the toggle stays off screen. */
+  const mirrorMatters = mode === 'bot' && !isOrdinary(yoursEffective);
+
+  const friend = friendName.trim() || 'Friend';
+
+  function handleSubmit(event: FormEvent): void {
     event.preventDefault();
-    setStep('loadout');
+    handleStart();
   }
 
-  function handleStart(loadouts?: { yours: readonly DieSpec[]; opponent: readonly DieSpec[] }): void {
+  function handleStart(): void {
     const you = yourName.trim() || 'You';
     const seed = randomSeed();
-    const yours = loadouts?.yours ?? yourLoadout;
-    const opponent = loadouts?.opponent ?? opponentLoadout;
 
     if (mode === 'bot') {
       onStart({
         players: [
-          { name: you, loadout: yours },
-          { name: capitalize(preset), loadout: opponent },
+          { name: you, loadout: yoursEffective },
+          { name: capitalize(preset), loadout: botLoadout },
         ],
         target,
         seed,
@@ -94,11 +129,10 @@ export function SetupScreen({ onStart, onShowRules }: SetupScreenProps) {
         botPreset: preset,
       });
     } else {
-      const friend = friendName.trim() || 'Friend';
       onStart({
         players: [
-          { name: you, loadout: yours },
-          { name: friend, loadout: opponent },
+          { name: you, loadout: yoursEffective },
+          { name: friend, loadout: opponentLoadout },
         ],
         target,
         seed,
@@ -109,26 +143,30 @@ export function SetupScreen({ onStart, onShowRules }: SetupScreenProps) {
   }
 
   /**
-   * Skips the loadout step for anyone who doesn't care to customize. It starts
-   * with whatever is currently in the slots rather than forcing them back to
-   * ordinary: on a first pass those are the same thing, but after "Choose dice
-   * → Back" they are not, and resetting there discarded the player's picks
-   * without saying so. The label below changes to match.
+   * "Custom" opens the picker rather than merely selecting a fourth option —
+   * the card *is* the way in, so choosing it and then hunting for a second
+   * button would be a wasted tap. The picker is seeded with whatever preset was
+   * showing, so Custom starts from where the player already was instead of
+   * resetting them to ordinary dice.
    */
-  function handleQuickStart(): void {
-    handleStart();
+  function handleChooseCustom(): void {
+    setYourLoadout([...yoursEffective]);
+    setLoadoutPreset(CUSTOM_PRESET_ID);
+    setStep('loadout');
   }
-
-  const bothOrdinary = isOrdinary(yourLoadout) && isOrdinary(opponentLoadout);
-  const friend = friendName.trim() || 'Friend';
 
   if (step === 'loadout') {
     return (
       <LoadoutStep
         yourLoadout={yourLoadout}
-        opponentLoadout={opponentLoadout}
+        opponentLoadout={opponentEffective}
         opponentLabel={mode === 'bot' ? `${capitalize(preset)}’s dice` : `${friend}’s dice`}
         opponentEditable={mode === 'friend'}
+        opponentNote={
+          botMirrors
+            ? 'Mirroring your dice — turn that off on the previous screen to leave this opponent on ordinary dice.'
+            : 'Bots don’t own a collection yet, so this opponent plays ordinary dice.'
+        }
         onChangeYours={setYourLoadout}
         onChangeOpponent={setOpponentLoadout}
         onBack={() => setStep('basics')}
@@ -152,7 +190,7 @@ export function SetupScreen({ onStart, onShowRules }: SetupScreenProps) {
         </button>
       </p>
 
-      <form className="setup__form" onSubmit={handleContinue}>
+      <form className="setup__form" onSubmit={handleSubmit}>
         <label className="field">
           <span className="field__label">Your name</span>
           <input
@@ -254,11 +292,33 @@ export function SetupScreen({ onStart, onShowRules }: SetupScreenProps) {
           </div>
         </div>
 
+        <LoadoutChoice
+          selected={loadoutPreset}
+          customLoadout={yourLoadout}
+          onSelectPreset={setLoadoutPreset}
+          onChooseCustom={handleChooseCustom}
+        />
+
+        {mirrorMatters && (
+          <label className="setup__mirror">
+            <input
+              type="checkbox"
+              checked={botMirrors}
+              onChange={(event) => setBotMirrors(event.target.checked)}
+            />
+            <span>
+              <span className="setup__mirror-label">{capitalize(preset)} plays the same dice</span>
+              <span className="setup__mirror-hint">
+                {botMirrors
+                  ? 'An even match — both sides throw the same six.'
+                  : 'The bot stays on ordinary dice, so the advantage is yours.'}
+              </span>
+            </span>
+          </label>
+        )}
+
         <button type="submit" className="setup__start">
-          Choose dice
-        </button>
-        <button type="button" className="setup__skip" onClick={handleQuickStart}>
-          {bothOrdinary ? 'Skip — play with ordinary dice' : 'Skip — start with the dice you picked'}
+          Start match
         </button>
       </form>
     </div>

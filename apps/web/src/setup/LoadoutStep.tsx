@@ -9,6 +9,8 @@ export interface LoadoutStepProps {
   readonly opponentLoadout: readonly DieSpec[];
   readonly opponentLabel: string;
   readonly opponentEditable: boolean;
+  /** Why the opponent's dice are what they are — the answer changed once the bot could mirror the player's loadout. */
+  readonly opponentNote: string;
   readonly onChangeYours: (loadout: DieSpec[]) => void;
   readonly onChangeOpponent: (loadout: DieSpec[]) => void;
   readonly onBack: () => void;
@@ -26,6 +28,7 @@ export function LoadoutStep({
   opponentLoadout,
   opponentLabel,
   opponentEditable,
+  opponentNote,
   onChangeYours,
   onChangeOpponent,
   onBack,
@@ -51,7 +54,7 @@ export function LoadoutStep({
                 </span>
               ))}
             </div>
-            <p className="loadout__note">Bot loadouts aren&rsquo;t customizable yet — this opponent always plays ordinary dice.</p>
+            <p className="loadout__note">{opponentNote}</p>
           </div>
         )}
 

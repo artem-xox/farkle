@@ -343,8 +343,46 @@ them.
 
 Deliberately not done here, and still open: a match history and a win/loss
 record on this screen (the cheapest reason to come back, and the natural
-front end for M7), and folding the loadout into the first screen rather than
-keeping it a second step.
+front end for M7).
+
+### M5.2 — Loadout presets on the setup screen
+
+The other half of what M5.1 left open, and option 3 from
+[the loadout redesign note](notes/loadout-screen-redesign.md) — deferred there
+as "the natural next step", built here.
+
+The setup screen offered "Choose dice" as its primary button and "Skip — play
+with ordinary dice" as an underlined afterthought: the fast path came second,
+and neither told a player what the dice were *for*. Now a "Your dice" row names
+three measured loadouts, with a fourth "Custom" card that opens the existing
+picker. One primary action, "Start match".
+
+- **The presets are pure — `balanced`, `worn`, `devil` — and that is a finding,
+  not a shortcut.** The mixed-loadout research §6 measured every hand-built mix
+  as worse than the pure loadouts, `kitchen-sink` (one of each) worst of all.
+  `worn` and `devil` sit within half a point of each other on win rate (61.8%
+  vs 61.2%) at opposite ends of the roster on opening-throw risk, which is the
+  balance band doing what it exists for: same strength, opposite texture.
+- **Each card shows two numbers, because either alone misleads.** The first cut
+  showed only `farkle6`, making `devil` look ten times deadlier than `worn`
+  (6.3% vs 0.6%). Per *turn* the ranking inverts — `devil` loses 12% of turns,
+  `worn` 19%, ordinary 29% — because the wildcard rescues throws with one or two
+  dice left, which is where turns actually die. The turn numbers are from
+  `farkle sim --a balanced --b balanced --loadout-a <die> --loadout-b <die>
+  -n 20000 --seed 7 --target 3000`.
+- **The bot can mirror the player's loadout, and does by default.** Six `worn`
+  or six `devil` beat six ordinary dice about 61% of the time, so without this
+  every preset would have been a difficulty cut handed out by accident.
+  Mirrored, the same sim reads 50.5% / 50.8% — an even match, which is what the
+  checkbox claims. Turning it off is how a player asks for the edge, and the
+  hint under the checkbox says so.
+- `LoadoutStep` is untouched apart from taking its opponent note as a prop:
+  the sticky rack and tier catalog from #18 are the Custom path, not something
+  this replaces.
+
+Still open: bots that own a collection rather than borrowing the player's
+(M7), and preset loadouts built from two Gold-tier dice, which the research
+lists as untested.
 
 ## M6 — Optimal play and hints
 
