@@ -1,40 +1,71 @@
 import { describe, expect, it } from 'vitest';
 
-import { scoreKeep, hasScoringDice, legalKeeps } from '../src/scoring.js';
+import { bestKeep, scoreKeep, hasScoringDice, legalKeeps } from '../src/scoring.js';
 import { WILD, type Face, type Pip } from '../src/types.js';
 import { allMultisets, referenceScoreWithWilds } from './helpers/reference.js';
 
 const dice = (text: string): Face[] =>
   [...text].map((char) => (char === 'W' ? WILD : (Number(char) as Pip)));
 
-describe('a lone Devil\'s Head', () => {
-  it('scores as a 1 on its own', () => {
-    expect(scoreKeep([WILD])?.points).toBe(100);
-    expect(scoreKeep([WILD])?.resolved).toEqual([1]);
+describe("a Devil's Head with nothing to combine with", () => {
+  it('cannot score on its own', () => {
+    expect(scoreKeep([WILD])).toBeNull();
   });
 
-  it('never lets a throw farkle', () => {
-    expect(hasScoringDice(dice('W'))).toBe(true);
-    expect(hasScoringDice(dice('WWWWWW'))).toBe(true);
-    // A throw that would otherwise farkle outright, plus one wild.
+  it('does not rescue a throw when no die can join it into a bigger combination', () => {
+    expect(hasScoringDice(dice('W'))).toBe(false);
+    // 2, 3, 4 plus a wild: no 1, no 5, and the wild can add at most one more
+    // die to any single face (never reaching a triple) or fill at most one
+    // gap in a straight (both the low and high straight are missing two).
+    expect(hasScoringDice(dice('W234'))).toBe(false);
+    expect(scoreKeep(dice('W234'))).toBeNull();
+  });
+
+  it('two wildcards alone still cannot score — a pair is not a combination', () => {
+    expect(scoreKeep(dice('WW'))).toBeNull();
+    expect(hasScoringDice(dice('WW'))).toBe(false);
+  });
+});
+
+describe('a Devil\'s Head that does have something to combine with', () => {
+  it('rescues a throw that would otherwise farkle by completing a triple', () => {
+    // 2, 2, 3, 3, 4 alone has no 1, no 5, and no triple — but the wild can
+    // join either pair to make one, and joining the 3s (300) beats joining
+    // the 2s (200). The full six dice still can't all be kept together
+    // (nothing covers the leftover pair + spare 4), so this checks the
+    // throw's best *available* keep, not a full-cover score.
     expect(hasScoringDice(dice('22334W'))).toBe(true);
+    expect(bestKeep(dice('22334W'))?.points).toBe(300);
+  });
+
+  it('wildcards can form a combination entirely among themselves', () => {
+    // Three wildcards, no real dice at all: they can still form a triple.
+    expect(hasScoringDice(dice('WWW'))).toBe(true);
+    expect(scoreKeep(dice('WWW'))?.points).toBe(1000);
+    // Six wildcards can be read as six 1s.
+    expect(scoreKeep(dice('WWWWWW'))?.points).toBe(8000);
   });
 });
 
 describe('golden vectors for wildcard resolution', () => {
   const cases: [string, number][] = [
-    ['WW', 200], // two ones beats a 1+5 (150) or two fives (100)
-    ['WWW', 1000], // three ones, not three fives (300)
-    ['66W', 600], // completes triple sixes, not a lone six (illegal) + single
+    ['WWW', 1000], // three wildcards as three 1s, not three 5s (300)
+    ['66W', 600], // completes triple sixes
     ['6666W', 2400], // 2400 = 600 * 2^2, five-of-a-kind sixes
     ['1234W', 500], // straight low over four loose singles
     ['2345W', 750], // straight high over a straight low reading (500)
     ['12345W', 1500], // full straight
-    ['22W', 200], // resolves to a third 2, not a 1/5 single
+    ['22W', 200], // resolves to a third 2, not a lone single (illegal anyway)
   ];
 
   it.each(cases)('%s scores %i at best', (text, expected) => {
     expect(scoreKeep(dice(text))?.points).toBe(expected);
+  });
+
+  const illegal = ['W', 'WW', 'W234', '2W'];
+
+  it.each(illegal)('%s is not a legal keep', (text) => {
+    expect(scoreKeep(dice(text))).toBeNull();
   });
 
   it('resolves 22W to a 2, not a loose single', () => {
@@ -48,6 +79,15 @@ describe('golden vectors for wildcard resolution', () => {
     const scored = scoreKeep(dice('6666W'));
     expect(scored?.combos).toHaveLength(1);
     expect(scored?.combos[0]).toMatchObject({ kind: 'OfAKind', points: 2400, wilds: 1 });
+  });
+
+  it('never attributes a wildcard to a Single combo', () => {
+    // a 1 (real) + three 5s (two real, one wild) — the Single must be the
+    // real 1, never the wild, even though both would read the same here.
+    const scored = scoreKeep(dice('155W'));
+    expect(scored?.points).toBe(600); // 100 (single 1) + 500 (triple 5s)
+    const single = scored!.combos.find((combo) => combo.kind === 'Single');
+    expect(single).toMatchObject({ wilds: 0 });
   });
 
   it('keeps resolved aligned with the original, non-contiguous input order', () => {
@@ -68,26 +108,13 @@ describe('legalKeeps resolves wildcards inside each option', () => {
     expect(options[0]?.points).toBe(750);
     expect(options[0]?.resolved).toContain(6);
   });
-});
 
-describe('replacing a face with a wildcard never scores less', () => {
-  for (let size = 1; size <= 6; size++) {
-    it(`holds over every multiset of ${size} dice`, () => {
-      for (const faces of allMultisets(size)) {
-        const before = scoreKeep(faces);
-        if (before === null) {
-          continue;
-        }
-        for (let position = 0; position < faces.length; position++) {
-          const wildcarded: Face[] = [...faces];
-          wildcarded[position] = WILD;
-          const after = scoreKeep(wildcarded);
-          expect(after, `keep ${faces.join('')}, wildcard at ${position}`).not.toBeNull();
-          expect(after!.points).toBeGreaterThanOrEqual(before.points);
-        }
-      }
-    });
-  }
+  it('never offers a keep of a lone wildcard', () => {
+    const options = legalKeeps(dice('W234'));
+    expect(options.every((option) => !(option.faces.length === 1 && option.faces[0] === WILD))).toBe(
+      true,
+    );
+  });
 });
 
 describe('against an independent brute-force oracle', () => {

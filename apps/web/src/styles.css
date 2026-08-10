@@ -173,81 +173,89 @@ button:disabled {
   font-weight: 600;
 }
 
+.setup--wide {
+  max-width: 40rem;
+}
+
 .loadout {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.6rem;
 }
 
-.loadout__slots {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
-  gap: 0.5rem;
-}
-
-.loadout-slot {
+.loadout__slots,
+.loadout__palette {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
   gap: 0.5rem;
-  padding: 0.5rem 0.6rem;
-  border-radius: 0.5rem;
+}
+
+.loadout-slot,
+.loadout-palette__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  width: 4.6rem;
+  padding: 0.5rem 0.3rem;
+  border-radius: 0.6rem;
+  border: 2px solid transparent;
   background: rgb(0 0 0 / 0.2);
+  color: var(--parchment);
 }
 
-.loadout-slot__select {
-  flex: 1;
-  min-width: 0;
-  padding: 0.35rem 0.4rem;
-  border-radius: 0.4rem;
-  border: 1px solid var(--parchment-dim);
-  background: var(--parchment);
-  color: var(--ink);
-  font-size: 0.75rem;
+.loadout-slot .die,
+.loadout-palette__item .die {
+  width: 2.3rem;
+  height: 2.3rem;
+  padding: 0.22rem;
 }
 
-.loadout-slot__select:disabled {
-  opacity: 0.75;
+.loadout-slot__name,
+.loadout-palette__name {
+  font-size: 0.62rem;
+  line-height: 1.15;
+  text-align: center;
+  color: var(--parchment-dim);
 }
 
-/*
- * Small colour keys matching each die's identity styling on the board
- * (styles.css "dice" section). Ordinary and weighted dice get the neutral
- * parchment dot — they have no special colour on the board either.
- */
-.loadout-slot__swatch {
-  flex-shrink: 0;
-  width: 0.8rem;
-  height: 0.8rem;
-  border-radius: 50%;
-  background: linear-gradient(160deg, #fffaf0, var(--parchment));
-  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.25);
+.loadout-slot--armed {
+  border-color: var(--gold-bright);
+  background: rgb(230 184 79 / 0.12);
 }
 
-.loadout-slot__swatch--devil {
-  background: linear-gradient(160deg, #8a564d, #40211c);
+.loadout-slot:disabled {
+  opacity: 0.8;
 }
 
-.loadout-slot__swatch--odd {
-  background: linear-gradient(160deg, #5e848c, #2b4348);
+.loadout-palette__item:disabled {
+  opacity: 0.4;
 }
 
-.loadout-slot__swatch--cheat {
-  background: linear-gradient(160deg, #85699a, #3d2f47);
+.loadout-palette__item:not(:disabled):hover {
+  background: rgb(255 255 255 / 0.08);
 }
 
 /* ---------- dice stats (Rules screen) ---------- */
 
+.dice-page {
+  width: 100%;
+  max-width: 40rem;
+  padding: clamp(1rem, 5vw, 2.5rem) 0.75rem;
+  color: var(--parchment);
+}
+
 .dice-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
   gap: 0.75rem;
 }
 
 .dice-stats__card {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  padding: 0.7rem 0.8rem;
+  gap: 0.7rem;
+  padding: 0.8rem;
   border-radius: 0.6rem;
   background: rgb(0 0 0 / 0.2);
 }
@@ -255,34 +263,58 @@ button:disabled {
 .dice-stats__heading {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.6rem;
+}
+
+.dice-stats__heading .die {
+  flex-shrink: 0;
+  width: 2.4rem;
+  height: 2.4rem;
+  padding: 0.24rem;
+}
+
+.dice-stats__heading-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
 }
 
 .dice-stats__name {
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
 }
 
+.dice-stats__description {
+  font-size: 0.78rem;
+  line-height: 1.3;
+  color: var(--parchment-dim);
+}
+
+/*
+ * A fixed six-column grid rather than flexed slots — every bar the same
+ * width regardless of its neighbours' content, so nothing drifts between
+ * cards or between a slot's own track and its percent label underneath.
+ */
 .die-distribution {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
   gap: 3px;
   height: 4.5rem;
 }
 
 .die-distribution__slot {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  display: grid;
+  grid-template-rows: 1fr auto auto;
+  justify-items: center;
   gap: 0.2rem;
+  min-width: 0;
   height: 100%;
 }
 
 .die-distribution__track {
-  flex: 1;
   width: 100%;
+  height: 100%;
   display: flex;
   align-items: flex-end;
   background: rgb(255 255 255 / 0.06);
@@ -307,9 +339,10 @@ button:disabled {
 }
 
 .die-distribution__percent {
-  font-size: 0.6rem;
+  font-size: 0.58rem;
   color: rgb(243 233 210 / 0.5);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .setup__start {
@@ -651,6 +684,27 @@ button:disabled {
     0 6px 0 rgb(0 0 0 / 0.4),
     0 0 0 2px rgb(230 154 154 / 0.8),
     0 0 14px rgb(184 80 63 / 0.6);
+}
+
+/*
+ * A wild-showing die the player has picked this throw — both `.die--wild`
+ * and `.die--selected` apply at once, and since they're equal-specificity
+ * single-class selectors, whichever is later in the file would otherwise
+ * silently win outright and hide the other's ring. Spelled out explicitly
+ * so the gold selection ring always shows, devil glow or not.
+ */
+.die--wild.die--selected {
+  box-shadow:
+    0 3px 0 rgb(0 0 0 / 0.4),
+    0 0 0 3px var(--gold-bright),
+    0 0 12px rgb(184 80 63 / 0.6);
+}
+
+.die--wild.die--selected:not(:disabled):hover {
+  box-shadow:
+    0 6px 0 rgb(0 0 0 / 0.4),
+    0 0 0 3px var(--gold-bright),
+    0 0 16px rgb(184 80 63 / 0.75);
 }
 
 .die__wild {

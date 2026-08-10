@@ -1,7 +1,6 @@
 import type { Face } from '@farkle/engine';
 
 import { diceGlyphs } from '../match/logEntry';
-import { DiceStats } from './DiceStats';
 
 const dice = (text: string): Face[] => [...text].map((char) => Number(char) as Face);
 
@@ -180,17 +179,6 @@ export function RulesScreen() {
             </li>
           ))}
         </ul>
-      </section>
-
-      <section className="rules__section">
-        <h2>Dice</h2>
-        <p>
-          Loadouts mix six dice from this collection — every one is an honest, unequal weighting of
-          the six faces rather than a fair cube, shown here exactly rather than as a rarity label.
-          The Devil&rsquo;s Head is a wildcard: it reads as whichever face makes the best keep, and a
-          throw that includes one can never farkle outright.
-        </p>
-        <DiceStats />
       </section>
     </article>
   );

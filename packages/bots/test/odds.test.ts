@@ -12,15 +12,36 @@ describe('farkleProbability', () => {
     expect(farkleProbability([BALANCED_DIE, BALANCED_DIE])).toBeCloseTo(16 / 36, 12);
   });
 
-  it('is 0 for a die guaranteed to roll wild', () => {
+  it('is 1 (certain) for a die guaranteed to roll wild — it can never complete a Single alone', () => {
     const alwaysWild: DieSpec = { id: 'always-wild-test', name: 'x', weights: [1, 0, 0, 0, 0, 0], wild: 1 };
-    expect(farkleProbability([alwaysWild])).toBe(0);
+    expect(farkleProbability([alwaysWild])).toBe(1);
   });
 
-  it('is lower, but not zero, for an ordinary Devil\'s Head die', () => {
-    const p = farkleProbability([DEVIL_DIE]);
-    expect(p).toBeGreaterThan(0);
-    expect(p).toBeLessThan(farkleProbability([BALANCED_DIE]));
+  it('a lone Devil\'s Head die farkles more often than a lone balanced die', () => {
+    // DEVIL_DIE is BALANCED_DIE with its `1` face replaced by a wildcard
+    // that can't score alone — every other face is identical, so this can
+    // only ever be a net loss, never a gain, for a single die on its own.
+    expect(farkleProbability([DEVIL_DIE])).toBeGreaterThan(farkleProbability([BALANCED_DIE]));
+  });
+
+  it('a Devil\'s Head never farkles less than a balanced die in the same company', () => {
+    // Same proof, generalised: only the "did this die's `1`-or-wild face
+    // come up" outcome differs between the two dice, and a real `1` always
+    // scores while a wild only does conditionally — so for any fixed set of
+    // other dice, swapping one balanced die for a devil die can only hold
+    // steady or make the whole throw farkle more often, never less.
+    const companies: DieSpec[][] = [
+      [],
+      [BALANCED_DIE],
+      [BALANCED_DIE, BALANCED_DIE],
+      [WEIGHTED_DIE, ODD_DIE],
+      [CHEAT_DIE, CHEAT_DIE, CHEAT_DIE],
+    ];
+    for (const company of companies) {
+      expect(farkleProbability([DEVIL_DIE, ...company])).toBeGreaterThanOrEqual(
+        farkleProbability([BALANCED_DIE, ...company]),
+      );
+    }
   });
 
   it('is symmetric under reordering the dice', () => {
@@ -67,8 +88,12 @@ describe('safetyRatio', () => {
     }
   });
 
-  it('is greater than 1 when a Devil\'s Head makes the set safer', () => {
-    expect(safetyRatio([DEVIL_DIE, BALANCED_DIE, BALANCED_DIE])).toBeGreaterThan(1);
+  it('is at most 1 whenever a Devil\'s Head replaces a balanced die — never a strict safety gain', () => {
+    expect(safetyRatio([DEVIL_DIE, BALANCED_DIE, BALANCED_DIE])).toBeLessThanOrEqual(1);
+  });
+
+  it('is greater than 1 when the odd die makes the set genuinely safer', () => {
+    expect(safetyRatio([ODD_DIE])).toBeGreaterThan(1);
   });
 
   it('is 1 for an empty set (the multiplier this feeds becomes a no-op)', () => {
