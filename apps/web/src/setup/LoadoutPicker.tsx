@@ -3,11 +3,25 @@ import { useState } from 'react';
 import { BALANCED_DIE, DICE, type DieSpec } from '@farkle/engine';
 
 import { DIE_DESCRIPTIONS, iconicFace } from '../dice/descriptions';
-import { barWidth, DIE_STATS, EV6_RANGE, FARKLE3_RANGE } from '../dice/stats';
+import {
+  barWidth,
+  DIE_STATS,
+  POWER_RANGE,
+  RISK_RANGE,
+  TIER_ICON,
+  TIER_LABEL,
+  TIER_ORDER,
+  type DieTier,
+} from '../dice/stats';
 import { Die } from '../match/Die';
 
-const DICE_LIST: readonly DieSpec[] = Object.values(DICE);
-const BASELINE_FARKLE3 = DIE_STATS[BALANCED_DIE.id].farkle3;
+/** Weakest to strongest tier, and by win6 within a tier — a catalog you can browse top to bottom as a difficulty curve. */
+const DICE_BY_TIER: readonly { tier: DieTier; dice: readonly DieSpec[] }[] = TIER_ORDER.map((tier) => ({
+  tier,
+  dice: Object.values(DICE)
+    .filter((die) => DIE_STATS[die.id].tier === tier)
+    .sort((a, b) => DIE_STATS[a.id].win6 - DIE_STATS[b.id].win6),
+}));
 
 export interface LoadoutPickerProps {
   label: string;
@@ -24,7 +38,7 @@ export interface LoadoutPickerProps {
  * last, so the picker never goes dead the way it used to. Clicking any slot
  * directly re-arms it for editing. Full odds for every die live on the Dice
  * screen; this one only needs enough to compare at a glance, which is what
- * the description and the two stat bars on each card are for.
+ * the description, the tier and the two stat bars on each card are for.
  */
 export function LoadoutPicker({ label, loadout, onChange, disabled = false }: LoadoutPickerProps) {
   const [armed, setArmed] = useState<number | null>(disabled ? null : 0);
@@ -63,19 +77,9 @@ export function LoadoutPicker({ label, loadout, onChange, disabled = false }: Lo
     setArmed(0);
   }
 
-  const avgFarkle3 = loadout.reduce((sum, die) => sum + DIE_STATS[die.id].farkle3, 0) / loadout.length;
-
   return (
     <div className="loadout">
-      <div className="loadout__head">
-        <span className="field__label">{label}</span>
-        {!disabled && (
-          <span className="loadout__risk">
-            Avg. farkle risk at 3 dice left: <strong>{Math.round(avgFarkle3 * 100)}%</strong>{' '}
-            <span className="loadout__risk-baseline">(ordinary is {Math.round(BASELINE_FARKLE3 * 100)}%)</span>
-          </span>
-        )}
-      </div>
+      <span className="field__label">{label}</span>
 
       <div className={`loadout__slots${disabled ? '' : ' loadout__slots--sticky'}`}>
         {loadout.map((die, index) => (
@@ -111,51 +115,62 @@ export function LoadoutPicker({ label, loadout, onChange, disabled = false }: Lo
           </div>
 
           <div className="loadout__palette">
-            {DICE_LIST.map((option) => {
-              const stats = DIE_STATS[option.id];
-              return (
-                <div className="loadout-card" key={option.id}>
-                  <button type="button" className="loadout-card__pick" onClick={() => assign(option.id)}>
-                    <Die face={iconicFace(option)} dieId={option.id} />
-                    <span className="loadout-card__text">
-                      <span className="loadout-card__name">{option.name}</span>
-                      <span className="loadout-card__description">{DIE_DESCRIPTIONS[option.id]}</span>
-                    </span>
-                    <span className="loadout-card__stats" aria-hidden="true">
-                      <span className="stat-bar stat-bar--risk">
-                        <span className="stat-bar__label">Risk</span>
-                        <span className="stat-bar__track">
-                          <span
-                            className="stat-bar__fill"
-                            style={{ width: `${Math.max(6, barWidth(stats.farkle3, FARKLE3_RANGE))}%` }}
-                          />
-                        </span>
-                      </span>
-                      <span className="stat-bar stat-bar--power">
-                        <span className="stat-bar__label">Power</span>
-                        <span className="stat-bar__track">
-                          <span
-                            className="stat-bar__fill"
-                            style={{ width: `${Math.max(6, barWidth(stats.ev6, EV6_RANGE))}%` }}
-                          />
-                        </span>
-                      </span>
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    className="loadout-card__fill-all"
-                    aria-label={`Fill all six slots with the ${option.name}`}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      fillAll(option.id);
-                    }}
-                  >
-                    Fill all 6
-                  </button>
+            {DICE_BY_TIER.map(({ tier, dice }) => (
+              <div className="loadout__tier-group" key={tier}>
+                <div className="loadout__tier-heading">
+                  <span aria-hidden="true">{TIER_ICON[tier]}</span>
+                  <span>{TIER_LABEL[tier]}</span>
                 </div>
-              );
-            })}
+
+                <div className="loadout__tier-cards">
+                  {dice.map((option) => {
+                    const stats = DIE_STATS[option.id];
+                    return (
+                      <div className="loadout-card" key={option.id}>
+                        <button type="button" className="loadout-card__pick" onClick={() => assign(option.id)}>
+                          <Die face={iconicFace(option)} dieId={option.id} />
+                          <span className="loadout-card__text">
+                            <span className="loadout-card__name">{option.name}</span>
+                            <span className="loadout-card__description">{DIE_DESCRIPTIONS[option.id]}</span>
+                          </span>
+                          <span className="loadout-card__stats" aria-hidden="true">
+                            <span className="stat-bar stat-bar--risk">
+                              <span className="stat-bar__label">Risk</span>
+                              <span className="stat-bar__track">
+                                <span
+                                  className="stat-bar__fill"
+                                  style={{ width: `${Math.max(6, barWidth(1 - stats.farkle6, RISK_RANGE))}%` }}
+                                />
+                              </span>
+                            </span>
+                            <span className="stat-bar stat-bar--power">
+                              <span className="stat-bar__label">Power</span>
+                              <span className="stat-bar__track">
+                                <span
+                                  className="stat-bar__fill"
+                                  style={{ width: `${Math.max(6, barWidth(stats.win6, POWER_RANGE))}%` }}
+                                />
+                              </span>
+                            </span>
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          className="loadout-card__fill-all"
+                          aria-label={`Fill all six slots with the ${option.name}`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            fillAll(option.id);
+                          }}
+                        >
+                          Fill all 6
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </>
       )}

@@ -27,14 +27,32 @@ keep this pass scoped to the picker itself.
   wraps back to slot 1 after slot 6 instead of going dead
   (`armed = (armed + 1) % length`); palette rebuilt as cards
   (`.loadout-card`) with the die, its name, its one-line blurb from
-  `dice/descriptions.ts`, and two small bars — **Risk** (farkle odds on 3 of
-  this die) and **Power** (EV of a full 6-die throw of it) — scaled against
-  the roster's own min/max.
-- `apps/web/src/dice/stats.ts` — new file, the `farkle3`/`ev6` numbers copied
-  from the `docs/DESIGN.md` §5 roster table (verified against
-  `node scripts/dice-balance/roster-report.mjs` while building this).
-  **Regenerate that report and copy the two columns back in here whenever a
+  `dice/descriptions.ts`, and two small bars — **Risk** and **Power** —
+  scaled against the roster's own min/max (see below for what they measure).
+- `apps/web/src/dice/stats.ts` — new file, numbers copied from
+  `docs/researches/2026-08-10-mixed-loadout-strategy.md` §1–2 (verified
+  against `node scripts/dice-balance/tier-report.mjs` while building this).
+  **Regenerate that report and copy the columns back in here whenever a
   die's weights change** — nothing enforces the two staying in sync.
+  - **Risk** = `1 − farkle6` (chance a full six-die throw of this die scores
+    *something*, i.e. doesn't farkle) — changed from an earlier cut that used
+    farkle-on-3. Note this makes a *longer* Risk bar mean *safer*, not
+    "riskier" in the everyday sense of the label — worth a look if it reads
+    backwards in practice.
+  - **Power** = `win6` (win rate for six of this die against six ordinary
+    dice) — changed from an earlier cut that used EV of a full throw. This is
+    the project's own headline balance number, and it's what the tiers below
+    are cut from too, so a card's Power bar and its tier badge now agree with
+    each other by construction.
+  - **Tiers** — Bronze/Silver/Gold, straight from the research's §2 cut
+    (gaps kept only where 95% CIs on either side don't overlap): Gold =
+    `cheat`/`worn`/`weighted`/`devil`/`trader`, Silver = `imp`/`trinity`,
+    Bronze = `odd`. `balanced` has no tier in the research (it's the
+    baseline everything else is measured against), so it's placed in Bronze
+    by decision, not by a measured gap — it's the roster's floor either way.
+    The catalog is grouped into tier sections (`.loadout__tier-group`),
+    Bronze first, sorted ascending by `win6` inside each tier, so scrolling
+    down reads as a difficulty curve.
 - `apps/web/src/dice/descriptions.ts` — added `iconicFace(die)`: shows a
   wildcard die's actual wild face instead of a `1` it doesn't have (Devil's
   head and Imp's die were both rendering pip `1` in the picker and on the
@@ -68,9 +86,16 @@ it's "start now instead of visiting the loadout step." Implemented as:
 
 Two entry points, same intent, no shared code needed since the underlying
 action (`defaultLoadout()` for however many dice) is a one-liner either way.
+The loadout-screen pill (`.loadout__quick-action`) is now centered and sized
+up a step (gold border, bigger padding) — it was a small left-aligned chip
+easy to miss among the other quick actions.
 
-## Deliberately not done
+## Cut after the first pass
 
+- **The "avg. farkle risk at 3 dice left" line** above the slots (comparing
+  the current loadout's average to an ordinary loadout) — liked as an idea,
+  pulled for now rather than left in half-tuned. Worth revisiting once Risk
+  and Power have settled, since it would want the same underlying numbers.
 - No preset loadouts (option 3) — noted above as the natural next step.
 - No live/analytical stat computation in the browser — the exact enumeration
   (`analyticalMetrics` in `scripts/dice-balance/lib.mjs`) does up to 6⁶
