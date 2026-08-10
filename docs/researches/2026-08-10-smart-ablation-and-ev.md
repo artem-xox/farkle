@@ -105,17 +105,36 @@ Confirmed on ordinary dice — a significant +1.9pp, and the largest single-cell
 - **One-ply EV banking is a genuine improvement** — the only change tested across two reports that beats `balanced` in every condition, by +1.1pp on average and +3.5pp at its best.
 - **The reason is structural, not a tuning accident.** A single `bankAt` cannot track a breakeven that runs from 38 to 12 931 points depending on dice in play, and `expectedKeepValue` additionally makes the threshold respond to *which* dice are left, which no static parameter can express.
 - **`smart-risk` is a conditional win, not a general one** — good on ordinary dice in a short race, actively bad on `trinity`.
+- **Against the whole roster `smart-ev` averages 54.5%** and is at or above 50% in 43 of 45 pairings (§6), which would make it the strongest bot measured across this and both parent reports. It is the one variant worth promoting into `PRESETS` — noting that doing so adds it to the web setup screen's opponent picker, so it wants a player-facing name and a difficulty slot, not just a merge.
 
 ## 6. Roster confirmation
 
-`smart-ev` against every shipped preset — `smart-lab` only establishes that it beats `balanced`, not where it would rank. 10 000 matches/cell.
+`smart-ev` against every shipped preset — `smart-lab` only establishes that it beats `balanced`, not where it would rank. 10 000 matches/cell (CI ≈ ±1.0pp), fresh seeds.
 
-_Run in progress — table lands in a follow-up commit._
+| dice | target | cautious | balanced | aggressive | reckless | novice | mean |
+|---|---|---|---|---|---|---|---|
+| ordinary | 1500 | 56.5 | 51.2 | 52.0 | *49.6* | 55.7 | **53.0** |
+| ordinary | 3000 | 59.0 | 52.0 | 54.2 | 53.4 | 58.0 | **55.3** |
+| ordinary | 8000 | 61.3 | 54.4 | 58.2 | 59.5 | 64.3 | **59.5** |
+| cheat | 1500 | 54.4 | 50.4 | 51.3 | 52.5 | 54.3 | **52.6** |
+| cheat | 3000 | 57.0 | 50.5 | 50.7 | 51.8 | 55.0 | **53.0** |
+| cheat | 8000 | 59.8 | 50.4 | 50.1 | 54.2 | 57.1 | **54.3** |
+| trinity | 1500 | 54.6 | 51.1 | *50.0* | 52.3 | 55.1 | **52.6** |
+| trinity | 3000 | 57.6 | 50.8 | 50.2 | 53.9 | 56.1 | **53.7** |
+| trinity | 8000 | 62.4 | *49.9* | 50.4 | 58.4 | 60.2 | **56.3** |
+
+**Grand mean: 54.5%.** For scale, the same 9-condition grand average put `balanced` at 53.3% and `aggressive` at 52.7% in the previous report — not a strictly like-for-like comparison (that round robin included `smart` in each row's opponents and used 5 000 matches), but the ordering is clear enough.
+
+`smart-ev` is at or above 50% in **43 of 45 pairings**. The two exceptions are `reckless` at ordinary/1500 (49.6) and `balanced` at trinity/8000 (49.9), both inside the interval; `aggressive` at trinity/1500 is a dead 50.0.
+
+Its margin widens sharply with race length — the ordinary-dice row runs 53.0 → 55.3 → **59.5** — and at target 8000 it beats `novice` 64.3%, `cautious` 61.3% and `reckless` 59.5%. The two runs also cross-validate: the `balanced` column here (51.2 / 52.0 / 54.4 on ordinary) reproduces §3's independently seeded 20 000-match figures (50.9 / 51.9 / 53.5) within a point.
+
+**Its one weak spot is a short race on ordinary dice**, the single condition where `reckless` still edges it — which is exactly where `smart-risk` scored its only significant win (§4). That is now a concrete, evidence-backed pairing to try rather than a guess.
 
 ## 7. Open questions
 
 - **Un-myopia.** The obvious next step is a two-ply (or depth-limited) version that credits a throw with the continuation value of the decision it earns. The breakeven table says the myopic rule banks too early; how much is on the table is measurable without building the whole M6 solver.
-- **`smart-ev` + `smart-risk`.** They win in disjoint places (long ordinary races vs. short ordinary races). Whether they compose or interfere is untested — the EV rule already subsumes `minDiceToThrow`, so `smart-risk`'s effect would have to come through `diceValue` and the keep ranking alone.
+- **`smart-ev` + `smart-risk`.** The roster pass sharpens this from a guess into the obvious next experiment: `smart-ev`'s only real loss in 45 pairings is to `reckless` in a short ordinary race, and that is precisely the cell where `smart-risk` won. Whether they compose or interfere is untested — the EV rule already subsumes `minDiceToThrow`, so `smart-risk`'s contribution would have to come through `diceValue` and the keep ranking alone.
 - **`chooseKeep` is still heuristic.** The EV rule improves only the throw-or-bank decision; keep selection is still `points + diceValue × diceLeft × safetyRatio`. `expectedKeepValue` could rank keeps by the EV of the dice each one *leaves behind*, which is the same machinery applied to the other half of the turn — plausibly a larger remaining gain than un-myopia.
 - **Why is the gain so small on `cheat`/`trinity`?** The farkle-rate explanation above is a hypothesis fitted to the diagnostics, not something this grid tests directly.
 - Same standing caveat as both parent reports: symmetric loadouts only.
