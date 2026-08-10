@@ -4,7 +4,6 @@ import {
   DICE_PER_TURN,
   legalKeeps,
   ODD_DIE,
-  WEIGHTED_DIE,
   type DieSpec,
 } from '@farkle/engine';
 import { describe, expect, it } from 'vitest';
@@ -218,10 +217,14 @@ describe('decideAfterKeep', () => {
     });
 
     it('throws below the raw dice-count floor when the dice left are safe enough', () => {
-      const inPlayDice = [WEIGHTED_DIE];
-      // A single weighted die (loaded toward 1) already farkles less often
-      // than two ordinary ones — verified directly rather than assumed,
-      // since that's the premise the rest of this test depends on.
+      // A fixture rather than a roster die: no die in the shipped roster is
+      // safe enough on its own to beat *two* ordinary dice — that is what
+      // the docs/DESIGN.md §5 balance band rules out — but the bot's floor
+      // still has to behave correctly if one ever were.
+      const veryLoaded: DieSpec = { id: 'very-loaded', name: 'Test die', weights: [10, 1, 1, 1, 1, 1] };
+      const inPlayDice = [veryLoaded];
+      // Verified directly rather than assumed, since that's the premise the
+      // rest of this test depends on.
       expect(farkleProbability(inPlayDice)).toBeLessThan(balancedFarkleProbability(2));
 
       const bot = new ThresholdBot('risk-aware', params({ bankAt: 100_000, minDiceToThrow: 2 }), 1);

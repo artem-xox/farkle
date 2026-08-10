@@ -7,11 +7,15 @@ import {
   DEVIL_DIE,
   DICE,
   faceProbabilities,
+  IMP_DIE,
   ODD_DIE,
   rollDice,
   rollDie,
+  TRADER_DIE,
+  TRINITY_DIE,
   WEIGHTED_DIE,
   wildProbability,
+  WORN_DIE,
   type DieSpec,
 } from '../src/dice.js';
 import { seedRng, type RngState } from '../src/rng.js';
@@ -45,10 +49,26 @@ function chiSquare(observed: readonly number[], die: DieSpec, samples: number): 
 }
 
 describe('die specs', () => {
-  it('exposes the five dice M1–M5 ship with', () => {
-    expect(Object.keys(DICE).sort()).toEqual(['balanced', 'cheat', 'devil', 'odd', 'weighted']);
+  it('exposes the nine dice M1–M6 ship with', () => {
+    expect(Object.keys(DICE).sort()).toEqual([
+      'balanced',
+      'cheat',
+      'devil',
+      'imp',
+      'odd',
+      'trader',
+      'trinity',
+      'weighted',
+      'worn',
+    ]);
     for (const die of Object.values(DICE)) {
       expect(() => assertValidDie(die)).not.toThrow();
+    }
+  });
+
+  it('keys every die under its own id', () => {
+    for (const [id, die] of Object.entries(DICE)) {
+      expect(die.id).toBe(id);
     }
   });
 
@@ -67,16 +87,46 @@ describe('die specs', () => {
     }
   });
 
-  it('the devil die has its 1 face marked wild', () => {
+  it('the devil die has its 1 face marked wild, and rare', () => {
     expect(DEVIL_DIE.wild).toBe(1);
-    expect(wildProbability(DEVIL_DIE)).toBeCloseTo(1 / 6, 12);
+    expect(wildProbability(DEVIL_DIE)).toBeCloseTo(1 / 16, 12);
   });
 
-  it('reports the weighted die as two thirds ones', () => {
+  it('the imp die puts its wild on the 6 instead', () => {
+    expect(IMP_DIE.wild).toBe(6);
+    expect(wildProbability(IMP_DIE)).toBeCloseTo(2 / 27, 12);
+  });
+
+  it('reports the weighted die as three thirteenths ones', () => {
     const probabilities = faceProbabilities(WEIGHTED_DIE);
-    expect(probabilities[0]).toBeCloseTo(10 / 15, 12);
+    expect(probabilities[0]).toBeCloseTo(3 / 13, 12);
     for (let face = 2; face <= 6; face++) {
-      expect(probabilities[face - 1]).toBeCloseTo(1 / 15, 12);
+      expect(probabilities[face - 1]).toBeCloseTo(2 / 13, 12);
+    }
+    expect(probabilities.reduce((sum, p) => sum + p, 0)).toBeCloseTo(1, 12);
+  });
+
+  it('the trader die rolls a 5 twice as often as any other face', () => {
+    const probabilities = faceProbabilities(TRADER_DIE);
+    expect(probabilities[4]).toBeCloseTo(2 / 7, 12);
+    for (const face of [1, 2, 3, 4, 6]) {
+      expect(probabilities[face - 1]).toBeCloseTo(1 / 7, 12);
+    }
+  });
+
+  it('the trinity die rolls a 3 four times as often as any other face', () => {
+    const probabilities = faceProbabilities(TRINITY_DIE);
+    expect(probabilities[2]).toBeCloseTo(4 / 9, 12);
+    for (const face of [1, 2, 4, 5, 6]) {
+      expect(probabilities[face - 1]).toBeCloseTo(1 / 9, 12);
+    }
+  });
+
+  it('the worn die never rolls its 2, and spreads the rest evenly', () => {
+    const probabilities = faceProbabilities(WORN_DIE);
+    expect(probabilities[1]).toBe(0);
+    for (const face of [1, 3, 4, 5, 6]) {
+      expect(probabilities[face - 1]).toBeCloseTo(1 / 5, 12);
     }
     expect(probabilities.reduce((sum, p) => sum + p, 0)).toBeCloseTo(1, 12);
   });
@@ -169,7 +219,13 @@ describe('sampling matches the declared weights', () => {
   it('weighted die', () => {
     const observed = rollMany(WEIGHTED_DIE, samples, 22);
     expect(chiSquare(observed, WEIGHTED_DIE, samples)).toBeLessThan(20.515);
-    expect(observed[0]! / samples).toBeCloseTo(2 / 3, 2);
+    expect(observed[0]! / samples).toBeCloseTo(3 / 13, 2);
+  });
+
+  it('worn die — its dead face never comes up', () => {
+    const observed = rollMany(WORN_DIE, samples, 44);
+    expect(observed[1]).toBe(0);
+    expect(chiSquare(observed, WORN_DIE, samples)).toBeLessThan(20.515);
   });
 
   it('never rolls a face with zero weight', () => {

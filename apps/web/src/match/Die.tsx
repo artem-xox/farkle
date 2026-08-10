@@ -6,18 +6,23 @@ import { TUMBLE_MS } from './pacing';
 /**
  * Dice whose specific type gets its own matte colour, so a loadout mixing
  * dice reads at a glance rather than only when a Devil's Head happens to be
- * showing. Balanced and weighted dice deliberately keep the plain
- * parchment-and-black look — they are the "ordinary" baseline.
+ * showing. Only the ordinary die is absent: it keeps the plain
+ * parchment-and-black look below as the "nothing special" baseline, and it
+ * is the one die that has to stay visually distinct from every other.
  */
-const IDENTITY_DICE = new Set(['devil', 'odd', 'cheat']);
+const IDENTITY_DICE = new Set(['weighted', 'devil', 'imp', 'odd', 'cheat', 'trader', 'trinity', 'worn']);
 
 /** One-word hover label per die type, keyed by `DieSpec.id`. */
 const DIE_TYPE_LABEL: Record<string, string> = {
   balanced: 'Ordinary',
   weighted: 'Weighted',
   devil: 'Devil',
+  imp: 'Imp',
   odd: 'Odd',
   cheat: 'Cheat',
+  trader: 'Trader',
+  trinity: 'Trinity',
+  worn: 'Worn',
 };
 
 /** Classic six-sided pip layout on a 3×3 grid, indices 0–8 row-major. */
