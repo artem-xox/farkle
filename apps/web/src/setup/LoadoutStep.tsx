@@ -30,9 +30,9 @@ export function LoadoutStep({
   onStart,
 }: LoadoutStepProps) {
   return (
-    <div className="setup">
+    <div className="setup setup--wide">
       <h1 className="setup__title">Choose your dice</h1>
-      <p className="setup__subtitle">Six per loadout — see Rules for exact odds on each die</p>
+      <p className="setup__subtitle">Tap a die below to fill the highlighted slot — see the Dice page for exact odds</p>
 
       <div className="setup__form">
         <LoadoutPicker label="Your dice" loadout={yourLoadout} onChange={onChangeYours} />

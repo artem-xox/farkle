@@ -33,22 +33,18 @@ export const WEIGHTED_DIE: DieSpec = {
 };
 
 /**
- * Otherwise balanced, but its `6` face is painted as a Devil's Head — see
- * docs/RULES.md §11. Deliberately not the `1` face: a physical `1` already
- * scores on its own, so marking it wild would swap one guaranteed-scoring
- * outcome for another and leave the farkle rate unchanged. Marking the `6`
- * wild instead means the one face that would otherwise score nothing by
- * itself now always does, which is where the wildcard actually earns its
- * keep — `scoreKeep` resolves it to whichever pip maximises the keep, so a
- * throw containing this die is measurably safer than an ordinary die, not
- * merely differently labelled. See docs/DESIGN.md §5 for the measured effect
- * and `packages/bots/src/odds.ts` for the farkle-probability arithmetic.
+ * Otherwise balanced, but its `1` face is painted as a Devil's Head — see
+ * docs/RULES.md §11. A Devil's Head is *not* simply a free `1`: it can never
+ * complete a `Single` by itself (`scoreKeep` in scoring.ts refuses to resolve
+ * a wildcard that way), only a bigger combination — three or more of a kind,
+ * or a straight. A lone Devil's Head, or one thrown alongside dice it can't
+ * join into such a combination, scores nothing at all.
  */
 export const DEVIL_DIE: DieSpec = {
   id: 'devil',
   name: "Devil's head die",
   weights: [1, 1, 1, 1, 1, 1],
-  wild: 6,
+  wild: 1,
 };
 
 /**

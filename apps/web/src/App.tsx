@@ -3,6 +3,7 @@ import { useState } from 'react';
 import type { PresetName } from '@farkle/bots';
 import { createMatch, LocalHost, type GameState } from '@farkle/engine';
 
+import { DiceScreen } from './dice/DiceScreen';
 import { MatchScreen } from './match/MatchScreen';
 import { RulesScreen } from './rules/RulesScreen';
 import { SetupScreen, type NewMatchOptions } from './setup/SetupScreen';
@@ -15,7 +16,7 @@ interface MatchSession {
   readonly botPreset: PresetName | null;
 }
 
-type Tab = 'play' | 'rules';
+type Tab = 'play' | 'dice' | 'rules';
 
 function freshId(): string {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -68,6 +69,14 @@ export function App() {
         </button>
         <button
           type="button"
+          className={`tabs__tab${tab === 'dice' ? ' tabs__tab--active' : ''}`}
+          aria-current={tab === 'dice'}
+          onClick={() => setTab('dice')}
+        >
+          Dice
+        </button>
+        <button
+          type="button"
           className={`tabs__tab${tab === 'rules' ? ' tabs__tab--active' : ''}`}
           aria-current={tab === 'rules'}
           onClick={() => setTab('rules')}
@@ -94,6 +103,12 @@ export function App() {
           />
         )}
       </main>
+
+      {tab === 'dice' && (
+        <main className="app__panel">
+          <DiceScreen />
+        </main>
+      )}
 
       {tab === 'rules' && (
         <main className="app__panel">

@@ -1,4 +1,12 @@
-import { BALANCED_DIE, CHEAT_DIE, DEVIL_DIE, DICE_PER_TURN, legalKeeps, type DieSpec } from '@farkle/engine';
+import {
+  BALANCED_DIE,
+  CHEAT_DIE,
+  DICE_PER_TURN,
+  legalKeeps,
+  ODD_DIE,
+  WEIGHTED_DIE,
+  type DieSpec,
+} from '@farkle/engine';
 import { describe, expect, it } from 'vitest';
 
 import { balancedFarkleProbability, farkleProbability } from '../src/odds.js';
@@ -210,15 +218,15 @@ describe('decideAfterKeep', () => {
     });
 
     it('throws below the raw dice-count floor when the dice left are safe enough', () => {
-      const inPlayDice = [DEVIL_DIE, DEVIL_DIE];
-      // Two Devil's Head dice farkle less often than three ordinary ones —
-      // verified directly rather than assumed, since that's the premise the
-      // rest of this test depends on.
-      expect(farkleProbability(inPlayDice)).toBeLessThan(balancedFarkleProbability(3));
+      const inPlayDice = [WEIGHTED_DIE];
+      // A single weighted die (loaded toward 1) already farkles less often
+      // than two ordinary ones — verified directly rather than assumed,
+      // since that's the premise the rest of this test depends on.
+      expect(farkleProbability(inPlayDice)).toBeLessThan(balancedFarkleProbability(2));
 
-      const bot = new ThresholdBot('risk-aware', params({ bankAt: 100_000, minDiceToThrow: 3 }), 1);
-      const view = fakeView({ turnScore: 50, diceInPlay: 2, inPlayDice });
-      // The old count-only rule would bank here (2 < minDiceToThrow of 3).
+      const bot = new ThresholdBot('risk-aware', params({ bankAt: 100_000, minDiceToThrow: 2 }), 1);
+      const view = fakeView({ turnScore: 50, diceInPlay: 1, inPlayDice });
+      // The old count-only rule would bank here (1 < minDiceToThrow of 2).
       expect(bot.decideAfterKeep(view)).toBe('Throw');
     });
 
@@ -251,21 +259,23 @@ describe('decideAfterKeep', () => {
 
 describe('rankOf risk-awareness (via chooseKeep)', () => {
   // Two dice both show a 5 this throw, but they are not the same die: one is
-  // an ordinary die, the other a Devil's Head that simply rolled its
-  // non-wild face. Keeping either one scores the same 50 points and leaves
+  // an ordinary die, the other an odd die (favours 1, 3, 5) that simply
+  // rolled its 5. Keeping either one scores the same 50 points and leaves
   // the same number of dice (5) — the only difference is which die is left
   // behind, and that difference is exactly what `safetyRatio` should weigh.
+  // (A Devil's Head can't play this role: it can never be strictly safer
+  // than a balanced die to leave behind — see odds.test.ts.)
   const rest = [fixedDie(2), fixedDie(3), fixedDie(4), fixedDie(6)];
-  const dice: DieSpec[] = [BALANCED_DIE, DEVIL_DIE, ...rest];
+  const dice: DieSpec[] = [BALANCED_DIE, ODD_DIE, ...rest];
   const thrown = [5, 5, 2, 3, 4, 6] as const;
 
-  it('a set that leaves the Devil\'s Head behind really is safer, as the test below assumes', () => {
-    expect(farkleProbability([DEVIL_DIE, ...rest])).toBeLessThan(
+  it('a set that leaves the odd die behind really is safer, as the test below assumes', () => {
+    expect(farkleProbability([ODD_DIE, ...rest])).toBeLessThan(
       farkleProbability([BALANCED_DIE, ...rest]),
     );
   });
 
-  it('a dice-hoarding bot prefers to leave the Devil\'s Head in play over an ordinary die', () => {
+  it('a dice-hoarding bot prefers to leave the safer die (the odd one) in play', () => {
     const options = legalKeeps([...thrown], dice).filter(
       (option) => option.points === 50 && option.faces.length === 1,
     );
@@ -274,7 +284,7 @@ describe('rankOf risk-awareness (via chooseKeep)', () => {
     const hoarder = new ThresholdBot('hoarder', params({ diceValue: 50, mistakeRate: 0 }), 1);
     const chosen = hoarder.chooseKeep(fakeView(), options);
     const leftoverIds = chosen.diceLeftSpecs!.map((die) => die.id);
-    expect(leftoverIds).toContain(DEVIL_DIE.id);
+    expect(leftoverIds).toContain(ODD_DIE.id);
     expect(leftoverIds).not.toContain(BALANCED_DIE.id);
   });
 

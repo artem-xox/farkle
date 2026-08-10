@@ -74,22 +74,26 @@ describe('legalKeeps with a dice argument', () => {
   });
 
   it('distinguishes two different Devil\'s Head dice that both rolled wild', () => {
-    // Same token (`WILD`), same resolved value, same points — the only thing
-    // that tells these two single-wild keeps apart is which die is left over.
+    // A Devil's Head can't complete a Single alone, so the fork here is a
+    // triple of 4s completed by whichever wild(s) join it — same token
+    // (`WILD`), same resolved value, same points, but a different set of
+    // dice left over depending on which wild(s) were used: the triple can be
+    // built from wildA + two real 4s, wildB + two real 4s, or both wilds
+    // plus a single real 4 — three distinct choices, not one deduplicated
+    // down to fewer because they share a points/face reading.
     const wildA: DieSpec = { id: 'devil-a', name: 'Devil A', weights: [1, 0, 0, 0, 0, 0], wild: 1 };
     const wildB: DieSpec = { id: 'devil-b', name: 'Devil B', weights: [1, 0, 0, 0, 0, 0], wild: 1 };
-    const wildDice: DieSpec[] = [wildA, wildB, fixedDie(2), fixedDie(3), fixedDie(4), fixedDie(6)];
-    const wildThrow: Face[] = ['W' as Face, 'W' as Face, 2, 3, 4, 6];
+    const wildDice: DieSpec[] = [wildA, wildB, fixedDie(4), fixedDie(4), fixedDie(2), fixedDie(3)];
+    const wildThrow: Face[] = ['W' as Face, 'W' as Face, 4, 4, 2, 3];
 
-    const singleWildKeeps = legalKeeps(wildThrow, wildDice).filter(
-      (option) => option.faces.length === 1 && option.faces[0] === 'W',
+    const tripleFourKeeps = legalKeeps(wildThrow, wildDice).filter(
+      (option) => option.faces.length === 3 && option.points === 400,
     );
-    expect(singleWildKeeps).toHaveLength(2);
-    expect(singleWildKeeps.every((option) => option.points === 100)).toBe(true);
+    expect(tripleFourKeeps).toHaveLength(3);
 
-    const leftoverIds = singleWildKeeps.map(
-      (option) => new Set(option.diceLeftSpecs!.map((die) => die.id)),
+    const leftoverIdKeys = tripleFourKeeps.map((option) =>
+      [...option.diceLeftSpecs!.map((die) => die.id)].sort().join(','),
     );
-    expect(leftoverIds[0]).not.toEqual(leftoverIds[1]);
+    expect(new Set(leftoverIdKeys).size).toBe(3);
   });
 });

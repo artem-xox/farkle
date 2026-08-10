@@ -9,7 +9,7 @@ import { describeCombos } from './describeCombo';
  */
 const DIE_GLYPHS = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'] as const;
 
-const WILD_GLYPH = '👿';
+const WILD_GLYPH = '😈';
 
 export function diceGlyphs(faces: readonly Face[]): string {
   return faces.map((face) => (isWild(face) ? WILD_GLYPH : DIE_GLYPHS[face - 1])).join(' ');

@@ -52,24 +52,31 @@ function totalOf(counts: Counts): number {
   return counts[0] + counts[1] + counts[2] + counts[3] + counts[4] + counts[5];
 }
 
+const ZERO_COUNTS: Counts = [0, 0, 0, 0, 0, 0];
+
 /**
- * Every combination that can be taken out of `counts` right now. Enumeration
+ * Every combination that can be taken out of `real` physical dice plus
+ * `wild` resolved wildcards right now. A Devil's Head can never complete a
+ * `Single` on its own — see docs/RULES.md §11 — so a face's `Single`
+ * candidate only exists when a *real* die shows it; `OfAKind` and the
+ * straights are free to draw on wildcards since they always involve at
+ * least the other two-plus dice a wild alone could never provide. Enumeration
  * order fixes the order of `combos` in a result, which keeps output stable
- * across runs. `wilds` is always 0 here — this is the physical-only search;
- * `bestPartitionWithWilds` attributes wildcards afterwards.
+ * across runs.
  */
-function candidateCombos(counts: Counts): Combo[] {
+function candidateCombos(real: Counts, wild: Counts): Combo[] {
   const candidates: Combo[] = [];
+  const total = (face: Pip): number => real[face - 1] + wild[face - 1];
 
   for (const face of PIPS) {
     const points = SINGLE_POINTS[face];
-    if (points !== undefined && counts[face - 1] > 0) {
+    if (points !== undefined && real[face - 1] > 0) {
       candidates.push({ kind: 'Single', faces: [face], points, wilds: 0 });
     }
   }
 
   for (const face of PIPS) {
-    const available = counts[face - 1];
+    const available = total(face);
     for (let count = 3; count <= available; count++) {
       candidates.push({
         kind: 'OfAKind',
@@ -80,7 +87,7 @@ function candidateCombos(counts: Counts): Combo[] {
     }
   }
 
-  const has = (face: Pip): boolean => counts[face - 1] > 0;
+  const has = (face: Pip): boolean => total(face) > 0;
   if (has(1) && has(2) && has(3) && has(4) && has(5)) {
     candidates.push({
       kind: 'StraightLow',
@@ -115,35 +122,56 @@ interface Partition {
 }
 
 /**
- * Best full-cover partition of `counts`, or null if the dice cannot all be
- * covered by combinations. Memoised on the count vector; there are only 924
- * reachable vectors, so the exhaustive search is effectively free and no
- * heuristic is needed. Greedy evaluation would be wrong — see docs/RULES.md §5.
+ * Best full-cover partition of `real` physical dice plus `wild` resolved
+ * wildcards, or null if they cannot all be covered by combinations.
+ * Memoised on both count vectors — a real match only ever produces a small
+ * number of distinct (real, wild) pairs, so this stays effectively free.
+ * Greedy evaluation would be wrong — see docs/RULES.md §5.
  *
- * Physical pips only — no wildcards. `bestPartitionWithWilds` below is what
- * every public entry point actually calls; this stays the fast, well-tested
- * core it fans out to per wildcard assignment.
+ * Each candidate combo consumes wildcards before real dice of the same face
+ * (except `Single`, which never touches a wildcard at all): that leaves as
+ * many real dice as possible for whatever `Single`s the rest of the
+ * partition still needs, which is the only allocation that can ever matter,
+ * since only `Single` cares which units are real.
  */
 const partitionCache = new Map<string, Partition | null>();
 
-function bestPartition(counts: Counts): Partition | null {
-  if (totalOf(counts) === 0) {
+function bestPartition(real: Counts, wild: Counts): Partition | null {
+  if (totalOf(real) + totalOf(wild) === 0) {
     return { points: 0, combos: [] };
   }
 
-  const key = counts.join(',');
+  const key = `${real.join(',')}|${wild.join(',')}`;
   const cached = partitionCache.get(key);
   if (cached !== undefined) {
     return cached;
   }
 
   let best: Partition | null = null;
-  for (const combo of candidateCombos(counts)) {
-    const remaining = [...counts] as [number, number, number, number, number, number];
-    for (const face of combo.faces) {
-      remaining[face - 1]--;
+  for (const template of candidateCombos(real, wild)) {
+    const nextReal = [...real] as [number, number, number, number, number, number];
+    const nextWild = [...wild] as [number, number, number, number, number, number];
+
+    const neededPerFace = new Map<Pip, number>();
+    for (const face of template.faces) {
+      neededPerFace.set(face, (neededPerFace.get(face) ?? 0) + 1);
     }
-    const rest = bestPartition(remaining);
+
+    let wildsUsed = 0;
+    for (const [face, needed] of neededPerFace) {
+      const index = face - 1;
+      if (template.kind === 'Single') {
+        nextReal[index] -= needed;
+        continue;
+      }
+      const useWild = Math.min(needed, nextWild[index]!);
+      nextWild[index]! -= useWild;
+      nextReal[index] -= needed - useWild;
+      wildsUsed += useWild;
+    }
+
+    const combo: Combo = wildsUsed === 0 ? template : { ...template, wilds: wildsUsed };
+    const rest = bestPartition(nextReal, nextWild);
     if (rest === null) {
       continue;
     }
@@ -193,31 +221,6 @@ function compareAssignments(a: readonly Pip[], b: readonly Pip[]): number {
   return 0;
 }
 
-/**
- * Marks how many of each combo's faces were actually a resolved wildcard
- * rather than a die that showed that pip. Combos of the same face are
- * fungible, so which specific combo "gets" a given wildcard is arbitrary —
- * this walks `combos` in order and claims wildcards greedily per face, which
- * is deterministic and always attributes the right total per face.
- */
-function attributeWilds(combos: readonly Combo[], assignment: readonly Pip[]): Combo[] {
-  const remaining: [number, number, number, number, number, number] = [0, 0, 0, 0, 0, 0];
-  for (const pip of assignment) {
-    remaining[pip - 1]++;
-  }
-  return combos.map((combo) => {
-    let wilds = 0;
-    for (const face of combo.faces) {
-      const index = face - 1;
-      if (remaining[index]! > 0) {
-        remaining[index]!--;
-        wilds++;
-      }
-    }
-    return { ...combo, wilds };
-  });
-}
-
 interface WildPartition {
   readonly points: number;
   readonly combos: readonly Combo[];
@@ -238,7 +241,7 @@ const wildPartitionCache = new Map<string, WildPartition | null>();
 
 function bestPartitionWithWilds(counts: Counts, wilds: number): WildPartition | null {
   if (wilds === 0) {
-    const plain = bestPartition(counts);
+    const plain = bestPartition(counts, ZERO_COUNTS);
     return plain === null ? null : { points: plain.points, combos: plain.combos, assignment: [] };
   }
 
@@ -250,11 +253,11 @@ function bestPartitionWithWilds(counts: Counts, wilds: number): WildPartition | 
 
   let best: WildPartition | null = null;
   for (const assignment of wildAssignments(wilds)) {
-    const merged = [...counts] as [number, number, number, number, number, number];
+    const assignmentCounts: [number, number, number, number, number, number] = [0, 0, 0, 0, 0, 0];
     for (const pip of assignment) {
-      merged[pip - 1]++;
+      assignmentCounts[pip - 1]++;
     }
-    const partition = bestPartition(merged);
+    const partition = bestPartition(counts, assignmentCounts);
     if (partition === null) {
       continue;
     }
@@ -263,11 +266,7 @@ function bestPartitionWithWilds(counts: Counts, wilds: number): WildPartition | 
       partition.points > best.points ||
       (partition.points === best.points && compareAssignments(assignment, best.assignment) < 0)
     ) {
-      best = {
-        points: partition.points,
-        combos: attributeWilds(partition.combos, assignment),
-        assignment,
-      };
+      best = { points: partition.points, combos: partition.combos, assignment };
     }
   }
 
@@ -285,7 +284,8 @@ export interface ScoredKeep {
 /**
  * Value of keeping exactly these dice, read the way most favourable to the
  * player. A Devil's Head (`WILD`) is resolved to whichever pip maximises the
- * result. Returns null if the keep is illegal: it is empty, or some die does
+ * result, but can never complete a `Single` by itself — see docs/RULES.md
+ * §11. Returns null if the keep is illegal: it is empty, or some die does
  * not participate in any combination under the best reading.
  */
 export function scoreKeep(faces: readonly Face[]): ScoredKeep | null {
@@ -322,23 +322,38 @@ export function isLegalKeep(faces: readonly Face[]): boolean {
 }
 
 /**
- * Whether a throw scores at all. A throw with no scoring dice is a farkle.
- * Equivalent to `legalKeeps(...).length > 0`, and asserted to be so by the
- * exhaustive tests; this form avoids enumerating 63 subsets per throw.
+ * Whether *some* non-empty subset of `faces` is a legal keep — a throw with
+ * none is a farkle. A direct check rather than `legalKeeps(faces).length >
+ * 0`: this runs on every throw (and, via `packages/bots/src/odds.ts`, up to
+ * 6^6 times per distinct loadout), so it stays a handful of face-count
+ * comparisons instead of enumerating up to 63 subsets.
  *
- * A Devil's Head always scores — worst case it stands alone as a `1` — so any
- * throw containing one can never farkle.
+ * A real `1` or `5` always scores alone, same as ever. A Devil's Head only
+ * scores as part of a bigger combination (see `candidateCombos`), but for
+ * *existence* that's still cheap to decide without building the combination:
+ * some face can reach a triple once enough wildcards top it up (they're free
+ * to all pile onto whichever face is neediest, since only one combination
+ * has to exist), or a straight is missing no more distinct faces than there
+ * are wildcards to fill them.
  */
 export function hasScoringDice(faces: readonly Face[]): boolean {
   const pips = faces.filter((face): face is Pip => !isWild(face));
-  if (pips.length < faces.length) {
-    return true;
-  }
+  const wildCount = faces.length - pips.length;
   const counts = countFaces(pips);
+
   if (counts[0] > 0 || counts[4] > 0) {
     return true;
   }
-  return counts.some((count) => count >= 3);
+  if (counts.some((count) => count + wildCount >= 3)) {
+    return true;
+  }
+  const missing = (needed: readonly Pip[]): number =>
+    needed.reduce((total, face) => total + (counts[face - 1] === 0 ? 1 : 0), 0);
+  return (
+    missing([1, 2, 3, 4, 5]) <= wildCount ||
+    missing([2, 3, 4, 5, 6]) <= wildCount ||
+    missing(PIPS) <= wildCount
+  );
 }
 
 /** Sorted, comma-joined die ids — a canonical key for "which dice, ignoring order". */

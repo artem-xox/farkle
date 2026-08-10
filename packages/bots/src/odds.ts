@@ -30,10 +30,13 @@ const farkleCache = new Map<string, number>();
  * ones `hasScoringDice` rejects. Cached per distinct multiset of die ids,
  * since a real game only ever throws a handful of distinct loadouts.
  *
- * A throw containing a Devil's Head can still farkle — the wild only comes up
- * with its own weighted probability, same as any other face — so this is
- * exactly 0 only for a die guaranteed to roll wild every time, not merely for
- * a die that can.
+ * A Devil's Head can never complete a `Single` on its own (docs/RULES.md
+ * §11), so replacing a die's `1` face with one is never a net improvement —
+ * every other face behaves identically, and the wild only scores in
+ * situations a plain `1` already would have. A loadout built entirely from
+ * `DEVIL_DIE` therefore farkles at least as often as the same count of
+ * `BALANCED_DIE`, never less; see the `farkleProbability` tests for the
+ * proof by construction.
  */
 export function farkleProbability(dice: readonly DieSpec[]): number {
   if (dice.length === 0) {

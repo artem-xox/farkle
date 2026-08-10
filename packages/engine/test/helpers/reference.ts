@@ -109,12 +109,63 @@ export function* allThrows(size: number): Generator<Pip[]> {
   }
 }
 
+/** A die's resolved pip plus whether it came from a wildcard — see `comboValueUnits`. */
+interface DieUnit {
+  readonly pip: Pip;
+  readonly wild: boolean;
+}
+
 /**
- * Independent oracle for a throw that may contain wildcards: brute-forces
- * every one of the (up to 6^wildCount) ways to resolve each `WILD` position
- * to a concrete pip — not just the distinct multisets the engine's own
- * `wildAssignments` enumerates — and defers to `referenceScore` for each.
- * Deliberately does not reuse anything from `src/scoring.ts`.
+ * Same as `comboValue`, except a block that is a single wildcard-origin die
+ * scores nothing — a Devil's Head can never complete a `Single` on its own,
+ * only a bigger combination. See docs/RULES.md §11.
+ */
+function comboValueUnits(block: readonly DieUnit[]): number | null {
+  if (block.length === 1) {
+    return block[0]!.wild ? null : comboValue([block[0]!.pip]);
+  }
+  return comboValue(block.map((unit) => unit.pip));
+}
+
+function referenceScoreUnits(units: readonly DieUnit[]): number | null {
+  if (units.length === 0) {
+    return null;
+  }
+  let best: number | null = null;
+  for (const partition of setPartitions(units)) {
+    let total = 0;
+    let valid = true;
+    for (const block of partition) {
+      const value = comboValueUnits(block);
+      if (value === null) {
+        valid = false;
+        break;
+      }
+      total += value;
+    }
+    if (valid && (best === null || total > best)) {
+      best = total;
+    }
+  }
+  return best;
+}
+
+/**
+ * Independent oracle for a throw that may contain wildcards: tries every
+ * distinct *multiset* of pips the wildcards could resolve to, and scores
+ * each resolution with `referenceScoreUnits`, which (independently of
+ * `src/scoring.ts`) enforces that a wildcard-origin die can never be the
+ * sole die in a `Single`.
+ *
+ * Restricted to non-decreasing pip sequences across the wild positions
+ * rather than all `6^wildCount` orderings — safe on grounds that have
+ * nothing to do with the engine: `referenceScoreUnits` partitions `units` as
+ * an unordered collection (`comboValueUnits` only ever looks at a block's
+ * sorted pips and each unit's own `wild` flag, never its position), so two
+ * assignments that are permutations of each other over the wild positions
+ * always score identically. Trying every ordering anyway would be pure
+ * waste — six wildcards alone is `6^6` = 46656 orderings collapsing to just
+ * 462 distinct multisets — not a weaker check.
  */
 export function referenceScoreWithWilds(faces: readonly Face[]): number | null {
   const wildPositions: number[] = [];
@@ -126,23 +177,27 @@ export function referenceScoreWithWilds(faces: readonly Face[]): number | null {
   });
 
   if (wildPositions.length === 0) {
-    return referenceScore(template);
+    return referenceScoreUnits(template.map((pip) => ({ pip, wild: false })));
   }
 
   let best: number | null = null;
-  const assign = (position: number): void => {
+  const assign = (position: number, minPip: Pip): void => {
     if (position === wildPositions.length) {
-      const score = referenceScore(template);
+      const units: DieUnit[] = faces.map((face, index) => ({
+        pip: template[index]!,
+        wild: isWild(face),
+      }));
+      const score = referenceScoreUnits(units);
       if (score !== null && (best === null || score > best)) {
         best = score;
       }
       return;
     }
-    for (let pip = 1; pip <= 6; pip++) {
+    for (let pip = minPip; pip <= 6; pip++) {
       template[wildPositions[position]!] = pip as Pip;
-      assign(position + 1);
+      assign(position + 1, pip as Pip);
     }
   };
-  assign(0);
+  assign(0, 1);
   return best;
 }

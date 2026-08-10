@@ -67,10 +67,8 @@ describe('die specs', () => {
     }
   });
 
-  it('the devil die has its 6 face marked wild, not its 1', () => {
-    // Marking the 1 wild would swap one guaranteed score for another and
-    // change nothing; marking the 6 wild is what actually cuts farkle risk.
-    expect(DEVIL_DIE.wild).toBe(6);
+  it('the devil die has its 1 face marked wild', () => {
+    expect(DEVIL_DIE.wild).toBe(1);
     expect(wildProbability(DEVIL_DIE)).toBeCloseTo(1 / 6, 12);
   });
 
