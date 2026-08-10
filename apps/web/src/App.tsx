@@ -62,7 +62,7 @@ export function App() {
         <button
           type="button"
           className={`tabs__tab${tab === 'play' ? ' tabs__tab--active' : ''}`}
-          aria-current={tab === 'play'}
+          aria-current={tab === 'play' ? 'page' : undefined}
           onClick={() => setTab('play')}
         >
           Play
@@ -70,7 +70,7 @@ export function App() {
         <button
           type="button"
           className={`tabs__tab${tab === 'dice' ? ' tabs__tab--active' : ''}`}
-          aria-current={tab === 'dice'}
+          aria-current={tab === 'dice' ? 'page' : undefined}
           onClick={() => setTab('dice')}
         >
           Dice
@@ -78,7 +78,7 @@ export function App() {
         <button
           type="button"
           className={`tabs__tab${tab === 'rules' ? ' tabs__tab--active' : ''}`}
-          aria-current={tab === 'rules'}
+          aria-current={tab === 'rules' ? 'page' : undefined}
           onClick={() => setTab('rules')}
         >
           Rules
@@ -92,7 +92,7 @@ export function App() {
       */}
       <main className="app__panel" hidden={tab !== 'play'}>
         {session === null ? (
-          <SetupScreen onStart={startMatch} />
+          <SetupScreen onStart={startMatch} onShowRules={() => setTab('rules')} />
         ) : (
           <MatchScreen
             key={session.id}

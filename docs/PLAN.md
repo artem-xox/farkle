@@ -303,6 +303,49 @@ band across personalities is cheap now that the flag exists. Ideas for dice
 that need more than weights and a wild face are recorded in DESIGN.md §5
 ("Directions for later dice") rather than scheduled here.
 
+### M5.1 — Setup screen pass
+
+The first screen was a correct form and nothing more: it asked four questions
+and answered none. This pass keeps the questions and fixes what surrounded
+them.
+
+- **The personality dropdown truncated on a phone.** Each option read
+  `Balanced — A sensible, well-rounded player`, which a native `<select>` has
+  no room for — the screenshot that prompted this showed `well-rounded playe`.
+  The blurbs are gone rather than shortened; one word per option is what the
+  control can actually render. An icon per playstyle is the intended
+  replacement, and is not built yet.
+- **The name field was pre-filled with `You` as a *value*,** so typing your own
+  name meant clearing someone else's first. It is a placeholder now; the
+  existing fallback on submit already covered the empty case.
+- **Setup answers are remembered** (`farkle:setup:v1`) — name, opponent,
+  personality and target. Unlike the stored match, these are validated field by
+  field in `storage.ts`: nothing downstream would catch an unknown preset or a
+  target that makes the match unwinnable, so anything that fails to check out is
+  dropped and the screen's own default stands.
+- **1500 / 3000 / 8000 now say how long they take.** The numbers are measured,
+  not guessed: `farkle sim --a balanced --b balanced -n 20000 --seed 42
+  --target <n>` reports 2.7 / 5.3 / 14.6 turns per side, shown rounded as
+  "~3 / ~5 / ~15 turns each". Same principle as the dice table in DESIGN.md §5
+  — a number on screen should be one we ran.
+- **Dice on the dice game's front page.** Three of them, tumbling in on load and
+  re-rolling when tapped, plus a sentence saying what Farkle is and a link into
+  the Rules tab — the site has OG cards, so arriving without knowing the game is
+  a real path.
+- **Two bugs.** The loadout step labelled the opponent's dice `Friend's dice`
+  literally, ignoring the name that had just been typed. And "Skip" always
+  substituted a fresh ordinary loadout, so "Choose dice → pick → Back → Skip"
+  discarded the picks silently; it now starts with whatever is in the slots and
+  says so.
+- **Segmented controls are radiogroups.** They were rows of plain buttons, which
+  a screen reader announces as unrelated controls rather than one choice out of
+  a set. `aria-current` on the tabs was passing a boolean instead of `page`.
+
+Deliberately not done here, and still open: a match history and a win/loss
+record on this screen (the cheapest reason to come back, and the natural
+front end for M7), and folding the loadout into the first screen rather than
+keeping it a second step.
+
 ## M6 — Optimal play and hints
 
 Deferred until a prototype exists. Kept here so the shape is on record.
