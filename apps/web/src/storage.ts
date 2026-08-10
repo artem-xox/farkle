@@ -60,6 +60,9 @@ export interface SetupPrefs {
   readonly mode: 'bot' | 'friend';
   readonly preset: PresetName;
   readonly target: number;
+  /** A `LOADOUT_PRESETS` id or `CUSTOM_PRESET_ID`. Validated only as a string here — the setup screen resolves it and falls back on its own if the id no longer exists, which is what happens when a preset is renamed or dropped. */
+  readonly loadoutPreset: string;
+  readonly botMirrors: boolean;
 }
 
 export function saveSetupPrefs(prefs: SetupPrefs): void {
@@ -110,6 +113,12 @@ export function loadSetupPrefs(allowedTargets: readonly number[]): Partial<Setup
   }
   if (typeof stored['target'] === 'number' && allowedTargets.includes(stored['target'])) {
     prefs.target = stored['target'];
+  }
+  if (typeof stored['loadoutPreset'] === 'string') {
+    prefs.loadoutPreset = stored['loadoutPreset'];
+  }
+  if (typeof stored['botMirrors'] === 'boolean') {
+    prefs.botMirrors = stored['botMirrors'];
   }
 
   return prefs as Partial<SetupPrefs>;
