@@ -1,5 +1,6 @@
 import {
   BALANCED_DIE,
+  bestKeep,
   hasScoringDice,
   WILD,
   type DieSpec,
@@ -83,6 +84,70 @@ export function farkleProbability(dice: readonly DieSpec[]): number {
   const probability = farkleCount / denominator;
   farkleCache.set(key, probability);
   return probability;
+}
+
+const expectedValueCache = new Map<string, number>();
+
+/**
+ * Expected points from the best legal keep of one throw of exactly these
+ * dice, counting a farkle as zero — the companion to `farkleProbability`, by
+ * the same exhaustive weighted enumeration and cached the same way.
+ *
+ * Deliberately *unconditional*: the farkle outcomes are included at 0 rather
+ * than excluded, because that is the form the throw-or-bank comparison wants.
+ * With `p = farkleProbability(dice)` and this value as `g`, banking a turn
+ * score of `S` is worth `S`, while throwing and then banking is worth
+ * `(1 - p) * (S + E[points | scoring])`, and since `g = (1 - p) *
+ * E[points | scoring]` by construction, throwing wins exactly when
+ * `g > S * p`. See `ThresholdBot`'s `evBanking` rule.
+ *
+ * Assumes the thrower takes the highest-scoring keep. A bot with a positive
+ * `diceValue` sometimes prefers a lower-scoring keep that hoards dice, so
+ * this slightly overstates `g` for such a bot — noted rather than modelled,
+ * since the keep actually chosen depends on the same policy this feeds.
+ */
+export function expectedKeepValue(dice: readonly DieSpec[]): number {
+  if (dice.length === 0) {
+    return 0;
+  }
+
+  const key = cacheKey(dice);
+  const cached = expectedValueCache.get(key);
+  if (cached !== undefined) {
+    return cached;
+  }
+
+  const totals = dice.map((die) => die.weights.reduce((sum, weight) => sum + weight, 0));
+  const denominator = totals.reduce((product, total) => product * total, 1);
+
+  const faces: Face[] = new Array(dice.length);
+  let pointsWeight = 0;
+
+  function recurse(index: number, countSoFar: number): void {
+    if (index === dice.length) {
+      const keep = bestKeep(faces);
+      if (keep !== null) {
+        pointsWeight += countSoFar * keep.points;
+      }
+      return;
+    }
+    const die = dice[index]!;
+    for (let pipIndex = 0; pipIndex < 6; pipIndex++) {
+      const weight = die.weights[pipIndex]!;
+      if (weight === 0) {
+        continue;
+      }
+      const pip = (pipIndex + 1) as Pip;
+      faces[index] = die.wild === pip ? WILD : pip;
+      recurse(index + 1, countSoFar * weight);
+    }
+  }
+
+  recurse(0, 1);
+
+  const expected = pointsWeight / denominator;
+  expectedValueCache.set(key, expected);
+  return expected;
 }
 
 const balancedFarkleCache = new Map<number, number>();

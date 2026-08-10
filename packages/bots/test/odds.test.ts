@@ -10,7 +10,12 @@ import {
 } from '@farkle/engine';
 import { describe, expect, it } from 'vitest';
 
-import { balancedFarkleProbability, farkleProbability, safetyRatio } from '../src/odds.js';
+import {
+  balancedFarkleProbability,
+  expectedKeepValue,
+  farkleProbability,
+  safetyRatio,
+} from '../src/odds.js';
 
 describe('farkleProbability', () => {
   it('matches the textbook value for one balanced die', () => {
@@ -128,5 +133,42 @@ describe('safetyRatio', () => {
 
   it('is 1 for an empty set (the multiplier this feeds becomes a no-op)', () => {
     expect(safetyRatio([])).toBe(1);
+  });
+});
+
+describe('expectedKeepValue', () => {
+  it('matches the textbook value for one balanced die', () => {
+    // A lone die scores only on 1 (100) or 5 (50), each 1/6 of the time.
+    expect(expectedKeepValue([BALANCED_DIE])).toBeCloseTo((100 + 50) / 6, 12);
+  });
+
+  it('reproduces the roster figures measured independently in scripts/dice-balance', () => {
+    // These are the `ev6`/`ev3` columns of the balanced row in
+    // docs/researches/2026-08-10-mixed-loadout-strategy.md §1, produced by
+    // `analyticalMetricsMixed` in scripts/dice-balance/lib.mjs — a separate
+    // implementation of the same enumeration, so agreeing with it is a real
+    // cross-check rather than a restatement.
+    expect(expectedKeepValue(new Array(6).fill(BALANCED_DIE) as DieSpec[])).toBeCloseTo(399, 0);
+    expect(expectedKeepValue(new Array(3).fill(BALANCED_DIE) as DieSpec[])).toBeCloseTo(86.8, 1);
+  });
+
+  it('is 0 for a die that can never score, and for no dice at all', () => {
+    const alwaysThree: DieSpec = { id: 'always-3-test', name: 'x', weights: [0, 0, 1, 0, 0, 0] };
+    expect(expectedKeepValue([alwaysThree])).toBe(0);
+    expect(expectedKeepValue([])).toBe(0);
+  });
+
+  it('rises with every extra die in the throw', () => {
+    for (let n = 1; n < 6; n++) {
+      const fewer = expectedKeepValue(new Array(n).fill(BALANCED_DIE) as DieSpec[]);
+      const more = expectedKeepValue(new Array(n + 1).fill(BALANCED_DIE) as DieSpec[]);
+      expect(more).toBeGreaterThan(fewer);
+    }
+  });
+
+  it('is consistent with farkleProbability: zero exactly when a farkle is certain', () => {
+    const alwaysWild: DieSpec = { id: 'always-wild-ev-test', name: 'x', weights: [1, 0, 0, 0, 0, 0], wild: 1 };
+    expect(farkleProbability([alwaysWild])).toBe(1);
+    expect(expectedKeepValue([alwaysWild])).toBe(0);
   });
 });

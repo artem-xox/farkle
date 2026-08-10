@@ -1,6 +1,11 @@
 import { DICE_PER_TURN, nextBelow, seedRng, type ClientView, type KeepOption, type RngState } from '@farkle/engine';
 
-import { balancedFarkleProbability, farkleProbability, safetyRatio } from './odds.js';
+import {
+  balancedFarkleProbability,
+  expectedKeepValue,
+  farkleProbability,
+  safetyRatio,
+} from './odds.js';
 import type { BotPolicy } from './policy.js';
 
 /**
@@ -51,6 +56,28 @@ export interface BotParams {
    */
   readonly endgameMargin?: number;
   readonly endgameBankAt?: number;
+  /**
+   * Replace the whole `bankAt`/`minDiceToThrow` threshold apparatus with a
+   * one-ply expected-value comparison: throw while the expected points from
+   * one more throw of the dice actually in play exceed what that throw risks,
+   * i.e. `expectedKeepValue(dice) > turnScore * farkleProbability(dice)` (see
+   * `expectedKeepValue` for the derivation).
+   *
+   * This subsumes both thresholds rather than supplementing them. A constant
+   * `bankAt` is a fixed guess at where that inequality flips; computing it
+   * directly makes the effective threshold rise with the turn score *and*
+   * adapt to how many dice are left and how good they are — the last of which
+   * no static parameter can express at all.
+   *
+   * Myopic by construction: it values throwing as "throw once, then bank",
+   * ignoring that a good throw earns another decision. That undervalues
+   * throwing, so an EV bot banks somewhat earlier than true optimal play
+   * would — the exact gap is what a full solver (docs/PLAN.md M6) would close.
+   *
+   * The race still overrides it: winning outright, hot dice and the
+   * desperation rule are all applied before this comparison is reached.
+   */
+  readonly evBanking?: boolean;
 }
 
 /**
@@ -132,6 +159,12 @@ export class ThresholdBot implements BotPolicy {
     if (view.diceInPlay === DICE_PER_TURN && this.params.hotDiceAlwaysThrow) {
       return 'Throw';
     }
+    if (this.params.evBanking === true) {
+      const decision = this.decideByExpectedValue(view);
+      if (decision !== null) {
+        return decision;
+      }
+    }
     if (this.tooRiskyToThrow(view)) {
       return 'Bank';
     }
@@ -155,6 +188,29 @@ export class ThresholdBot implements BotPolicy {
     }
 
     return view.turnScore >= threshold ? 'Bank' : 'Throw';
+  }
+
+  /**
+   * The `evBanking` rule — or `null` when this view carries no die identities
+   * to price a throw from, in which case the caller falls back to the
+   * threshold path, the same fallback `tooRiskyToThrow` makes.
+   */
+  private decideByExpectedValue(view: ClientView): 'Throw' | 'Bank' | null {
+    if (view.diceInPlay <= 0 || view.inPlayDice.length !== view.diceInPlay) {
+      return null;
+    }
+
+    if (leadingOpponentTotal(view) >= view.target - this.params.desperationMargin) {
+      // Same reasoning as the threshold path's desperation override: with the
+      // opponent a turn away from winning, a bank that doesn't win the game
+      // outright is worth nothing, so what the throw risks doesn't matter.
+      // Reaching here already implies the turn score can't win (the caller
+      // banks first when it can), so the only move left is to throw.
+      return 'Throw';
+    }
+
+    const dice = view.inPlayDice;
+    return expectedKeepValue(dice) > view.turnScore * farkleProbability(dice) ? 'Throw' : 'Bank';
   }
 
   /** `params.bankAt`, or the target-relative threshold when configured — see `bankAtTargetBase`. */
