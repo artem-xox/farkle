@@ -23,6 +23,11 @@ P(face i) = w_i / sum(weights)
 A balanced die is `[1, 1, 1, 1, 1, 1]`. A die with weight `0` on a face can never
 roll that face. See [DESIGN.md](DESIGN.md) for the dice available in v1.
 
+Optionally, one face of a die is painted as a **Devil's Head** and rolls as a
+*wildcard* instead of its printed value — see [§4a](#4a-wildcards-devils-head).
+It still has a weight like any other face; only what it means once thrown is
+different.
+
 ## 2. Match setup
 
 - Two or more players, each starting at 0 banked points.
@@ -86,6 +91,32 @@ triple plus leftovers. Concretely:
 | six | 8000 | 1600 | 2400 | 3200 | 4000 | 4800 |
 
 Six `1`s therefore scores 8000 and wins a default match outright.
+
+## 4a. Wildcards (Devil's Head)
+
+A die can carry a **Devil's Head** on one physical face instead of a printed
+value. Rolling it produces a wildcard rather than a `1`–`6`.
+
+- **Resolves to whichever pip maximises the keep.** A wildcard is not a fixed
+  value; scoring a keep that contains one considers every pip `1`–`6` it could
+  stand in for (or, with several wildcards in one keep, every combination of
+  pips) and picks the highest-scoring reading.
+- **Cannot complete a single `1` or `5` by itself.** A wildcard only counts
+  toward a three-(or-more)-of-a-kind or a straight — never toward the "a
+  single `1`" / "a single `5`" combinations in [§4](#4-scoring-combinations).
+  A keep consisting of nothing but one wildcard is therefore illegal, and a
+  throw where the only wildcard has no triple or straight to join farkles
+  exactly as if that die had rolled a `2`, `3`, `4` or `6`.
+- **Wildcards can complete a combination entirely among themselves.** Three
+  wildcards alone are a legal keep (read as three `1`s, 1000 points); this
+  follows from the rule above without being a special case — three-of-a-kind
+  never required any of its dice to be a specific physical value.
+- **A die carrying a Devil's Head is otherwise an ordinary die.** Its
+  wildcard face has a weight like any other and can be zero, low, or (as with
+  `devil`, [DESIGN.md §5](DESIGN.md#5-dice)) the same as every other face.
+
+This is an engine ruling, not a verified transcription of the source game's
+behaviour — see [§11](#11-unconfirmed-and-deferred) for what's still open.
 
 ## 5. Keeping dice
 
@@ -197,13 +228,14 @@ still the highest-risk assumption in the document: if it is wrong, `2 2 3 3 4 4`
 flips from a farkle to a 1500-point throw. Worth verifying in-game before the
 scoring tests are treated as golden.
 
-**Devil's Head face.** Some dice in the source game carry a wildcard face that
-can stand in for any value when completing a combination. Not implemented in v1.
-When it is, the open questions are whether a wildcard scores on its own, whether
-a throw of only wildcards farkles, and how it interacts with the maximum-value
-rule (a wildcard should presumably be assigned the value that maximises the
-keep). The scoring engine should treat "wildcard" as a first-class face from the
-start so that adding such dice does not require reworking the partitioner.
+**Devil's Head face.** Implemented as of M5 — see [§4a](#4a-wildcards-devils-head)
+for the ruling actually shipped: a wildcard can never complete a single `1` or
+`5` alone, only a bigger combination. That specific restriction is our own
+call, made because a wildcard that scored unconditionally on its own would be
+mechanically identical to a plain `1` (see `packages/engine/src/dice.ts`'s
+comment on `DEVIL_DIE`) — it is not a transcription of confirmed source-game
+behaviour, and is worth checking against the real game like the three-pairs
+question above.
 
 **Match target.** In the source game the target varies by opponent and wager.
 Modelled here as match configuration with a default of 2000.
