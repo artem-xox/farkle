@@ -1,5 +1,5 @@
 // Ablation + prototype lab for the `smart` bot line, feeding
-// docs/researches/2026-08-11-smart-ablation-and-ev.md.
+// docs/researches/2026-08-10-smart-ablation-and-ev.md.
 //
 // Every variant is measured the same way: head-to-head against `balanced`,
 // the incumbent, across the (victory target x dice set) grid. That is a much
