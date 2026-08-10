@@ -1,5 +1,7 @@
 import type { DieSpec } from '@farkle/engine';
 
+import { iconicFace } from '../dice/descriptions';
+import { Die } from '../match/Die';
 import { LoadoutPicker } from './LoadoutPicker';
 
 export interface LoadoutStepProps {
@@ -32,16 +34,26 @@ export function LoadoutStep({
   return (
     <div className="setup setup--wide">
       <h1 className="setup__title">Choose your dice</h1>
-      <p className="setup__subtitle">Tap a die below to fill the highlighted slot — see the Dice page for exact odds</p>
+      <p className="setup__subtitle">Tap a card to fill the highlighted slot — happy with plain dice? Skip ahead below.</p>
 
       <div className="setup__form">
         <LoadoutPicker label="Your dice" loadout={yourLoadout} onChange={onChangeYours} />
-        <LoadoutPicker
-          label={opponentLabel}
-          loadout={opponentLoadout}
-          onChange={onChangeOpponent}
-          disabled={!opponentEditable}
-        />
+
+        {opponentEditable ? (
+          <LoadoutPicker label={opponentLabel} loadout={opponentLoadout} onChange={onChangeOpponent} />
+        ) : (
+          <div className="loadout loadout--readonly">
+            <span className="field__label">{opponentLabel}</span>
+            <div className="loadout__slots loadout__slots--compact">
+              {opponentLoadout.map((die, index) => (
+                <span className="loadout-slot loadout-slot--readonly" key={index} title={die.name}>
+                  <Die face={iconicFace(die)} dieId={die.id} />
+                </span>
+              ))}
+            </div>
+            <p className="loadout__note">Bot loadouts aren&rsquo;t customizable yet — this opponent always plays ordinary dice.</p>
+          </div>
+        )}
 
         <div className="setup__step-actions">
           <button type="button" className="action" onClick={onBack}>

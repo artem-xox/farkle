@@ -1,7 +1,7 @@
 import { DICE, faceProbabilities, type DieSpec } from '@farkle/engine';
 
 import { Die } from '../match/Die';
-import { DIE_DESCRIPTIONS } from './descriptions';
+import { DIE_DESCRIPTIONS, iconicFace } from './descriptions';
 
 const DICE_LIST: readonly DieSpec[] = Object.values(DICE);
 
@@ -35,7 +35,7 @@ function DieCard({ die }: { die: DieSpec }) {
   return (
     <div className="dice-stats__card">
       <div className="dice-stats__heading">
-        <Die face={1} dieId={die.id} />
+        <Die face={iconicFace(die)} dieId={die.id} />
         <div className="dice-stats__heading-text">
           <span className="dice-stats__name">{die.name}</span>
           <span className="dice-stats__description">{DIE_DESCRIPTIONS[die.id]}</span>

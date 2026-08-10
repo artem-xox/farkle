@@ -45,15 +45,17 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
     setStep('loadout');
   }
 
-  function handleStart(): void {
+  function handleStart(loadouts?: { yours: readonly DieSpec[]; opponent: readonly DieSpec[] }): void {
     const you = yourName.trim() || 'You';
     const seed = randomSeed();
+    const yours = loadouts?.yours ?? yourLoadout;
+    const opponent = loadouts?.opponent ?? opponentLoadout;
 
     if (mode === 'bot') {
       onStart({
         players: [
-          { name: you, loadout: yourLoadout },
-          { name: capitalize(preset), loadout: opponentLoadout },
+          { name: you, loadout: yours },
+          { name: capitalize(preset), loadout: opponent },
         ],
         target,
         seed,
@@ -64,8 +66,8 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
       const friend = friendName.trim() || 'Friend';
       onStart({
         players: [
-          { name: you, loadout: yourLoadout },
-          { name: friend, loadout: opponentLoadout },
+          { name: you, loadout: yours },
+          { name: friend, loadout: opponent },
         ],
         target,
         seed,
@@ -73,6 +75,11 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
         botPreset: null,
       });
     }
+  }
+
+  /** Skips the loadout step entirely for anyone who doesn't care to customize — every slot starts as an ordinary die anyway, so this is just "start now" rather than a real reset. */
+  function handleQuickStart(): void {
+    handleStart({ yours: defaultLoadout(), opponent: defaultLoadout() });
   }
 
   if (step === 'loadout') {
@@ -175,6 +182,9 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
 
         <button type="submit" className="setup__start">
           Choose dice
+        </button>
+        <button type="button" className="setup__skip" onClick={handleQuickStart}>
+          Skip — play with ordinary dice
         </button>
       </form>
     </div>
