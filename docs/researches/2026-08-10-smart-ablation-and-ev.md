@@ -65,6 +65,14 @@ EV(throw, then bank)  = (1 − p) · (S + E[points | scoring])  =  (1 − p)·S 
 
 `balanced`'s flat 350 is wrong at both ends by more than an order of magnitude: it keeps throwing a single die with 300 banked (breakeven 38) and banks five dice at 400 (breakeven 3 136). No single number fits a curve that spans 38 to 12 931, which is why tuning the constant — all `smart-bankat` did — was never going to move anything.
 
+The same table for the other two dice sets, which §3.1 needs:
+
+| dice in play | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|
+| `balanced` | 38 | 113 | 313 | 912 | 3 136 | 12 931 |
+| `cheat` | 27 | 74 | 248 | 859 | 3 243 | 14 066 |
+| `trinity` | 21 | 55 | 210 | 808 | 3 380 | 16 409 |
+
 ### Result
 
 | dice | target | `smart-ev` win% vs `balanced` | CI95 | its farkle% | avg/bank |
@@ -83,7 +91,26 @@ EV(throw, then bank)  = (1 − p) · (S + E[points | scoring])  =  (1 − p)·S 
 
 **The mechanism is visible in the diagnostics.** On ordinary dice `smart-ev` farkles at 17–18.5% against roughly 31% for the balanced-parameter variants — it nearly halves the farkle rate — while banking about 13% less per bank (590–603 vs 673–690). It trades turn size for turn reliability, and the trade pays. That is precisely the "banks a single die far too late" error the breakeven table predicts.
 
-**Its edge is concentrated where the dice are ordinary, and grows with race length** — 50.9 → 51.9 → 53.5 as the target goes 1500 → 3000 → 8000. On `cheat` and `trinity` it is a flat ~+0.4pp. Both facts have the same cause: those dice already farkle far less (10–19% even for `balanced`), so there is much less of the specific mistake this rule fixes, and a per-turn edge compounds over more turns.
+**Its edge is concentrated where the dice are ordinary, and grows with race length** — 50.9 → 51.9 → 53.5 as the target goes 1500 → 3000 → 8000. On `cheat` and `trinity` it is a flat ~+0.4pp. The growth with race length is just compounding: a per-turn edge applied over 29 turns instead of 5. The dice-set split has a sharper cause, below.
+
+### 3.1 Why the gain nearly vanishes on `cheat` and `trinity`
+
+Listed as an open question in the first draft of this report; it turns out to be answerable from the primitives, with no simulation at all.
+
+`balanced`'s `minDiceToThrow: 2` is not a raw count — it is read as a farkle-risk ceiling (docs/DESIGN.md §6): refuse to throw whenever the dice in play are riskier than two ordinary dice, i.e. `p > 44.4%`. Whether that gate binds at two dice depends on the loadout:
+
+| dice in play | 1 | 2 | 3 |
+|---|---|---|---|
+| `balanced` | 66.7% — blocked | **44.4% — allowed** | 27.8% — allowed |
+| `cheat` | 73.3% — blocked | **53.8% — blocked** | 35.0% — allowed |
+| `trinity` | 77.8% — blocked | **60.5% — blocked** | 37.9% — allowed |
+
+So `balanced` makes two distinct errors, and only one of them survives on the special dice:
+
+- **Over-throwing on two dice** (breakeven 113, threshold 350 — it throws through the whole band between). This happens *only on ordinary dice*: on `cheat` and `trinity` the risk gate blocks the two-dice throw outright and accidentally does the EV rule's job for it.
+- **Under-throwing on four and five dice** (breakeven 912 and 3 136 against the same flat 350). This happens on every loadout, and is what the flat ~+0.4pp on `cheat`/`trinity` consists of.
+
+That is a satisfying result in its own right: the risk-ceiling reading of `minDiceToThrow` added in M5 is not merely a refinement of a raw count, it is a crude, one-sided approximation of the EV rule — and on high-variance dice it happens to approximate the half that matters most.
 
 Worth stating plainly: **the rule is myopic and wins anyway.** It values throwing as "throw once, then bank," ignoring that a good throw earns another decision, so it systematically undervalues throwing and banks earlier than true optimal play. Beating a hand-tuned constant while handicapped that way is the strongest argument yet for the full solver in docs/PLAN.md M6 — this is the prototype that milestone says it is waiting for.
 
@@ -136,7 +163,8 @@ Its margin widens sharply with race length — the ordinary-dice row runs 53.0 �
 - **Un-myopia.** The obvious next step is a two-ply (or depth-limited) version that credits a throw with the continuation value of the decision it earns. The breakeven table says the myopic rule banks too early; how much is on the table is measurable without building the whole M6 solver.
 - **`smart-ev` + `smart-risk`.** The roster pass sharpens this from a guess into the obvious next experiment: `smart-ev`'s only real loss in 45 pairings is to `reckless` in a short ordinary race, and that is precisely the cell where `smart-risk` won. Whether they compose or interfere is untested — the EV rule already subsumes `minDiceToThrow`, so `smart-risk`'s contribution would have to come through `diceValue` and the keep ranking alone.
 - **`chooseKeep` is still heuristic.** The EV rule improves only the throw-or-bank decision; keep selection is still `points + diceValue × diceLeft × safetyRatio`. `expectedKeepValue` could rank keeps by the EV of the dice each one *leaves behind*, which is the same machinery applied to the other half of the turn — plausibly a larger remaining gain than un-myopia.
-- **Why is the gain so small on `cheat`/`trinity`?** The farkle-rate explanation above is a hypothesis fitted to the diagnostics, not something this grid tests directly.
+- **`smart-ev` ignores the score entirely.** It maximizes expected *points*, not win probability, and the EV path returns before the `catchUpBonus` logic, so it has no notion of being ahead or behind — only `desperationMargin` still applies. Two fixes worth testing: value a throw at `min(gain, points still needed)` rather than raw points, since points past the target are worth nothing; and restore an ahead/behind asymmetry. Its weakest condition is a short race, which is exactly where race position matters most per turn.
+- **`expectedKeepValue` assumes the max-points keep, but the bot doesn't take it.** `smart-ev` inherits `diceValue: 15` from `balanced`, so it sometimes prefers a lower-scoring keep that hoards dice — the EV estimate and the policy disagree. The cheapest experiment in this whole line: rerun the grid with `diceValue: 0`.
 - Same standing caveat as both parent reports: symmetric loadouts only.
 
 ## 8. Reproduction
