@@ -118,8 +118,48 @@ button:disabled {
 }
 
 .setup__subtitle {
-  margin: 0.25rem 0 2rem;
+  margin: 0.25rem 0 1.25rem;
   color: var(--parchment-dim);
+}
+
+/* A dice game whose first screen shows no dice. Tapping re-rolls them. */
+.hero-dice {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.25rem;
+  border: none;
+  background: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-dice .die--tumbling {
+    animation: none;
+  }
+}
+
+.setup__pitch {
+  margin: 1rem 0 2rem;
+  color: var(--parchment-dim);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+/* A link in prose, but a button in fact — it switches tabs, it doesn't navigate. */
+.setup__link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--gold-bright);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+
+.setup__link:hover {
+  color: var(--parchment);
 }
 
 .setup__form {
@@ -171,6 +211,24 @@ button:disabled {
   border-color: var(--gold);
   color: var(--ink);
   font-weight: 600;
+}
+
+/*
+ * Two-line options, used by "First to": the score is the choice, the measured
+ * turn count under it is what makes the three numbers mean anything to someone
+ * who has never played a match.
+ */
+.segmented__value {
+  display: block;
+}
+
+.segmented__hint {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.68rem;
+  font-weight: 400;
+  opacity: 0.75;
+  white-space: nowrap;
 }
 
 .setup--wide {

@@ -1,12 +1,8 @@
-import type { PresetName } from '@farkle/bots';
-
-/** Short blurbs for the setup screen — the personality shapes from docs/DESIGN.md §6. */
-export const PRESET_DESCRIPTIONS: Record<PresetName, string> = {
-  cautious: 'Banks early, rarely risks a big turn',
-  balanced: 'A sensible, well-rounded player',
-  aggressive: 'Pushes for big turns, banks late',
-  reckless: 'High variance — no fear of hot dice',
-  novice: 'Plays reasonably, but makes real mistakes',
-};
-
+/*
+ * The per-personality blurbs that used to live here are gone: they were only
+ * ever rendered inside a native `<select>`, where they truncated on a phone
+ * rather than explaining anything. The personality shapes they described are
+ * in docs/DESIGN.md §6, and the intended replacement is an icon per playstyle
+ * rather than a sentence per option.
+ */
 export const capitalize = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);

@@ -1,9 +1,11 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 
 import { PRESET_NAMES, type PresetName } from '@farkle/bots';
 import { BALANCED_DIE, DICE_PER_TURN, type DieSpec, type PlayerConfig } from '@farkle/engine';
 
-import { capitalize, PRESET_DESCRIPTIONS } from '../presets';
+import { capitalize } from '../presets';
+import { loadSetupPrefs, NAME_MAX_LENGTH, saveSetupPrefs } from '../storage';
+import { HeroDice } from './HeroDice';
 import { LoadoutStep } from './LoadoutStep';
 
 export interface NewMatchOptions {
@@ -16,29 +18,58 @@ export interface NewMatchOptions {
 
 export interface SetupScreenProps {
   onStart: (options: NewMatchOptions) => void;
+  /** Opens the Rules tab — the setup screen has to be able to answer "what is Farkle?" for anyone arriving from a shared link. */
+  onShowRules: () => void;
 }
 
 /**
  * 8000 is deliberate rather than round: it is exactly what six 1s score, so
  * the longest match is still winnable by a single miraculous throw.
+ *
+ * `turnsEach` answers the only question a player actually has about these
+ * numbers — how long is this going to take — and is measured rather than
+ * guessed, from `farkle sim --a balanced --b balanced -n 20000 --seed 42
+ * --target <n>`, whose "turns per match" per side reads 2.7 / 5.3 / 14.6.
+ * Rounded, because it is a signpost and the spread across personalities is
+ * wider than the rounding error.
  */
-const TARGET_CHOICES = [1500, 3000, 8000];
+const TARGET_CHOICES = [
+  { value: 1500, turnsEach: 3 },
+  { value: 3000, turnsEach: 5 },
+  { value: 8000, turnsEach: 15 },
+] as const;
+const TARGET_VALUES: readonly number[] = TARGET_CHOICES.map((choice) => choice.value);
 const DEFAULT_TARGET_CHOICE = 3000;
 
 const randomSeed = (): number => (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0;
 const defaultLoadout = (): DieSpec[] => new Array(DICE_PER_TURN).fill(BALANCED_DIE);
+const isOrdinary = (loadout: readonly DieSpec[]): boolean =>
+  loadout.every((die) => die.id === BALANCED_DIE.id);
 
 type Step = 'basics' | 'loadout';
 
-export function SetupScreen({ onStart }: SetupScreenProps) {
+export function SetupScreen({ onStart, onShowRules }: SetupScreenProps) {
+  // One read, at mount: the screen remounts after every match, and re-reading
+  // then is the point — it is how the last match's answers come back.
+  const [prefs] = useState(() => loadSetupPrefs(TARGET_VALUES));
+
   const [step, setStep] = useState<Step>('basics');
-  const [mode, setMode] = useState<'bot' | 'friend'>('bot');
-  const [yourName, setYourName] = useState('You');
-  const [friendName, setFriendName] = useState('Friend');
-  const [preset, setPreset] = useState<PresetName>('balanced');
-  const [target, setTarget] = useState(DEFAULT_TARGET_CHOICE);
+  const [mode, setMode] = useState<'bot' | 'friend'>(prefs.mode ?? 'bot');
+  // Empty rather than 'You', so the default arrives as a placeholder and
+  // nobody has to clear someone else's name before typing their own. Both
+  // fields fall back to the placeholder text on submit.
+  const [yourName, setYourName] = useState(prefs.yourName ?? '');
+  const [friendName, setFriendName] = useState(prefs.friendName ?? '');
+  const [preset, setPreset] = useState<PresetName>(prefs.preset ?? 'balanced');
+  const [target, setTarget] = useState(prefs.target ?? DEFAULT_TARGET_CHOICE);
   const [yourLoadout, setYourLoadout] = useState<DieSpec[]>(defaultLoadout());
   const [opponentLoadout, setOpponentLoadout] = useState<DieSpec[]>(defaultLoadout());
+
+  // Saved on change rather than on start: a player who types their name and
+  // then reloads without starting should not have to type it again either.
+  useEffect(() => {
+    saveSetupPrefs({ yourName, friendName, mode, preset, target });
+  }, [yourName, friendName, mode, preset, target]);
 
   function handleContinue(event: FormEvent): void {
     event.preventDefault();
@@ -77,17 +108,26 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
     }
   }
 
-  /** Skips the loadout step entirely for anyone who doesn't care to customize — every slot starts as an ordinary die anyway, so this is just "start now" rather than a real reset. */
+  /**
+   * Skips the loadout step for anyone who doesn't care to customize. It starts
+   * with whatever is currently in the slots rather than forcing them back to
+   * ordinary: on a first pass those are the same thing, but after "Choose dice
+   * → Back" they are not, and resetting there discarded the player's picks
+   * without saying so. The label below changes to match.
+   */
   function handleQuickStart(): void {
-    handleStart({ yours: defaultLoadout(), opponent: defaultLoadout() });
+    handleStart();
   }
+
+  const bothOrdinary = isOrdinary(yourLoadout) && isOrdinary(opponentLoadout);
+  const friend = friendName.trim() || 'Friend';
 
   if (step === 'loadout') {
     return (
       <LoadoutStep
         yourLoadout={yourLoadout}
         opponentLoadout={opponentLoadout}
-        opponentLabel={mode === 'bot' ? `${capitalize(preset)}’s dice` : "Friend’s dice"}
+        opponentLabel={mode === 'bot' ? `${capitalize(preset)}’s dice` : `${friend}’s dice`}
         opponentEditable={mode === 'friend'}
         onChangeYours={setYourLoadout}
         onChangeOpponent={setOpponentLoadout}
@@ -102,35 +142,55 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
       <h1 className="setup__title">Farkle</h1>
       <p className="setup__subtitle">Kingdom Come: Deliverance II rules</p>
 
+      <HeroDice />
+
+      <p className="setup__pitch">
+        Throw six dice, keep what scores, and push your luck — until a throw scores nothing and the
+        whole turn is gone.{' '}
+        <button type="button" className="setup__link" onClick={onShowRules}>
+          How it works
+        </button>
+      </p>
+
       <form className="setup__form" onSubmit={handleContinue}>
         <label className="field">
           <span className="field__label">Your name</span>
           <input
             className="field__input"
             value={yourName}
-            maxLength={20}
+            placeholder="You"
+            maxLength={NAME_MAX_LENGTH}
             onChange={(event) => setYourName(event.target.value)}
           />
         </label>
 
         <div className="field">
-          <span className="field__label">Opponent</span>
-          <div className="segmented">
+          <span className="field__label" id="opponent-label">
+            Opponent
+          </span>
+          {/* A radiogroup rather than a row of buttons: it is one choice out of a set, and without the roles a screen reader announces two unrelated buttons. */}
+          <div className="segmented" role="radiogroup" aria-labelledby="opponent-label">
             <button
               type="button"
+              role="radio"
+              aria-checked={mode === 'bot'}
               className={mode === 'bot' ? 'segmented__option segmented__option--active' : 'segmented__option'}
               onClick={() => setMode('bot')}
             >
-              Bot
+              <span className="segmented__value">Bot</span>
+              <span className="segmented__hint">on this device</span>
             </button>
             <button
               type="button"
+              role="radio"
+              aria-checked={mode === 'friend'}
               className={
                 mode === 'friend' ? 'segmented__option segmented__option--active' : 'segmented__option'
               }
               onClick={() => setMode('friend')}
             >
-              Friend (pass &amp; play)
+              <span className="segmented__value">Friend</span>
+              <span className="segmented__hint">pass &amp; play</span>
             </button>
           </div>
         </div>
@@ -138,6 +198,12 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
         {mode === 'bot' ? (
           <label className="field">
             <span className="field__label">Personality</span>
+            {/*
+              One word per option. The descriptions that used to trail each
+              name were the whole reason this control truncated on a phone —
+              a native select has no room for them, and "Balanced — A sensible,
+              well-rounded playe" reads worse than no explanation at all.
+            */}
             <select
               className="field__input"
               value={preset}
@@ -145,7 +211,7 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
             >
               {PRESET_NAMES.map((name) => (
                 <option key={name} value={name}>
-                  {capitalize(name)} — {PRESET_DESCRIPTIONS[name]}
+                  {capitalize(name)}
                 </option>
               ))}
             </select>
@@ -156,25 +222,33 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
             <input
               className="field__input"
               value={friendName}
-              maxLength={20}
+              placeholder="Friend"
+              maxLength={NAME_MAX_LENGTH}
               onChange={(event) => setFriendName(event.target.value)}
             />
           </label>
         )}
 
         <div className="field">
-          <span className="field__label">First to</span>
-          <div className="segmented">
-            {TARGET_CHOICES.map((value) => (
+          <span className="field__label" id="target-label">
+            First to
+          </span>
+          <div className="segmented" role="radiogroup" aria-labelledby="target-label">
+            {TARGET_CHOICES.map((choice) => (
               <button
                 type="button"
-                key={value}
+                key={choice.value}
+                role="radio"
+                aria-checked={target === choice.value}
                 className={
-                  target === value ? 'segmented__option segmented__option--active' : 'segmented__option'
+                  target === choice.value
+                    ? 'segmented__option segmented__option--active'
+                    : 'segmented__option'
                 }
-                onClick={() => setTarget(value)}
+                onClick={() => setTarget(choice.value)}
               >
-                {value}
+                <span className="segmented__value">{choice.value}</span>
+                <span className="segmented__hint">~{choice.turnsEach} turns each</span>
               </button>
             ))}
           </div>
@@ -184,7 +258,7 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
           Choose dice
         </button>
         <button type="button" className="setup__skip" onClick={handleQuickStart}>
-          Skip — play with ordinary dice
+          {bothOrdinary ? 'Skip — play with ordinary dice' : 'Skip — start with the dice you picked'}
         </button>
       </form>
     </div>
