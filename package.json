@@ -18,7 +18,9 @@
     "dev:web": "npm run dev -w @farkle/web",
     "dice:roster": "npm run build --silent && node scripts/dice-balance/roster-report.mjs",
     "dice:sweep": "npm run build --silent && node scripts/dice-balance/sweep-candidates.mjs",
-    "dice:audit": "npm run build --silent && node scripts/dice-balance/wildcard-audit.mjs"
+    "dice:audit": "npm run build --silent && node scripts/dice-balance/wildcard-audit.mjs",
+    "dice:lab": "npm run build --silent && node scripts/dice-balance/loadout-lab.mjs",
+    "dice:tiers": "npm run build --silent && node scripts/dice-balance/tier-report.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
