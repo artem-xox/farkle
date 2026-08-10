@@ -54,6 +54,32 @@ export const PRESETS = {
     catchUpBonus: 0.5,
     mistakeRate: 0.18,
   },
+  /**
+   * `balanced` with two added risk rules — prototyped and measured in
+   * docs/researches/2026-08-10-smart-bot-prototype.md, not yet promoted to
+   * "settled" the way the other five are:
+   *
+   * 1. `bankAt` is target-relative (`bankAtTargetBase`/`bankAtTargetScale`)
+   *    instead of the fixed 350 — higher for a short race, lower for a long
+   *    one. At the engine's default target (2000) this evaluates to 410,
+   *    close to `balanced`'s own 350.
+   * 2. `endgameMargin`/`endgameBankAt`: once this bot is within 300 points of
+   *    the target itself, it caps its bank threshold at 150 — protecting a
+   *    near-certain win instead of gambling for a bigger turn it doesn't need.
+   */
+  smart: {
+    bankAt: 410,
+    bankAtTargetBase: 290,
+    bankAtTargetScale: 240_000,
+    minDiceToThrow: 2,
+    diceValue: 15,
+    hotDiceAlwaysThrow: true,
+    desperationMargin: 200,
+    catchUpBonus: 0.5,
+    mistakeRate: 0,
+    endgameMargin: 300,
+    endgameBankAt: 150,
+  },
 } as const satisfies Record<string, BotParams>;
 
 export type PresetName = keyof typeof PRESETS;

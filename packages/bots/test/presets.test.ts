@@ -7,7 +7,7 @@ import { fakeView } from './helpers/fake-view.js';
 describe('PRESETS', () => {
   it('has the five personalities from docs/DESIGN.md §6', () => {
     expect([...PRESET_NAMES].sort()).toEqual(
-      ['aggressive', 'balanced', 'cautious', 'novice', 'reckless'].sort(),
+      ['aggressive', 'balanced', 'cautious', 'novice', 'reckless', 'smart'].sort(),
     );
   });
 

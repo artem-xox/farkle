@@ -29,7 +29,38 @@ export interface BotParams {
   readonly catchUpBonus: number;
   /** Chance of deliberately taking a worse-than-best legal keep. */
   readonly mistakeRate: number;
+  /**
+   * When both are set, `bankAt` is ignored in favour of a threshold derived
+   * from the match's own victory target: `bankAtTargetBase +
+   * bankAtTargetScale / target`, clamped to `[BANK_AT_MIN, BANK_AT_MAX]`. A
+   * fixed `bankAt` is calibrated for one target; this makes the threshold
+   * higher for a short race (where a single big turn matters more) and lower
+   * for a long one (where consistency compounds) — see
+   * docs/researches/2026-08-10-smart-bot-prototype.md.
+   */
+  readonly bankAtTargetBase?: number;
+  readonly bankAtTargetScale?: number;
+  /**
+   * Once this bot's own remaining distance to the target drops to
+   * `endgameMargin` or below, cap the bank threshold at `endgameBankAt` —
+   * there is no reward for stacking turn score past what's needed to win, and
+   * every extra throw beyond the minimum is pure risk to a lead that's
+   * already nearly secured. Applied before `desperationMargin`'s override, so
+   * a genuinely must-win turn (opponent close to the target too) still takes
+   * priority over playing it safe.
+   */
+  readonly endgameMargin?: number;
+  readonly endgameBankAt?: number;
 }
+
+/**
+ * Bounds for `bankAtTargetBase + bankAtTargetScale / target`, matching the
+ * lowest (`cautious`) and highest (`aggressive`) static `bankAt` in the
+ * roster — the dynamic threshold is meant to slide within the range already
+ * measured to be sane, not explore outside it.
+ */
+const BANK_AT_MIN = 200;
+const BANK_AT_MAX = 600;
 
 /**
  * `points + diceValue * diceLeft`, same as always, except the dice-hoarding
@@ -107,7 +138,15 @@ export class ThresholdBot implements BotPolicy {
 
     const opponent = leadingOpponentTotal(view);
     const deficit = Math.max(0, opponent - me.total);
-    let threshold = this.params.bankAt + this.params.catchUpBonus * deficit;
+    const bankAt = this.effectiveBankAt(view.target);
+    let threshold = bankAt + this.params.catchUpBonus * deficit;
+
+    if (this.params.endgameMargin !== undefined && this.params.endgameBankAt !== undefined) {
+      const remaining = view.target - me.total;
+      if (remaining <= this.params.endgameMargin) {
+        threshold = Math.min(threshold, this.params.endgameBankAt);
+      }
+    }
 
     if (opponent >= view.target - this.params.desperationMargin) {
       // A safe partial bank doesn't help if the opponent wins next turn
@@ -116,6 +155,15 @@ export class ThresholdBot implements BotPolicy {
     }
 
     return view.turnScore >= threshold ? 'Bank' : 'Throw';
+  }
+
+  /** `params.bankAt`, or the target-relative threshold when configured — see `bankAtTargetBase`. */
+  private effectiveBankAt(target: number): number {
+    if (this.params.bankAtTargetBase === undefined || this.params.bankAtTargetScale === undefined) {
+      return this.params.bankAt;
+    }
+    const raw = this.params.bankAtTargetBase + this.params.bankAtTargetScale / target;
+    return Math.min(BANK_AT_MAX, Math.max(BANK_AT_MIN, raw));
   }
 
   /**
