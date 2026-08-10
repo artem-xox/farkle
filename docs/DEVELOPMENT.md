@@ -126,10 +126,12 @@ development — see below.
 |---|---|
 | `main.tsx` | Mounts `<App>` inside `<ErrorBoundary>` |
 | `ErrorBoundary.tsx` | The last line of defence: turns a throw during render into a readable panel with a reload and a "discard the saved match" escape hatch, instead of a blank page. No error reporting service behind it (PLAN.md M4 item 11) — the console is the only record |
-| `App.tsx` | The Play / Rules tab shell, setup vs match screen, resuming a saved match from `localStorage` on load |
-| `storage.ts` | `saveMatch`/`loadMatch`/`clearMatch` — `GameState` is already plain, JSON-safe data (DESIGN.md §1), so this is a thin, error-swallowing wrapper, not a serialisation layer |
-| `presets.ts` | Preset display blurbs for the setup screen (`PRESET_DESCRIPTIONS`) |
-| `setup/SetupScreen.tsx` | Name, bot personality or hot-seat friend, target score (1500 / 3000 / 8000) |
+| `App.tsx` | The Play / Dice / Rules tab shell, setup vs match screen, resuming a saved match from `localStorage` on load — and `exitMatch`, which *discards* that save, since "Quit to menu" has to mean the match is over rather than parked |
+| `storage.ts` | `saveMatch`/`loadMatch`/`clearMatch` for the match — `GameState` is already plain, JSON-safe data (DESIGN.md §1), so this is a thin, error-swallowing wrapper, not a serialisation layer — plus `saveSetupPrefs`/`loadSetupPrefs`, which unlike the match *are* validated field by field, because nothing downstream would catch a bad value |
+| `presets.ts` | `capitalize`, and a note on why the per-personality blurbs that used to live here are gone |
+| `setup/SetupScreen.tsx` | Name, bot personality or hot-seat friend, target score (1500 / 3000 / 8000), and the loadout choice. Remembers all of it between matches |
+| `setup/LoadoutChoice.tsx`, `loadoutPresets.ts` | The "Your dice" row: three measured pure loadouts plus a Custom card that opens the picker. Both numbers on each card are copied static data with the same sync caveat as `dice/stats.ts` |
+| `setup/LoadoutStep.tsx`, `LoadoutPicker.tsx` | The full picker behind Custom — sticky six-slot rack, tier-grouped card catalog. See [notes/loadout-screen-redesign.md](notes/loadout-screen-redesign.md) |
 | `rules/RulesScreen.tsx` | The rules, written out for players rather than for implementers — the player-facing counterpart to RULES.md |
 | `match/MatchScreen.tsx` | Owns the `LocalHost` for one match session, drives a bot seat via `chooseBotAction` on a timer, holds farkles on screen, persists on every change |
 | `match/selection.ts` | `matchingKeepOption` — is the player's current die selection a legal keep? Compares by *face multiset*, not by the literal indices `legalKeeps` picked as its representative, since two dice showing the same value are interchangeable for scoring (see the comment in the file for why this matters, and why the *dispatched* action still uses the literal clicked indices) |

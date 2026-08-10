@@ -56,6 +56,20 @@ export function App() {
     setSession({ id: freshId(), initial, botSeat: options.botSeat, botPreset: options.botPreset });
   }
 
+  /**
+   * Quitting discards the match rather than parking it.
+   *
+   * `MatchScreen` clears the save when a match *finishes*, but leaving one
+   * unfinished only dropped the session held in memory — the save stayed
+   * behind, so the next reload resumed a match the player had explicitly
+   * walked away from. Storage is the only thing that survives a reload, so
+   * this is the one place the decision can be made stick.
+   */
+  function exitMatch(): void {
+    clearMatch();
+    setSession(null);
+  }
+
   return (
     <div className="app">
       <nav className="tabs" aria-label="Sections">
@@ -99,7 +113,7 @@ export function App() {
             initial={session.initial}
             botSeat={session.botSeat}
             botPreset={session.botPreset}
-            onExit={() => setSession(null)}
+            onExit={exitMatch}
           />
         )}
       </main>
