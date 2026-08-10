@@ -14,6 +14,7 @@ interface MatchSession {
   readonly initial: GameState;
   readonly botSeat: number | null;
   readonly botPreset: PresetName | null;
+  readonly bestTurn: number;
 }
 
 type Tab = 'play' | 'dice' | 'rules';
@@ -44,7 +45,14 @@ function resumeFromStorage(): MatchSession | null {
     clearMatch();
     return null;
   }
-  return { id: 'resumed', initial: stored.state, botSeat: stored.botSeat, botPreset: stored.botPreset };
+  return {
+    id: 'resumed',
+    initial: stored.state,
+    botSeat: stored.botSeat,
+    botPreset: stored.botPreset,
+    // Saves written before best-turn tracking existed have no value here.
+    bestTurn: stored.bestTurn ?? 0,
+  };
 }
 
 export function App() {
@@ -53,7 +61,7 @@ export function App() {
 
   function startMatch(options: NewMatchOptions): void {
     const initial = createMatch({ players: options.players, target: options.target, seed: options.seed });
-    setSession({ id: freshId(), initial, botSeat: options.botSeat, botPreset: options.botPreset });
+    setSession({ id: freshId(), initial, botSeat: options.botSeat, botPreset: options.botPreset, bestTurn: 0 });
   }
 
   /**
@@ -113,6 +121,7 @@ export function App() {
             initial={session.initial}
             botSeat={session.botSeat}
             botPreset={session.botPreset}
+            initialBestTurn={session.bestTurn}
             onExit={exitMatch}
           />
         )}

@@ -4,7 +4,8 @@ import { PRESET_NAMES, type PresetName } from '@farkle/bots';
 import { BALANCED_DIE, DICE_PER_TURN, type DieSpec, type PlayerConfig } from '@farkle/engine';
 
 import { capitalize } from '../presets';
-import { loadSetupPrefs, NAME_MAX_LENGTH, saveSetupPrefs } from '../storage';
+import { loadHistory, loadSetupPrefs, NAME_MAX_LENGTH, saveSetupPrefs } from '../storage';
+import { summarizeHistory } from './record';
 import { HeroDice } from './HeroDice';
 import { LoadoutChoice } from './LoadoutChoice';
 import {
@@ -59,6 +60,9 @@ export function SetupScreen({ onStart, onShowRules }: SetupScreenProps) {
   // One read, at mount: the screen remounts after every match, and re-reading
   // then is the point — it is how the last match's answers come back.
   const [prefs] = useState(() => loadSetupPrefs(TARGET_VALUES));
+  // Read on mount for the same reason: this screen remounts when a match ends,
+  // which is exactly when the record has just changed.
+  const [history] = useState(() => loadHistory());
 
   const [step, setStep] = useState<Step>('basics');
   const [mode, setMode] = useState<'bot' | 'friend'>(prefs.mode ?? 'bot');
@@ -107,6 +111,9 @@ export function SetupScreen({ onStart, onShowRules }: SetupScreenProps) {
   const mirrorMatters = mode === 'bot' && !isOrdinary(yoursEffective);
 
   const friend = friendName.trim() || 'Friend';
+
+  /** Follows the personality dropdown, which is most of the point: "Aggressive" is a word, "2–3 vs Aggressive" is an opponent. */
+  const record = summarizeHistory(history, mode === 'bot' ? preset : null);
 
   function handleSubmit(event: FormEvent): void {
     event.preventDefault();
@@ -182,9 +189,34 @@ export function SetupScreen({ onStart, onShowRules }: SetupScreenProps) {
 
       <HeroDice />
 
+      {/*
+        The pitch and the record are mutually exclusive on purpose. Someone who
+        has played a dozen matches does not need Farkle explained, and someone
+        who has played none has no record to show — so the same slot serves
+        both, and the screen doesn't grow a line for whichever of the two is
+        currently irrelevant.
+      */}
       <p className="setup__pitch">
-        Throw six dice, keep what scores, and push your luck — until a throw scores nothing and the
-        whole turn is gone.{' '}
+        {record === null ? (
+          <>
+            Throw six dice, keep what scores, and push your luck — until a throw scores nothing and
+            the whole turn is gone.{' '}
+          </>
+        ) : (
+          <>
+            <span className="setup__record">
+              {record.bots.wins}&ndash;{record.bots.losses} against bots
+              {record.versus !== null && mode === 'bot' && (
+                <>
+                  {' · '}
+                  {record.versus.wins}&ndash;{record.versus.losses} vs {capitalize(preset)}
+                </>
+              )}
+              {record.bestTurn > 0 && <>{' · '}best turn {record.bestTurn}</>}
+            </span>
+            {' · '}
+          </>
+        )}
         <button type="button" className="setup__link" onClick={onShowRules}>
           How it works
         </button>
