@@ -1,3 +1,16 @@
+import { WILD, type DieSpec, type Face } from '@farkle/engine';
+
+/**
+ * The face worth showing a die on, statically, in a picker or card. A die
+ * with a wild pip shows that — the point of the card is "what's special
+ * about this die", and for `devil`/`imp` that pip never shows its printed
+ * number at all (it's painted over as the Devil's Head). Every other die
+ * just shows `1`; there's nothing more representative about any one face.
+ */
+export function iconicFace(die: DieSpec): Face {
+  return die.wild !== undefined ? WILD : 1;
+}
+
 /** One-line blurbs on what makes each die different — the loadout picker keeps just the name; this is where the "why" lives. */
 export const DIE_DESCRIPTIONS: Record<string, string> = {
   balanced: 'A fair cube — every face equally likely.',
