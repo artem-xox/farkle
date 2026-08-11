@@ -162,21 +162,41 @@ describe('exhaustive properties over all 46 656 six-dice throws', () => {
   it('hasScoringDice agrees with a legal keep existing', () => {
     let farkleCount = 0;
     let count = 0;
+    /*
+     * Collected and asserted once at the end rather than with an `expect` per
+     * throw. Worth about a fifth of the runtime — 46 656 assertion contexts
+     * are not free — and the failure message is better besides: every
+     * disagreeing throw rather than only the first. The remaining cost is the
+     * scorer itself, which is what the explicit timeout below is for.
+     */
+    const disagreed: string[] = [];
     for (const faces of allThrows(6)) {
       count++;
       const scores = hasScoringDice(faces);
       if (!scores) {
         farkleCount++;
       }
-      expect(legalKeeps(faces).length > 0, `throw ${faces.join('')}`).toBe(scores);
+      if (legalKeeps(faces).length > 0 !== scores) {
+        disagreed.push(faces.join(''));
+      }
     }
+    expect(disagreed.slice(0, 5), `${disagreed.length} throws disagree`).toEqual([]);
     expect(count).toBe(46656);
     // A six-dice farkle needs no 1, no 5, no triple, and — unlike standard
     // Farkle — no help from three pairs. The classic 1080 counts only the
     // no-1/no-5/no-triple hands; the extra 360 are the three-pair hands that
     // this variant does not score. See docs/RULES.md §10.
     expect(farkleCount).toBe(1440);
-  });
+    /*
+     * 30s, against roughly 4s of real work here.
+     *
+     * This is the one test in the suite that does not fit Vitest's 5s default,
+     * and it is not slow by accident: 46 656 `legalKeeps` calls, each running
+     * the memoised partition search, is the price of the word "exhaustive".
+     * The budget is set per test rather than raised globally so the other 250
+     * keep the tight default — a hang there should still fail fast.
+     */
+  }, 30_000);
 
   it('every reported keep is legal, correctly valued, and indexed into the throw', () => {
     for (const faces of allMultisets(6)) {

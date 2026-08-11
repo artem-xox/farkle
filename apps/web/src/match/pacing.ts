@@ -29,5 +29,15 @@ export const TUMBLE_MS = 550;
  * appeared, and a player would never see what went wrong. The pause is a
  * presentation-layer hold over already-settled state, not an engine phase;
  * "Continue" just ends the hold early.
+ *
+ * The two lengths are not the same event. Your own farkle is a loss to read —
+ * which dice came up, how much went with them. The bot's is news about someone
+ * else, and holding it as long only reads as the game having stalled.
  */
-export const FARKLE_PAUSE_MS = 10_000;
+export const FARKLE_PAUSE_PLAYER_MS = 5_000;
+export const FARKLE_PAUSE_BOT_MS = 3_000;
+
+/** `farkledSeatIsBot` is false for both seats of a pass & play match — two humans both get the longer read. */
+export function farklePauseMs(farkledSeatIsBot: boolean): number {
+  return farkledSeatIsBot ? FARKLE_PAUSE_BOT_MS : FARKLE_PAUSE_PLAYER_MS;
+}

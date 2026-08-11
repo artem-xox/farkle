@@ -18,7 +18,7 @@ import { ConfirmDialog } from './ConfirmDialog';
 import { FarkleNotice } from './FarkleNotice';
 import { KeepOptions } from './KeepOptions';
 import { MatchOverOverlay } from './MatchOverOverlay';
-import { botThinkTime, FARKLE_PAUSE_MS } from './pacing';
+import { botThinkTime, farklePauseMs } from './pacing';
 import { Scoreboard } from './Scoreboard';
 import { matchingKeepOption } from './selection';
 import { TurnLog } from './TurnLog';
@@ -146,14 +146,15 @@ export function MatchScreen({
     if (farkleHold === null) {
       return;
     }
-    setSecondsLeft(Math.round(FARKLE_PAUSE_MS / 1000));
+    const pause = farklePauseMs(farkleHold.player === botSeat);
+    setSecondsLeft(Math.round(pause / 1000));
     const tick = setInterval(() => setSecondsLeft((left) => Math.max(0, left - 1)), 1000);
-    const release = setTimeout(() => setFarkleHold(null), FARKLE_PAUSE_MS);
+    const release = setTimeout(() => setFarkleHold(null), pause);
     return () => {
       clearInterval(tick);
       clearTimeout(release);
     };
-  }, [farkleHold]);
+  }, [farkleHold, botSeat]);
 
   // Drives the bot's seat one action at a time, paced so it's watchable.
   // Re-runs whenever `events` changes, i.e. whenever the game state might
