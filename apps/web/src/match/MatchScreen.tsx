@@ -73,6 +73,13 @@ export function MatchScreen({
    * the engine's own `keptThisTurn` resets, i.e. at the start of a new turn.
    */
   const [keptDiceThisTurn, setKeptDiceThisTurn] = useState<readonly DieSpec[]>([]);
+  /**
+   * Board slots the last keep took its dice from, for the Board's flight into
+   * the set-aside rail. Sourced from the `Kept` event rather than from
+   * `selection` so it covers the bot's keeps too — the bot dispatches straight
+   * to the host and never touches the player's selection.
+   */
+  const [keptIndices, setKeptIndices] = useState<readonly number[]>([]);
 
   /**
    * The human's seat. Every match the setup screen builds puts the player
@@ -112,6 +119,8 @@ export function MatchScreen({
       for (const event of newEvents) {
         if (event.type === 'Thrown') {
           lastThrow = event.faces;
+        } else if (event.type === 'Kept') {
+          setKeptIndices(event.indices);
         } else if (event.type === 'Farkled') {
           setFarkleHold({ player: event.player, faces: lastThrow, lost: event.lost });
         } else if (event.type === 'Banked' && event.player === youSeat) {
@@ -292,6 +301,7 @@ export function MatchScreen({
           thrown={boardFaces}
           thrownDice={boardDice}
           selection={selection}
+          keptIndices={keptIndices}
           keptThisTurn={boardKept}
           keptDiceThisTurn={boardKeptDice}
           spinToken={spinToken}

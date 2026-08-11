@@ -19,6 +19,14 @@ export interface BoardProps {
   thrownDice?: readonly DieSpec[];
   /** Indices into `thrown` the player has picked, but not yet committed with an action button. */
   selection: readonly number[];
+  /**
+   * Board indices of the most recent keep, from the engine's `Kept` event —
+   * the source slots for the flight into the rail. Read from the event rather
+   * than from `selection` because a bot never touches `selection`: it
+   * dispatches its keep straight to the host, and taking the flight from the
+   * player's click state left the bot's dice teleporting into the rail.
+   */
+  keptIndices: readonly number[];
   /** Faces already committed earlier in this turn — no longer takeable back. */
   keptThisTurn: readonly Face[];
   /** The dice that produced `keptThisTurn`, parallel to it. */
@@ -45,6 +53,7 @@ export function Board({
   thrown,
   thrownDice,
   selection,
+  keptIndices,
   keptThisTurn,
   keptDiceThisTurn,
   spinToken,
@@ -57,12 +66,12 @@ export function Board({
   const boardDiceRef = useRef<HTMLDivElement | null>(null);
   const railRef = useRef<HTMLDivElement | null>(null);
   /**
-   * Where the picked dice currently sit on the board, in the order they were
-   * picked. Captured while they are still there: committing a keep replaces
-   * the whole throw in the same batch that grows the rail, so by the time a
-   * die appears in the rail the board position it came from is gone.
+   * Where every die of the current throw sits, by board index. Kept as a
+   * running cache rather than measured on demand: a keep replaces the whole
+   * throw in the same batch that grows the rail, so by the time a die appears
+   * in the rail the board position it flew from no longer exists to measure.
    */
-  const pickedRects = useRef<readonly DOMRect[]>([]);
+  const boardRects = useRef<readonly DOMRect[]>([]);
   const keptCount = useRef(keptThisTurn.length);
 
   useEffect(() => {
@@ -73,18 +82,22 @@ export function Board({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spinToken]);
 
+  // Deliberately keeps the last measurement when the board empties: the render
+  // that clears the throw is the very render the rail needs those rects for.
   useEffect(() => {
     const container = boardDiceRef.current;
-    if (container === null || selection.length === 0) {
+    if (container === null) {
       return;
     }
-    pickedRects.current = selection
-      .map((index) => container.children[index]?.getBoundingClientRect())
-      .filter((rect): rect is DOMRect => rect !== undefined);
-  }, [selection, spinToken]);
+    boardRects.current = Array.from(container.children, (die) => die.getBoundingClientRect());
+    // `selection` is a dependency because picking a die lifts it — remeasuring
+    // is what makes the flight start from the raised die rather than the felt.
+  }, [thrown, spinToken, selection]);
 
   /**
-   * Flies each newly kept die from where the player picked it into the rail.
+   * Flies each newly kept die from the slot it was taken from into the rail —
+   * for whoever is playing, since it keys off the engine's keep rather than
+   * off anything the player's hands did.
    *
    * A FLIP: the die is already laid out in its final rail slot, and this
    * animates it *backwards* from the board rect captured above, so nothing
@@ -93,8 +106,7 @@ export function Board({
    * the die would flash at its destination before jumping back to the board.
    *
    * `applyKeep` in the engine appends the kept faces in the order of the
-   * indices it was given, which is the selection order, so the nth new rail
-   * slot is the nth rect captured above.
+   * indices it was given, so the nth new rail slot came from `keptIndices[n]`.
    */
   useLayoutEffect(() => {
     const grew = keptThisTurn.length - keptCount.current;
@@ -105,7 +117,8 @@ export function Board({
     }
     for (let offset = 0; offset < grew; offset++) {
       const landed = rail.children[keptThisTurn.length - grew + offset];
-      const from = pickedRects.current[offset];
+      const source = keptIndices[offset];
+      const from = source === undefined ? undefined : boardRects.current[source];
       if (!(landed instanceof HTMLElement) || from === undefined) {
         continue;
       }
@@ -130,7 +143,6 @@ export function Board({
         },
       );
     }
-    pickedRects.current = [];
   }, [keptThisTurn.length]);
 
   const onBoard = thrown.map((face, index) => ({
