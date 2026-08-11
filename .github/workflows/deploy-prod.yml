@@ -57,6 +57,16 @@ jobs:
       - name: Deploy app spec
         id: deploy
         uses: digitalocean/app_action/deploy@v2
+        env:
+          # Smuggles `${STARTER_DOMAIN}` past the action intact. It runs the
+          # spec through Go's os.Expand and substitutes any `${NAME}` it finds;
+          # names are only left alone if they contain a dot (DigitalOcean's
+          # bindables) or are one of APP_DOMAIN/APP_URL/APP_ID. STARTER_DOMAIN
+          # is neither, so it would be replaced with the empty string — and an
+          # empty authority in the ingress rule matches every request, which
+          # would 301 the custom domain to itself. Setting the variable to its
+          # own placeholder makes the substitution a no-op.
+          STARTER_DOMAIN: '${STARTER_DOMAIN}'
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
           app_spec_location: .do/app.prod.yaml
@@ -88,3 +98,23 @@ jobs:
           body=$(curl --fail --silent --show-error --location --retry 5 --retry-delay 5 "$url")
           grep -q '<div id="root">' <<<"$body"
           echo "Prod is serving from $url" >> "$GITHUB_STEP_SUMMARY"
+
+          # Once a custom domain is attached, the starter hostname should 301 to
+          # it rather than serve a duplicate. `--location` is deliberately absent
+          # so this reads the redirect itself instead of following it — and it
+          # would also catch the rule matching too broadly, which would turn the
+          # check above into a redirect loop.
+          starter=$(jq -r '.default_ingress // ""' <<<"$APP")
+          if [ -n "$starter" ] && [ "$starter" != "$url" ]; then
+            read -r code target < <(
+              curl --silent --show-error --output /dev/null \
+                   --write-out '%{http_code} %{redirect_url}' "$starter"
+            )
+            echo "Starter $starter -> $code $target"
+            [ "$code" = "301" ] || { echo "expected 301, got $code"; exit 1; }
+            case "$target" in
+              "$url"/*|"$url") ;;
+              *) echo "expected a redirect to $url, got $target"; exit 1 ;;
+            esac
+            echo "Starter hostname 301s to $url" >> "$GITHUB_STEP_SUMMARY"
+          fi
