@@ -41,3 +41,10 @@ jobs:
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
           app_spec_location: .do/app.dev.yaml
+          # The `farkle` project. Only read when the action *creates* an app —
+          # updates never move one — so this is a safety net for a rebuild from
+          # scratch rather than something that takes effect on an ordinary
+          # deploy. Left unset, a created app lands in the account's default
+          # project, which is what happened to farkle-prod. Not a secret: a
+          # project id is inert without a token.
+          project_id: 95f07e53-8bdc-41ee-a053-00497fce225e

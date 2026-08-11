@@ -365,6 +365,13 @@ not stale.
   environment and the workflow still runs — GitHub recreates a nameless one with
   no protection — so the gate is a repository setting, not something this
   repository can hold in a file.
+- **`project_id` only applies at creation.** Both workflows pass the `farkle`
+  project's id, but the action reads it solely on the `Create` path — an update
+  never moves an app between projects. Omit it and a newly created app lands in
+  the account's default project, which is exactly how the first `farkle-prod`
+  ended up in `playground`. Putting a misfiled app right means deleting it and
+  re-running the deploy, or moving it in the dashboard; changing the workflow
+  alone does nothing to an app that already exists.
 - **Secrets this depends on**: a `DIGITALOCEAN_ACCESS_TOKEN` repository secret
   (Settings → Secrets and variables → Actions in GitHub). The app itself does
   *not* have to exist first — given `app_spec_location`, the action creates an
