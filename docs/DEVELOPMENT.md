@@ -21,9 +21,9 @@ CLI.
 M4 (deployment) is live: the game is served from
 <https://farkle-game-frkhm.ondigitalocean.app/>, built and deployed by CI on
 every push to `main`. That app is now called `farkle-dev` and is being joined by
-`farkle-prod` on `farkle.iamxox.space`, deployed by hand from a button — the
-specs for both are in `.do/`, but the prod workflow and the DNS record are still
-to come, so nothing is serving that domain yet. What else remains of the
+`farkle-prod`, deployed by hand from Actions → *Deploy to production*. The DNS
+record for `farkle.iamxox.space` is still to come, so until then prod answers
+only on its own `ondigitalocean.app` hostname. What else remains of the
 milestone is analytics and error reporting, which need an account somewhere
 rather than a commit.
 Cache and security headers turned out not to be a checklist item at all: App
@@ -272,8 +272,9 @@ not stale.
 | | `farkle-dev` | `farkle-prod` |
 |---|---|---|
 | Spec | `.do/app.dev.yaml` | `.do/app.prod.yaml` |
-| Trigger | push to `main`, after tests | `workflow_dispatch` |
-| Branch it builds | `main` | `production` |
+| Workflow | `ci.yml` | `deploy-prod.yml` |
+| Trigger | push to `main`, after tests | the button, plus an approval |
+| Branch it builds | `main` | `main` |
 | URL | `farkle-game-frkhm.ondigitalocean.app` | `farkle.iamxox.space` |
 | Indexable | no | yes |
 
@@ -292,13 +293,25 @@ not stale.
   `app_spec_location: .do/app.dev.yaml`, which applies the spec from the
   checked-out commit. **Only `farkle-dev` is reachable this way** — merging to
   `main` can never move prod.
-- **`branch: production` in the prod spec** is the whole reason prod is
-  pinnable. DigitalOcean builds whatever a branch points at *at deploy time*,
-  and the deploy action passes `UpdateAllSourceVersions: true`, so a prod spec
-  reading `main` would ship whatever had been merged by the time the button was
-  pressed rather than the commit the operator chose. `production` is a release
-  pointer, moved to an explicit SHA immediately before the deploy. Rolling back
-  is the same button with an older SHA.
+- **`.github/workflows/deploy-prod.yml`** is the button: Actions → *Deploy to
+  production* → **Run workflow**. It runs the full suite against `main`, applies
+  `.do/app.prod.yaml`, then fetches the app's own live URL from the action's
+  `app` output and checks the page actually answers — the action reports success
+  when DigitalOcean calls the deployment ACTIVE, which is not the same thing.
+  It also queues rather than cancels on a second run, since a half-applied spec
+  is worse than a wait.
+- **Both apps build `main`, and prod deploys its tip.** An App Platform GitHub
+  source names a *branch*, never a commit, and DigitalOcean resolves it when the
+  build runs — the action even passes `UpdateAllSourceVersions: true`. So there
+  is no such thing as deploying a chosen SHA here: pressing the button ships
+  whatever `main` points at right then. That is also why `deploy-prod.yml`
+  checks out `ref: main` explicitly instead of the dispatch ref — testing one
+  commit while DigitalOcean builds another would make the suite meaningless.
+  Rolling prod back means the dashboard, not the button.
+- **What actually separates prod from dev** is two lines, and nothing else:
+  `deploy_on_push: false` in the prod spec, so DigitalOcean's own webhook never
+  fires, and the absence of any push trigger in `deploy-prod.yml`. Setting
+  either wrong turns every merge to `main` into a production release.
 - **`SITE_URL` and `SITE_INDEXABLE`** are build-time envs set per app in the
   spec. `apps/web/vite.config.ts` substitutes `SITE_URL` into the `%SITE_URL%`
   placeholders in `index.html` — `og:url`, `og:image` and `canonical`, all of
@@ -343,8 +356,15 @@ not stale.
   tab → pick a previous successful deployment → **Rebuild and Deploy** (or
   **Revert to this deployment** if offered). This does not touch `main` — no
   `git revert` is required to get the site back, only to fix the branch itself.
-  For prod there is a second route that leaves a record in GitHub: dispatch the
-  prod workflow again with an older SHA.
+  This is the only rollback prod has — the button always ships the tip of
+  `main`, so getting an old build back means either the dashboard or a
+  `git revert` on `main` followed by another dispatch.
+- **The `production` GitHub environment** is what makes the button ask before it
+  fires: Settings → Environments → `production` lists a required reviewer, and
+  the dispatched run waits on that approval before its first step. Delete the
+  environment and the workflow still runs — GitHub recreates a nameless one with
+  no protection — so the gate is a repository setting, not something this
+  repository can hold in a file.
 - **Secrets this depends on**: a `DIGITALOCEAN_ACCESS_TOKEN` repository secret
   (Settings → Secrets and variables → Actions in GitHub). The app itself does
   *not* have to exist first — given `app_spec_location`, the action creates an
