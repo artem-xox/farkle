@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import type { DieSpec, Face } from '@farkle/engine';
 
 import { Die } from './Die';
-import { TUMBLE_MS } from './pacing';
+import { FLY_MS, FLY_STAGGER_MS, TUMBLE_MS } from './pacing';
+
+const prefersReducedMotion = (): boolean =>
+  typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export interface BoardProps {
   /** The current throw. Empty between throws. */
@@ -51,6 +54,16 @@ export function Board({
   onToggle,
 }: BoardProps) {
   const [settled, setSettled] = useState(false);
+  const boardDiceRef = useRef<HTMLDivElement | null>(null);
+  const railRef = useRef<HTMLDivElement | null>(null);
+  /**
+   * Where the picked dice currently sit on the board, in the order they were
+   * picked. Captured while they are still there: committing a keep replaces
+   * the whole throw in the same batch that grows the rail, so by the time a
+   * die appears in the rail the board position it came from is gone.
+   */
+  const pickedRects = useRef<readonly DOMRect[]>([]);
+  const keptCount = useRef(keptThisTurn.length);
 
   useEffect(() => {
     setSettled(false);
@@ -59,6 +72,66 @@ export function Board({
     // spinToken changing means new dice landed — replay the settle delay.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spinToken]);
+
+  useEffect(() => {
+    const container = boardDiceRef.current;
+    if (container === null || selection.length === 0) {
+      return;
+    }
+    pickedRects.current = selection
+      .map((index) => container.children[index]?.getBoundingClientRect())
+      .filter((rect): rect is DOMRect => rect !== undefined);
+  }, [selection, spinToken]);
+
+  /**
+   * Flies each newly kept die from where the player picked it into the rail.
+   *
+   * A FLIP: the die is already laid out in its final rail slot, and this
+   * animates it *backwards* from the board rect captured above, so nothing
+   * has to be positioned by hand or duplicated into a floating layer. Run as
+   * a layout effect so the offset frame is painted first — in a plain effect
+   * the die would flash at its destination before jumping back to the board.
+   *
+   * `applyKeep` in the engine appends the kept faces in the order of the
+   * indices it was given, which is the selection order, so the nth new rail
+   * slot is the nth rect captured above.
+   */
+  useLayoutEffect(() => {
+    const grew = keptThisTurn.length - keptCount.current;
+    keptCount.current = keptThisTurn.length;
+    const rail = railRef.current;
+    if (grew <= 0 || rail === null || prefersReducedMotion()) {
+      return;
+    }
+    for (let offset = 0; offset < grew; offset++) {
+      const landed = rail.children[keptThisTurn.length - grew + offset];
+      const from = pickedRects.current[offset];
+      if (!(landed instanceof HTMLElement) || from === undefined) {
+        continue;
+      }
+      const to = landed.getBoundingClientRect();
+      if (to.width === 0) {
+        continue;
+      }
+      landed.animate(
+        [
+          {
+            transform: `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width})`,
+          },
+          { transform: 'translate(0, 0) scale(1)' },
+        ],
+        {
+          duration: FLY_MS,
+          delay: offset * FLY_STAGGER_MS,
+          easing: 'cubic-bezier(0.34, 0.85, 0.36, 1)',
+          // Holds the die at the board end of the flight through its stagger
+          // delay, instead of parking it in the rail until its turn comes.
+          fill: 'backwards',
+        },
+      );
+    }
+    pickedRects.current = [];
+  }, [keptThisTurn.length]);
 
   const onBoard = thrown.map((face, index) => ({
     face,
@@ -75,7 +148,7 @@ export function Board({
         {onBoard.length === 0 ? (
           <p className="board__hint">{hint}</p>
         ) : (
-          <div className="board__dice">
+          <div className="board__dice" ref={boardDiceRef}>
             {onBoard.map((die) => (
               <Die
                 key={`${spinToken}-${die.index}`}
@@ -96,7 +169,7 @@ export function Board({
         {asideEmpty ? (
           <span className="board__aside-empty">—</span>
         ) : (
-          <div className="board__aside-dice">
+          <div className="board__aside-dice" ref={railRef}>
             {keptThisTurn.map((face, position) => (
               <Die key={`kept-${position}`} face={face} dieId={keptDiceThisTurn?.[position]?.id} tone="kept" />
             ))}

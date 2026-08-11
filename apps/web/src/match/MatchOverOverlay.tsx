@@ -1,6 +1,10 @@
+import { Celebration } from './Celebration';
+
 export interface MatchOverOverlayProps {
   winnerName: string;
   winnerTotal: number;
+  /** Whether the player at this device won — losing gets the same card without the confetti. */
+  celebrate: boolean;
   onNewMatch: () => void;
   /** Dismisses the overlay, leaving the final board and full turn log readable. */
   onReviewLog: () => void;
@@ -18,11 +22,14 @@ function winLine(winnerName: string): string {
 export function MatchOverOverlay({
   winnerName,
   winnerTotal,
+  celebrate,
   onNewMatch,
   onReviewLog,
 }: MatchOverOverlayProps) {
   return (
     <div className="match-over">
+      {/* Before the card in the DOM, and the card is the only positioned thing here, so the burst goes on behind it rather than over the text. */}
+      {celebrate && <Celebration />}
       <div className="match-over__card">
         <h2>{winLine(winnerName)}</h2>
         <p>{winnerTotal} points</p>

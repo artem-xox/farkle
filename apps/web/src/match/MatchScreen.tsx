@@ -464,6 +464,9 @@ export function MatchScreen({
         <MatchOverOverlay
           winnerName={view.players[view.winner]!.name}
           winnerTotal={view.players[view.winner]!.total}
+          // Pass & play has no bot seat and so no "you": both sides are at this
+          // device, and whoever just won deserves the confetti.
+          celebrate={botSeat === null || view.winner === youSeat}
           onNewMatch={onExit}
           onReviewLog={() => setOverlayDismissed(true)}
         />
