@@ -1,5 +1,5 @@
 import { isPresetName, type PresetName } from '@farkle/bots';
-import type { GameState } from '@farkle/engine';
+import { DICE, DICE_PER_TURN, type GameState } from '@farkle/engine';
 
 const STORAGE_KEY = 'farkle:match:v1';
 const PREFS_KEY = 'farkle:setup:v1';
@@ -78,6 +78,13 @@ export interface SetupPrefs {
   /** A `LOADOUT_PRESETS` id or `CUSTOM_PRESET_ID`. Validated only as a string here — the setup screen resolves it and falls back on its own if the id no longer exists, which is what happens when a preset is renamed or dropped. */
   readonly loadoutPreset: string;
   readonly botMirrors: boolean;
+  /**
+   * The six dice the player built in the picker, as die ids — kept so a custom
+   * loadout survives the match that used it. Stored as ids rather than whole
+   * `DieSpec`s so that a change to a die's weights reaches a saved loadout
+   * instead of resurrecting the old numbers from `localStorage`.
+   */
+  readonly customLoadout: readonly string[];
 }
 
 export function saveSetupPrefs(prefs: SetupPrefs): void {
@@ -134,6 +141,17 @@ export function loadSetupPrefs(allowedTargets: readonly number[]): Partial<Setup
   }
   if (typeof stored['botMirrors'] === 'boolean') {
     prefs.botMirrors = stored['botMirrors'];
+  }
+  // All or nothing: a loadout of the wrong length, or naming a die that no
+  // longer exists, is dropped rather than patched into something the player
+  // never chose.
+  const loadout: unknown = stored['customLoadout'];
+  if (
+    Array.isArray(loadout) &&
+    loadout.length === DICE_PER_TURN &&
+    loadout.every((id) => typeof id === 'string' && DICE[id] !== undefined)
+  ) {
+    prefs.customLoadout = loadout as string[];
   }
 
   return prefs as Partial<SetupPrefs>;

@@ -14,6 +14,7 @@ import {
 
 import { clearMatch, recordMatch, saveMatch } from '../storage';
 import { Board } from './Board';
+import { ConfirmDialog } from './ConfirmDialog';
 import { FarkleNotice } from './FarkleNotice';
 import { KeepOptions } from './KeepOptions';
 import { MatchOverOverlay } from './MatchOverOverlay';
@@ -29,6 +30,8 @@ export interface MatchScreenProps {
   /** The player's best banked turn carried over from a resumed match — events aren't persisted, so this arrives from the save rather than from the log. */
   initialBestTurn: number;
   onExit: () => void;
+  /** Starts a fresh match with the same players, dice and target, on a new seed. */
+  onRestart: () => void;
 }
 
 /** Derives the bot's own RNG seed from the match seed, so the bot's mistake
@@ -42,7 +45,14 @@ interface FarkleHold {
   readonly lost: number;
 }
 
-export function MatchScreen({ initial, botSeat, botPreset, initialBestTurn, onExit }: MatchScreenProps) {
+export function MatchScreen({
+  initial,
+  botSeat,
+  botPreset,
+  initialBestTurn,
+  onExit,
+  onRestart,
+}: MatchScreenProps) {
   const [host] = useState(() => new LocalHost(initial));
   const [bot] = useState<BotPolicy | null>(() =>
     botSeat !== null && botPreset !== null
@@ -79,6 +89,8 @@ export function MatchScreen({ initial, botSeat, botPreset, initialBestTurn, onEx
   const bestTurn = useRef(initialBestTurn);
   /** A match resolves once, but the phase stays `MatchOver` — this stops a second event batch double-counting it. */
   const recorded = useRef(false);
+  /** Which destructive action is waiting on a confirmation, if any. */
+  const [pendingExit, setPendingExit] = useState<'quit' | 'restart' | null>(null);
 
   // Persist on every change, and stop offering to resume a finished match.
   useEffect(() => {
@@ -184,6 +196,20 @@ export function MatchScreen({ initial, botSeat, botPreset, initialBestTurn, onEx
   const canAct = !isBotTurn && !matchOver && farkleHold === null && !busy;
   const currentPlayer = view.players[view.current]!;
   const matchedOption = matchingKeepOption(selection, view);
+
+  /**
+   * Both footer buttons throw the current match away, so both ask first — but
+   * only when there is something to throw away. A finished match is already
+   * recorded and a match nobody has thrown in yet costs nothing, and a dialog
+   * guarding neither is pure friction.
+   */
+  function ask(action: 'quit' | 'restart'): void {
+    if (matchOver || events.length === 0) {
+      (action === 'quit' ? onExit : onRestart)();
+      return;
+    }
+    setPendingExit(action);
+  }
 
   async function dispatch(action: GameAction): Promise<void> {
     try {
@@ -294,21 +320,23 @@ export function MatchScreen({ initial, botSeat, botPreset, initialBestTurn, onEx
           <p className="thinking">{currentPlayer.name} is thinking…</p>
         ) : matchOver ? null : (
           <>
-            {view.phase === 'AwaitingKeep' && (
+            {/*
+              Only speaks once the player has selected something. The standing
+              "click dice to set them aside" instruction that used to sit here
+              was permanent furniture explaining a board that already explains
+              itself, and it pushed the actions further down every phone screen.
+            */}
+            {view.phase === 'AwaitingKeep' && selection.length > 0 && (
               <p
                 className={
-                  selection.length === 0
-                    ? 'selection-status selection-status--hint'
-                    : matchedOption !== null
-                      ? 'selection-status selection-status--ok'
-                      : 'selection-status selection-status--bad'
+                  matchedOption !== null
+                    ? 'selection-status selection-status--ok'
+                    : 'selection-status selection-status--bad'
                 }
               >
-                {selection.length === 0
-                  ? 'Click dice to set them aside, or pick a combination below.'
-                  : matchedOption !== null
-                    ? `${matchedOption.points} points set aside`
-                    : "Those dice don't score together — a 1, a 5, three of a kind, or a straight."}
+                {matchedOption !== null
+                  ? `${matchedOption.points} points set aside`
+                  : "Those dice don't score together — a 1, a 5, three of a kind, or a straight."}
               </p>
             )}
 
@@ -399,9 +427,28 @@ export function MatchScreen({ initial, botSeat, botPreset, initialBestTurn, onEx
         </div>
       )}
 
-      <button type="button" className="match__exit" onClick={onExit}>
-        Quit to menu
-      </button>
+      <div className="match__footer">
+        <button type="button" className="match__exit" onClick={() => ask('restart')}>
+          Start again
+        </button>
+        <button type="button" className="match__exit" onClick={() => ask('quit')}>
+          Quit to menu
+        </button>
+      </div>
+
+      {pendingExit !== null && (
+        <ConfirmDialog
+          title={pendingExit === 'quit' ? 'Quit to menu?' : 'Start again?'}
+          message={
+            pendingExit === 'quit'
+              ? 'This match will be discarded — it won’t be saved, and it won’t count towards your record.'
+              : 'This match will be discarded and a new one dealt with the same players, dice and target.'
+          }
+          confirmLabel={pendingExit === 'quit' ? 'Quit to menu' : 'Start again'}
+          onConfirm={pendingExit === 'quit' ? onExit : onRestart}
+          onCancel={() => setPendingExit(null)}
+        />
+      )}
 
       {matchOver && view.winner !== null && !overlayDismissed && (
         <MatchOverOverlay

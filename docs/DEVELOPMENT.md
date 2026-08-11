@@ -131,7 +131,7 @@ development — see below.
 | `setup/record.ts` | `summarizeHistory` — the stored history reduced to what the screen shows. Kept free of React so it is unit-tested for real (`apps/web/test/record.test.ts`) rather than only exercised through the browser |
 | `presets.ts` | `capitalize`, and a note on why the per-personality blurbs that used to live here are gone |
 | `setup/SetupScreen.tsx` | Name, bot personality or hot-seat friend, target score (1500 / 3000 / 8000), and the loadout choice. Remembers all of it between matches |
-| `setup/LoadoutChoice.tsx`, `loadoutPresets.ts` | The "Your dice" row: three measured pure loadouts plus a Custom card that opens the picker. Both numbers on each card are copied static data with the same sync caveat as `dice/stats.ts` |
+| `setup/LoadoutChoice.tsx`, `loadoutPresets.ts` | The "Your dice" row: Ordinary, plus a Custom card that opens the picker and remembers the build. Both numbers on the card are copied static data with the same sync caveat as `dice/stats.ts` |
 | `setup/LoadoutStep.tsx`, `LoadoutPicker.tsx` | The full picker behind Custom — sticky six-slot rack, tier-grouped card catalog. See [notes/loadout-screen-redesign.md](notes/loadout-screen-redesign.md) |
 | `rules/RulesScreen.tsx` | The rules, written out for players rather than for implementers — the player-facing counterpart to RULES.md |
 | `match/MatchScreen.tsx` | Owns the `LocalHost` for one match session, drives a bot seat via `chooseBotAction` on a timer, holds farkles on screen, persists on every change |
@@ -139,10 +139,13 @@ development — see below.
 | `match/Board.tsx`, `Die.tsx` | The board and one die. Dice physically move between the board and the "set aside" rail when clicked, rather than just changing colour — see below |
 | `match/KeepOptions.tsx` | Every legal keep as a clickable row. Clicking *selects* those dice; committing is a separate choice (keep & throw / keep & bank) |
 | `match/FarkleNotice.tsx` | The farkle hold's panel — explanation plus a Continue button and its countdown |
+| `match/ConfirmDialog.tsx` | The guard in front of "Quit to menu" and "Start again". Focus starts on the harmless answer; Escape and a backdrop click cancel |
+| `match/Scoreboard.tsx` | The two players on opposite edges with the goal between them, each side showing what it still needs. Assumes exactly two seats, which `NewMatchOptions.players` guarantees as a two-tuple |
 | `match/pacing.ts` | `botThinkTime(phase)`, `TUMBLE_MS`, `FARKLE_PAUSE_MS` — the only place "how long things take" is defined |
 | `match/logEntry.ts` | `buildLog` turns a flat `GameEvent[]` into per-turn blocks for display, plus `diceGlyphs` (⚀–⚅) |
 | `match/describeCombo.ts` | Pure `Combo` → text |
-| `match/Scoreboard.tsx`, `TurnLog.tsx`, `MatchOverOverlay.tsx` | The rest of the screen |
+| `match/TurnLog.tsx` | The match log: turn blocks in a labelled, sunken well. The heading is load-bearing — without it the log read as a continuation of the scoring combinations above it |
+| `match/MatchOverOverlay.tsx` | The win card |
 | `styles.css` | One stylesheet, no CSS-in-JS or modules — small enough not to need either |
 
 The UI never scores a selection itself: `MatchScreen` reads `view.keeps`

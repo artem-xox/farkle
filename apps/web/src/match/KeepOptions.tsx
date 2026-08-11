@@ -29,7 +29,10 @@ export function KeepOptions({ options, thrown, selection, disabled, onPick }: Ke
 
   return (
     <div className="keep-options">
-      <span className="keep-options__label">Scoring combinations</span>
+      <span className="keep-options__label">
+        Scoring combinations
+        <span className="keep-options__nudge">tap to set aside</span>
+      </span>
       <ul className="keep-options__list">
         {options.map((option) => {
           const active = selectedKey !== null && facesKey(option.faces) === selectedKey;

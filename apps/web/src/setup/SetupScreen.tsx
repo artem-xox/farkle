@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 
 import { PRESET_NAMES, type PresetName } from '@farkle/bots';
-import { BALANCED_DIE, DICE_PER_TURN, type DieSpec, type PlayerConfig } from '@farkle/engine';
+import { BALANCED_DIE, DICE, DICE_PER_TURN, type DieSpec, type PlayerConfig } from '@farkle/engine';
 
 import { capitalize } from '../presets';
 import { loadHistory, loadSetupPrefs, NAME_MAX_LENGTH, saveSetupPrefs } from '../storage';
@@ -83,19 +83,34 @@ export function SetupScreen({ onStart, onShowRules }: SetupScreenProps) {
     }
     return DEFAULT_PRESET_ID;
   });
-  // Default on, so picking a loadout is a choice about how the match feels
-  // rather than a difficulty dial handed out by accident: six `worn` or six
-  // `devil` beat six ordinary dice about 61% of the time (DESIGN.md §5), and a
+  // Default on, so building a loadout is a choice about how the match feels
+  // rather than a difficulty dial handed out by accident: six of any Gold-tier
+  // die beat six ordinary ones around 61% of the time (DESIGN.md §5), and a
   // player who wants that edge should be turning it on deliberately.
   const [botMirrors, setBotMirrors] = useState(prefs.botMirrors ?? true);
-  const [yourLoadout, setYourLoadout] = useState<DieSpec[]>(defaultLoadout());
+  // Seeded from the saved custom loadout, so a build survives the match that
+  // used it. `loadSetupPrefs` has already checked every id resolves.
+  const [yourLoadout, setYourLoadout] = useState<DieSpec[]>(() =>
+    prefs.customLoadout === undefined
+      ? defaultLoadout()
+      : prefs.customLoadout.map((id) => DICE[id] ?? BALANCED_DIE),
+  );
   const [opponentLoadout, setOpponentLoadout] = useState<DieSpec[]>(defaultLoadout());
 
   // Saved on change rather than on start: a player who types their name and
   // then reloads without starting should not have to type it again either.
   useEffect(() => {
-    saveSetupPrefs({ yourName, friendName, mode, preset, target, loadoutPreset, botMirrors });
-  }, [yourName, friendName, mode, preset, target, loadoutPreset, botMirrors]);
+    saveSetupPrefs({
+      yourName,
+      friendName,
+      mode,
+      preset,
+      target,
+      loadoutPreset,
+      botMirrors,
+      customLoadout: yourLoadout.map((die) => die.id),
+    });
+  }, [yourName, friendName, mode, preset, target, loadoutPreset, botMirrors, yourLoadout]);
 
   /**
    * The single source of truth for what actually goes to the table. A named
@@ -152,12 +167,14 @@ export function SetupScreen({ onStart, onShowRules }: SetupScreenProps) {
   /**
    * "Custom" opens the picker rather than merely selecting a fourth option —
    * the card *is* the way in, so choosing it and then hunting for a second
-   * button would be a wasted tap. The picker is seeded with whatever preset was
-   * showing, so Custom starts from where the player already was instead of
-   * resetting them to ordinary dice.
+   * button would be a wasted tap.
+   *
+   * It deliberately does not seed the picker from the preset that was showing.
+   * It used to, back when several named builds sat beside it; now the only
+   * other card is Ordinary, and seeding from it would wipe the custom loadout
+   * the player just came back for.
    */
   function handleChooseCustom(): void {
-    setYourLoadout([...yoursEffective]);
     setLoadoutPreset(CUSTOM_PRESET_ID);
     setStep('loadout');
   }
