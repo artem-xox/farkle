@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 
 import type { PresetName } from '@farkle/bots';
 import { createMatch, LocalHost, type GameState } from '@farkle/engine';
@@ -18,6 +18,18 @@ interface MatchSession {
 }
 
 type Tab = 'play' | 'dice' | 'rules';
+
+/**
+ * In display order, because the sliding thumb behind the tab strip is placed
+ * from an index into this list rather than from a measured button position —
+ * the strip is an equal-column grid, so "third of the way along" is exact
+ * without touching the DOM.
+ */
+const TABS: readonly { id: Tab; label: string }[] = [
+  { id: 'play', label: 'Play' },
+  { id: 'dice', label: 'Dice' },
+  { id: 'rules', label: 'Rules' },
+];
 
 const randomSeed = (): number => (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0;
 
@@ -108,30 +120,29 @@ export function App() {
   return (
     <div className="app">
       <nav className="tabs" aria-label="Sections">
-        <button
-          type="button"
-          className={`tabs__tab${tab === 'play' ? ' tabs__tab--active' : ''}`}
-          aria-current={tab === 'play' ? 'page' : undefined}
-          onClick={() => setTab('play')}
-        >
-          Play
-        </button>
-        <button
-          type="button"
-          className={`tabs__tab${tab === 'dice' ? ' tabs__tab--active' : ''}`}
-          aria-current={tab === 'dice' ? 'page' : undefined}
-          onClick={() => setTab('dice')}
-        >
-          Dice
-        </button>
-        <button
-          type="button"
-          className={`tabs__tab${tab === 'rules' ? ' tabs__tab--active' : ''}`}
-          aria-current={tab === 'rules' ? 'page' : undefined}
-          onClick={() => setTab('rules')}
-        >
-          Rules
-        </button>
+        {/*
+          The gold pill is one element that slides between the tabs rather than
+          a background that blinks on and off each button — the movement is
+          what tells you the two sections are neighbours. Purely decorative,
+          so it stays out of the accessibility tree; `aria-current` on the
+          buttons is what actually reports the selection.
+        */}
+        <span
+          className="tabs__thumb"
+          style={{ '--tab-index': TABS.findIndex((entry) => entry.id === tab) } as CSSProperties}
+          aria-hidden="true"
+        />
+        {TABS.map((entry) => (
+          <button
+            key={entry.id}
+            type="button"
+            className={`tabs__tab${tab === entry.id ? ' tabs__tab--active' : ''}`}
+            aria-current={tab === entry.id ? 'page' : undefined}
+            onClick={() => setTab(entry.id)}
+          >
+            {entry.label}
+          </button>
+        ))}
       </nav>
 
       {/*

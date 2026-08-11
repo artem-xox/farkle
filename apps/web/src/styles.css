@@ -65,16 +65,41 @@ button:disabled {
   padding: 0 0.75rem 3rem;
 }
 
+/*
+ * Equal columns rather than a flex row, so the sliding thumb can be placed
+ * from the active tab's index alone — each column is exactly a third of the
+ * track, which is what makes `translateX(index * 100%)` land dead on without
+ * measuring any button. The gap is 0 for the same reason: with one, a third
+ * of the track would no longer be a tab's width.
+ */
 .tabs {
-  display: flex;
-  gap: 0.35rem;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   margin: 1rem 0 0.5rem;
   padding: 0.25rem;
   background: rgb(0 0 0 / 0.25);
   border-radius: 999px;
 }
 
+/* The gold pill itself — one element that travels, rather than a background that blinks between buttons. */
+.tabs__thumb {
+  position: absolute;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  left: 0.25rem;
+  width: calc((100% - 0.5rem) / 3);
+  border-radius: 999px;
+  background: var(--gold);
+  box-shadow: 0 1px 6px rgb(0 0 0 / 0.25);
+  transform: translateX(calc(var(--tab-index, 0) * 100%));
+  /* Overshoots very slightly on arrival, which is what makes it read as a physical thing sliding rather than a value being interpolated. */
+  transition: transform 340ms cubic-bezier(0.34, 1.32, 0.64, 1);
+}
+
 .tabs__tab {
+  position: relative;
+  z-index: 1;
   border: none;
   background: none;
   color: var(--parchment-dim);
@@ -82,15 +107,23 @@ button:disabled {
   border-radius: 999px;
   font-weight: 600;
   letter-spacing: 0.02em;
+  transition: color 200ms ease;
 }
 
 .tabs__tab:hover {
   color: var(--parchment);
 }
 
-.tabs__tab--active {
-  background: var(--gold);
+/* No background of its own any more: the thumb behind it is the highlight. */
+.tabs__tab--active,
+.tabs__tab--active:hover {
   color: var(--ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tabs__thumb {
+    transition: none;
+  }
 }
 
 .app__panel {
@@ -1100,7 +1133,9 @@ button:disabled {
  * on the board (still an ordinary click away from being un-picked) with a
  * gold ring on top of whatever colour it already has, identity included.
  */
+/* Lifted off the felt as well as ringed, so a picked die reads as already in hand — the flight into the rail then continues a movement instead of starting one. */
 .die--selected {
+  transform: translateY(-5px);
   box-shadow:
     0 3px 0 rgb(0 0 0 / 0.3),
     0 0 0 3px var(--gold-bright),
@@ -1108,6 +1143,7 @@ button:disabled {
 }
 
 .die--selected:not(:disabled):hover {
+  transform: translateY(-8px);
   box-shadow:
     0 6px 0 rgb(0 0 0 / 0.3),
     0 0 0 3px var(--gold-bright),
@@ -1740,15 +1776,113 @@ button:disabled {
   align-items: center;
   justify-content: center;
   padding: 1rem;
+  animation: overlay-in 260ms ease both;
 }
 
+/* Positioned, and the only thing here that is — which is what puts it in front of the confetti bursting from the same centre point. */
 .match-over__card {
+  position: relative;
   background: var(--parchment);
   color: var(--ink);
   border-radius: 1rem;
   padding: 2rem 2.5rem;
   text-align: center;
   box-shadow: 0 10px 40px rgb(0 0 0 / 0.4);
+  animation: card-in 420ms cubic-bezier(0.2, 1.25, 0.5, 1) both;
+}
+
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.94);
+  }
+}
+
+/* ---------- victory confetti ---------- */
+
+/*
+ * A point at the centre of the overlay — which is the centre of the card,
+ * since the card is what the overlay centres. Every piece is absolutely
+ * positioned against this one point and flies out from it.
+ */
+.celebration {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Outer layer: the sideways drift, slowing as it goes, like something thrown through air. */
+.celebration__piece {
+  position: absolute;
+  animation: confetti-drift var(--duration) cubic-bezier(0.15, 0.7, 0.4, 1) var(--delay) both;
+}
+
+/*
+ * Inner layer: the rise and the fall, with the two halves eased separately —
+ * out of the launch, then accelerating down. The per-keyframe
+ * `animation-timing-function` is what allows one animation to change its
+ * easing mid-flight; a single easing for the whole path can only ever
+ * describe a throw that never slows down or a fall that never speeds up.
+ */
+.celebration__flake {
+  display: block;
+  width: var(--size);
+  height: calc(var(--size) * 0.62);
+  border-radius: 1px;
+  background: var(--colour);
+  animation: confetti-arc var(--duration) var(--delay) both;
+}
+
+@keyframes confetti-drift {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(var(--drift));
+  }
+}
+
+@keyframes confetti-arc {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0;
+    animation-timing-function: cubic-bezier(0.1, 0.8, 0.4, 1);
+  }
+  10% {
+    opacity: 1;
+  }
+  38% {
+    transform: translateY(calc(var(--rise) * -1)) rotate(calc(var(--spin) * 0.4));
+    animation-timing-function: cubic-bezier(0.5, 0, 0.75, 0.7);
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(var(--fall)) rotate(var(--spin));
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .match-over,
+  .match-over__card {
+    animation: none;
+  }
+
+  /* The burst is the one thing here with no still version worth showing. */
+  .celebration {
+    display: none;
+  }
 }
 
 .match-over__card h2 {

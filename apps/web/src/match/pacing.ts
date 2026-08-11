@@ -21,6 +21,17 @@ export function botThinkTime(phase: Phase): number {
 export const TUMBLE_MS = 550;
 
 /**
+ * How long a kept die takes to travel from the board into the set-aside rail,
+ * and how far apart a run of them is staggered.
+ *
+ * Deliberately shorter than `TUMBLE_MS`: the dice fly out while the next
+ * throw is already tumbling in behind them, and a flight that outlasted the
+ * tumble would still be crossing the board once the new dice had settled.
+ */
+export const FLY_MS = 380;
+export const FLY_STAGGER_MS = 55;
+
+/**
  * How long a farkle stays on screen before play moves on by itself.
  *
  * The engine resolves a farkle inside a single `reduce()` — the throw, the
