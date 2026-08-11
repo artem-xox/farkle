@@ -318,9 +318,17 @@ not stale.
   which have to be absolute — and generates `robots.txt`, which is why there
   isn't one in `apps/web/public`. Both default to failing safe: unset
   `SITE_URL` means the production origin, unset `SITE_INDEXABLE` means
-  `Disallow: /`. The canonical tag matters because App Platform cannot redirect,
-  so prod answers on its `ondigitalocean.app` hostname as well as its domain no
-  matter what, and the tag is the only way to name the real one.
+  `Disallow: /`. The canonical tag matters because a `PRIMARY` domain does not
+  retire the starter one — prod answers on `farkle-prod-fec6b.ondigitalocean.app`
+  as well as on `farkle.iamxox.space` — and the tag is what names the real one.
+  An ingress rule matching the starter authority could `redirect` it away
+  instead; that is a real option here, unlike response headers, and the only
+  reason it isn't in the spec is that it had to wait until the domain was
+  verified and serving. Note that the `${STARTER_DOMAIN}` placeholder the
+  DigitalOcean docs use in that rule cannot be: the deploy action expands the
+  spec through `os.Expand` first, and only keys containing a dot survive as
+  bindables, so `${STARTER_DOMAIN}` arrives as an empty string. Write the
+  hostname out.
 - **`app_spec_location`, never `app_name`.** The two inputs are mutually
   exclusive and they deploy opposite things: given `app_name`, the action
   fetches the spec from the *live app* and — in its own words — "a potential
