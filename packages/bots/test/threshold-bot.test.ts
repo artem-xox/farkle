@@ -8,7 +8,7 @@ import {
 } from '@farkle/engine';
 import { describe, expect, it } from 'vitest';
 
-import { balancedFarkleProbability, farkleProbability } from '../src/odds.js';
+import { balancedFarkleProbability, expectedKeepValue, farkleProbability } from '../src/odds.js';
 import type { BotParams } from '../src/threshold-bot.js';
 import { ThresholdBot } from '../src/threshold-bot.js';
 import { fakeView } from './helpers/fake-view.js';
@@ -300,5 +300,210 @@ describe('rankOf risk-awareness (via chooseKeep)', () => {
     // die identity — diceValue 0 means safetyRatio never enters the ranking.
     const chosen = greedy.chooseKeep(fakeView(), options);
     expect(chosen.points).toBe(50);
+  });
+});
+
+describe('evBanking', () => {
+  const evParams = (overrides: Partial<BotParams> = {}): BotParams =>
+    params({ evBanking: true, hotDiceAlwaysThrow: false, ...overrides });
+
+  /** A view whose `inPlayDice` genuinely describes `diceInPlay`, as `viewOf` builds. */
+  const evView = (turnScore: number, count: number, overrides = {}) =>
+    fakeView({
+      turnScore,
+      diceInPlay: count,
+      inPlayDice: new Array(count).fill(BALANCED_DIE) as DieSpec[],
+      ...overrides,
+    });
+
+  // Breakeven turn score is expectedKeepValue/farkleProbability: ~38 on one
+  // balanced die, ~313 on three. Asserted from the primitives rather than
+  // hardcoded so the test tracks the engine's scoring table.
+  const breakeven = (count: number): number => {
+    const dice = new Array(count).fill(BALANCED_DIE) as DieSpec[];
+    return expectedKeepValue(dice) / farkleProbability(dice);
+  };
+
+  it('throws below the breakeven turn score and banks above it', () => {
+    const bot = new ThresholdBot('ev', evParams(), 1);
+    for (const count of [1, 2, 3, 4]) {
+      const point = breakeven(count);
+      expect(bot.decideAfterKeep(evView(Math.floor(point) - 1, count))).toBe('Throw');
+      expect(bot.decideAfterKeep(evView(Math.ceil(point) + 1, count))).toBe('Bank');
+    }
+  });
+
+  it('ignores bankAt and minDiceToThrow entirely — the EV rule subsumes both', () => {
+    // bankAt far below the one-die breakeven and minDiceToThrow above the
+    // dice in play: the threshold path would bank on both counts, EV throws.
+    const bot = new ThresholdBot('ev', evParams({ bankAt: 10, minDiceToThrow: 5 }), 1);
+    expect(bot.decideAfterKeep(evView(0, 1))).toBe('Throw');
+  });
+
+  it('banks earlier than a flat 350-point threshold on one die, and later on five', () => {
+    const bot = new ThresholdBot('ev', evParams(), 1);
+    // A `balanced`-like flat threshold would throw at 300 on a single die
+    // (300 < 350) and bank at 400 on five (400 >= 350). EV does the opposite,
+    // which is the whole point of the rule.
+    expect(bot.decideAfterKeep(evView(300, 1))).toBe('Bank');
+    expect(bot.decideAfterKeep(evView(400, 5))).toBe('Throw');
+  });
+
+  it('still banks outright when the turn score already wins', () => {
+    const bot = new ThresholdBot('ev', evParams(), 1);
+    expect(bot.decideAfterKeep(evView(600, 1, { target: 500 }))).toBe('Bank');
+  });
+
+  it('throws regardless of EV when the opponent is a turn from winning', () => {
+    const bot = new ThresholdBot('ev', evParams({ desperationMargin: 200 }), 1);
+    // One die, turn score far past breakeven — EV alone says bank, but a bank
+    // here doesn't win and the opponent finishes next turn.
+    const view = evView(900, 1, {
+      target: 2000,
+      players: [
+        { id: 0, name: 'A', total: 0, loadout: [] },
+        { id: 1, name: 'B', total: 1900, loadout: [] },
+      ],
+    });
+    expect(bot.decideAfterKeep(view)).toBe('Throw');
+  });
+
+  it('falls back to the threshold path when the view carries no die identities', () => {
+    // fakeView's default inPlayDice is empty, so there is nothing to price.
+    const bot = new ThresholdBot('ev', evParams({ bankAt: 300, minDiceToThrow: 2 }), 1);
+    expect(bot.decideAfterKeep(fakeView({ turnScore: 400, diceInPlay: 3 }))).toBe('Bank');
+    expect(bot.decideAfterKeep(fakeView({ turnScore: 100, diceInPlay: 3 }))).toBe('Throw');
+  });
+
+  it('leaves every bot without the flag on exactly its old behaviour', () => {
+    const plain = new ThresholdBot('plain', params({ bankAt: 300, minDiceToThrow: 2 }), 1);
+    expect(plain.decideAfterKeep(evView(400, 3))).toBe('Bank');
+    expect(plain.decideAfterKeep(evView(100, 3))).toBe('Throw');
+    expect(plain.decideAfterKeep(evView(100, 1))).toBe('Bank');
+  });
+});
+
+describe('evKeepSelection (via chooseKeep)', () => {
+  const rest = [fixedDie(2), fixedDie(3), fixedDie(4), fixedDie(6)];
+  const dice: DieSpec[] = [BALANCED_DIE, ODD_DIE, ...rest];
+  const thrown = [5, 5, 2, 3, 4, 6] as const;
+
+  it('prefers leaving the safer die behind, same as diceValue hoarding but priced by real EV', () => {
+    const options = legalKeeps([...thrown], dice).filter(
+      (option) => option.points === 50 && option.faces.length === 1,
+    );
+    expect(options).toHaveLength(2);
+
+    const bot = new ThresholdBot('ev-keep', params({ evKeepSelection: true, mistakeRate: 0 }), 1);
+    const chosen = bot.chooseKeep(fakeView(), options);
+    const leftoverIds = chosen.diceLeftSpecs!.map((die) => die.id);
+    expect(leftoverIds).toContain(ODD_DIE.id);
+    expect(leftoverIds).not.toContain(BALANCED_DIE.id);
+  });
+
+  it('falls back to the diceValue ranking when an option carries no die identities', () => {
+    const options = legalKeeps([...thrown]).filter(
+      (option) => option.points === 50 && option.faces.length === 1,
+    );
+    const bot = new ThresholdBot('ev-keep', params({ evKeepSelection: true, diceValue: 0, mistakeRate: 0 }), 1);
+    // No diceLeftSpecs anywhere on these options — every ranking source
+    // (evKeepSelection and diceValue alike) collapses to raw points, so this
+    // must not throw and must pick a real 50-point option.
+    const chosen = bot.chooseKeep(fakeView(), options);
+    expect(chosen.points).toBe(50);
+  });
+});
+
+describe('evBanking refinements', () => {
+  const evView = (turnScore: number, count: number, overrides = {}) =>
+    fakeView({
+      turnScore,
+      diceInPlay: count,
+      inPlayDice: new Array(count).fill(BALANCED_DIE) as DieSpec[],
+      ...overrides,
+    });
+
+  describe('evCapToTarget', () => {
+    it('caps a large potential gain at what winning actually requires, tipping Throw to Bank', () => {
+      // One die: raw gain 25 vs S*p = 30 * 2/3 = 20 — plain EV says Throw.
+      // With only 15 points left to reach the target, the capped gain (15)
+      // no longer clears that same 20.
+      // desperationMargin: 0 so the existing "opponent about to win" override
+      // (which the params() helper's default 150 would trip at this small a
+      // target, independent of the cap) never fires here.
+      const plain = new ThresholdBot('plain', params({ evBanking: true, desperationMargin: 0, mistakeRate: 0 }), 1);
+      const capped = new ThresholdBot(
+        'capped',
+        params({ evBanking: true, evCapToTarget: true, desperationMargin: 0, mistakeRate: 0 }),
+        1,
+      );
+      const view = evView(30, 1, { target: 45 });
+      expect(plain.decideAfterKeep(view)).toBe('Throw');
+      expect(capped.decideAfterKeep(view)).toBe('Bank');
+    });
+
+    it('never changes the decision once the potential gain is already below what is needed', () => {
+      // Miles from the target: the cap (remaining = 4970) never binds.
+      const plain = new ThresholdBot('plain', params({ evBanking: true, mistakeRate: 0 }), 1);
+      const capped = new ThresholdBot('capped', params({ evBanking: true, evCapToTarget: true, mistakeRate: 0 }), 1);
+      const view = evView(30, 1, { target: 5000 });
+      expect(capped.decideAfterKeep(view)).toBe(plain.decideAfterKeep(view));
+    });
+  });
+
+  describe('evCatchUpTurns', () => {
+    const loadout = new Array(DICE_PER_TURN).fill(BALANCED_DIE) as DieSpec[];
+
+    it('makes a bot behind on points more willing to throw than plain EV would', () => {
+      // One die, turn score 39: S*p = 26 > gain 25, so plain EV banks.
+      const plain = new ThresholdBot('plain', params({ evBanking: true, mistakeRate: 0 }), 1);
+      const catchUp = new ThresholdBot(
+        'catchup',
+        params({ evBanking: true, evCatchUpTurns: 1, mistakeRate: 0 }),
+        1,
+      );
+      const view = evView(39, 1, {
+        target: 5000,
+        players: [
+          { id: 0, name: 'A', total: 0, loadout },
+          { id: 1, name: 'B', total: 1000, loadout },
+        ],
+      });
+      expect(plain.decideAfterKeep(view)).toBe('Bank');
+      expect(catchUp.decideAfterKeep(view)).toBe('Throw');
+    });
+
+    it('makes a bot ahead on points less willing to throw than plain EV would', () => {
+      // One die, turn score 37: S*p = 24.67 < gain 25, so plain EV throws —
+      // the mirror of the "behind" case above, just under breakeven (37.5)
+      // instead of just over it.
+      const plain = new ThresholdBot('plain', params({ evBanking: true, mistakeRate: 0 }), 1);
+      const catchUp = new ThresholdBot(
+        'catchup',
+        params({ evBanking: true, evCatchUpTurns: 1, mistakeRate: 0 }),
+        1,
+      );
+      const view = evView(37, 1, {
+        target: 5000,
+        players: [
+          { id: 0, name: 'A', total: 1000, loadout },
+          { id: 1, name: 'B', total: 0, loadout },
+        ],
+      });
+      expect(plain.decideAfterKeep(view)).toBe('Throw');
+      expect(catchUp.decideAfterKeep(view)).toBe('Bank');
+    });
+
+    it('is a no-op when 0 or unset', () => {
+      const plain = new ThresholdBot('plain', params({ evBanking: true, mistakeRate: 0 }), 1);
+      const zero = new ThresholdBot('zero', params({ evBanking: true, evCatchUpTurns: 0, mistakeRate: 0 }), 1);
+      const view = evView(100, 3, {
+        players: [
+          { id: 0, name: 'A', total: 0, loadout },
+          { id: 1, name: 'B', total: 2000, loadout },
+        ],
+      });
+      expect(zero.decideAfterKeep(view)).toBe(plain.decideAfterKeep(view));
+    });
   });
 });

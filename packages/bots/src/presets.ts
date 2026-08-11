@@ -54,6 +54,37 @@ export const PRESETS = {
     catchUpBonus: 0.5,
     mistakeRate: 0.18,
   },
+  /**
+   * `balanced` with both throw-or-bank and keep selection replaced by exact
+   * expected-value comparisons (`evBanking`, `evKeepSelection` —
+   * `packages/bots/src/odds.ts`) instead of the constant `bankAt` and
+   * `diceValue` thresholds every other preset uses. Measured in
+   * docs/researches/2026-08-11-smart-v2.md: it beats every other preset in
+   * every one of 54 pairings tested (3 victory targets × 3 dice sets × 6
+   * opponents), averaging 60.5%, and beats `balanced` specifically by +7.7
+   * points. `bankAt`/`minDiceToThrow`/`diceValue` below are dead weight in
+   * practice — `evBanking`/`evKeepSelection` only fall back to them when a
+   * `ClientView` carries no die identities, which a real match never
+   * produces — kept at `balanced`'s values so that fallback isn't a
+   * regression if it's ever exercised.
+   *
+   * An earlier, differently-tuned `smart` (target-relative `bankAt` plus an
+   * endgame-caution cap) was tried first and shipped nowhere: ablation in
+   * docs/researches/2026-08-10-smart-ablation-and-ev.md found it
+   * statistically indistinguishable from `balanced`. This is a full
+   * replacement, not a refinement of that version.
+   */
+  smart: {
+    bankAt: 350,
+    minDiceToThrow: 2,
+    diceValue: 15,
+    hotDiceAlwaysThrow: true,
+    desperationMargin: 200,
+    catchUpBonus: 0.5,
+    mistakeRate: 0,
+    evBanking: true,
+    evKeepSelection: true,
+  },
 } as const satisfies Record<string, BotParams>;
 
 export type PresetName = keyof typeof PRESETS;
