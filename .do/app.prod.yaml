@@ -1,0 +1,53 @@
+alerts:
+- rule: DEPLOYMENT_FAILED
+- rule: DOMAIN_FAILED
+
+features:
+- buildpack-stack=ubuntu-22
+
+ingress:
+  rules:
+  - component:
+      name: farkle
+    match:
+      authority:
+        exact: ""
+      path:
+        prefix: /
+
+name: farkle-prod
+region: fra
+
+# The custom domain lands here once farkle.iamxox.space has a CNAME pointing at
+# this app's ondigitalocean.app hostname — which cannot be known until the first
+# deploy has created the app. Adding the block before the DNS record exists just
+# leaves the domain stuck in verification and fires the DOMAIN_FAILED alert.
+#
+# domains:
+# - domain: farkle.iamxox.space
+#   type: PRIMARY
+#   # No `zone`: DNS lives at Cloudflare, not in DigitalOcean's own DNS.
+
+static_sites:
+- name: farkle
+  environment_slug: node-js
+  github:
+    repo: artem-xox/farkle
+    # Not `main`. DigitalOcean builds whatever a branch points at when the
+    # deploy runs, so a workflow that deployed `main` would ship whatever had
+    # been merged by the time somebody pressed the button, not the commit they
+    # chose. `production` is a release pointer that deploy-prod.yml moves to an
+    # explicit SHA immediately before deploying it.
+    branch: production
+    deploy_on_push: false
+  source_dir: /
+  build_command: npm ci && npm run build -w @farkle/web
+  output_dir: apps/web/dist
+  catchall_document: index.html
+  envs:
+  - key: SITE_URL
+    scope: BUILD_TIME
+    value: https://farkle.iamxox.space
+  - key: SITE_INDEXABLE
+    scope: BUILD_TIME
+    value: "true"

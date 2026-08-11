@@ -23,6 +23,12 @@
     />
     <meta name="theme-color" content="#0f3d2e" />
 
+    <!-- SITE_URL is substituted at build time — see the siteEnv plugin in
+         vite.config.ts. Prod and dev serve this same document from different
+         origins, and prod is reachable at its ondigitalocean.app hostname as
+         well as its domain, which App Platform cannot redirect away. -->
+    <link rel="canonical" href="%SITE_URL%/" />
+
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
@@ -33,11 +39,8 @@
       property="og:description"
       content="Throw, keep the scoring dice, bank before a farkle wipes the turn. Play a full match against bots in the browser."
     />
-    <meta property="og:url" content="https://farkle-game-frkhm.ondigitalocean.app/" />
-    <meta
-      property="og:image"
-      content="https://farkle-game-frkhm.ondigitalocean.app/og.jpg"
-    />
+    <meta property="og:url" content="%SITE_URL%/" />
+    <meta property="og:image" content="%SITE_URL%/og.jpg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="Four dice on a green felt table above the word FARKLE" />

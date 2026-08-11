@@ -31,8 +31,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # `app_spec_location` and `app_name` are mutually exclusive, and picking
+      # the wrong one inverts what deploys: given `app_name`, the action pulls
+      # the spec off the *live app* and the in-repository spec is ignored
+      # entirely. That is how `.do/app.yaml` sat unapplied long enough for the
+      # live app to drift back to `deploy_on_push: true`. Point at the file.
       - name: Deploy app spec
         uses: digitalocean/app_action/deploy@v2
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
-          app_name: farkle-game
+          app_spec_location: .do/app.dev.yaml

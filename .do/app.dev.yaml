@@ -15,7 +15,7 @@ ingress:
       path:
         prefix: /
 
-name: farkle-game
+name: farkle-dev
 region: fra
 
 static_sites:
@@ -24,7 +24,7 @@ static_sites:
   github:
     repo: artem-xox/farkle
     branch: main
-    # CI is the only deploy trigger: .github/workflows/ci.yml pushes this spec
+    # CI is the only deploy trigger: .github/workflows/ci.yml applies this spec
     # after typecheck, tests and the build pass. With DigitalOcean's own webhook
     # enabled as well, every push to main deployed twice — the first of them
     # ungated by tests.
@@ -33,3 +33,12 @@ static_sites:
   build_command: npm ci && npm run build -w @farkle/web
   output_dir: apps/web/dist
   catchall_document: index.html
+  envs:
+  # Dev keeps the hostname the app was born with: renaming farkle-game to
+  # farkle-dev left the ingress as farkle-game-frkhm, so this is not a stale
+  # copy-paste from before the split.
+  - key: SITE_URL
+    scope: BUILD_TIME
+    value: https://farkle-game-frkhm.ondigitalocean.app
+  # Absent SITE_INDEXABLE, the build emits a robots.txt that disallows
+  # everything, so the throwaway hostname never competes with prod in search.
