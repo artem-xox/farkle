@@ -20,8 +20,12 @@ CLI.
 
 M4 (deployment) is live: the game is served from
 <https://farkle-game-frkhm.ondigitalocean.app/>, built and deployed by CI on
-every push to `main`. What remains of that milestone is a domain, and analytics
-and error reporting — all three need an account somewhere rather than a commit.
+every push to `main`. That app is now called `farkle-dev` and is being joined by
+`farkle-prod` on `farkle.iamxox.space`, deployed by hand from a button — the
+specs for both are in `.do/`, but the prod workflow and the DNS record are still
+to come, so nothing is serving that domain yet. What else remains of the
+milestone is analytics and error reporting, which need an account somewhere
+rather than a commit.
 Cache and security headers turned out not to be a checklist item at all: App
 Platform cannot set custom response headers on a static site, so the CSP and
 referrer policy travel in `index.html` and the caching defaults stand. See
@@ -256,30 +260,59 @@ it immediately; `Bank`/`Throw` appear once at least one die is kept.
 `apps/web` ships as a static site on DigitalOcean App Platform. Plan and cost
 model: [PLAN.md#m4](PLAN.md#m4--deployment-on-digitalocean).
 
-**Names, since they don't all match.** The DigitalOcean app is called
-**`farkle-game`**; its single component is called **`farkle`**; the GitHub repo
-is `artem-xox/farkle`. `name` in the spec must match the *app* (`farkle-game`),
-and the `ingress` rule must match the *component* (`farkle`). Getting either
-wrong fails at deploy time, not at review time.
+**Two apps, and the names don't all match.** `farkle-dev` deploys itself from
+every green push to `main`; `farkle-prod` deploys only when somebody presses the
+button. Both have a single component called **`farkle`**, and the GitHub repo is
+`artem-xox/farkle`. `name` in a spec must match the *app*, and the `ingress`
+rule must match the *component*. Getting either wrong fails at deploy time, not
+at review time. `farkle-dev` was renamed from `farkle-game` and kept the
+hostname it was born with, so `farkle-game-frkhm.ondigitalocean.app` is current,
+not stale.
 
-- **`.do/app.yaml`** is the app spec, and it is kept byte-identical to what the
-  dashboard's App Spec editor shows — one `static_sites` component, built with
-  `npm ci && npm run build -w @farkle/web`, serving `apps/web/dist`, with
-  `catchall_document: index.html` so client-side routes and page refreshes
-  don't 404. Its `environment_slug: node-js` is load-bearing: left unset,
-  DigitalOcean auto-detects a runtime from the repo and has picked an invalid
-  `typescript:default` off the tsconfig files.
+| | `farkle-dev` | `farkle-prod` |
+|---|---|---|
+| Spec | `.do/app.dev.yaml` | `.do/app.prod.yaml` |
+| Trigger | push to `main`, after tests | `workflow_dispatch` |
+| Branch it builds | `main` | `production` |
+| URL | `farkle-game-frkhm.ondigitalocean.app` | `farkle.iamxox.space` |
+| Indexable | no | yes |
+
+- **The two specs** are the same file bar name, branch, `envs` and the custom
+  domain — one `static_sites` component, built with `npm ci && npm run build -w
+  @farkle/web`, serving `apps/web/dist`, with `catchall_document: index.html` so
+  client-side routes and page refreshes don't 404. `environment_slug: node-js`
+  is load-bearing in both: left unset, DigitalOcean auto-detects a runtime from
+  the repo and has picked an invalid `typescript:default` off the tsconfig
+  files. Keep them in sync by hand; nothing enforces it.
 - **`.github/workflows/ci.yml`** has two jobs. `test` runs on every branch push:
   typecheck, the full test suite, and a build — this is the only thing that
   happens on a feature branch. `deploy` runs only on push to `main`, `needs:
   test`, so a red suite blocks that job entirely; it then calls
-  `digitalocean/app_action/deploy@v2` with `app_spec_location: .do/app.yaml`,
-  which applies the spec from the checked-out commit.
+  `digitalocean/app_action/deploy@v2` with
+  `app_spec_location: .do/app.dev.yaml`, which applies the spec from the
+  checked-out commit. **Only `farkle-dev` is reachable this way** — merging to
+  `main` can never move prod.
+- **`branch: production` in the prod spec** is the whole reason prod is
+  pinnable. DigitalOcean builds whatever a branch points at *at deploy time*,
+  and the deploy action passes `UpdateAllSourceVersions: true`, so a prod spec
+  reading `main` would ship whatever had been merged by the time the button was
+  pressed rather than the commit the operator chose. `production` is a release
+  pointer, moved to an explicit SHA immediately before the deploy. Rolling back
+  is the same button with an older SHA.
+- **`SITE_URL` and `SITE_INDEXABLE`** are build-time envs set per app in the
+  spec. `apps/web/vite.config.ts` substitutes `SITE_URL` into the `%SITE_URL%`
+  placeholders in `index.html` — `og:url`, `og:image` and `canonical`, all of
+  which have to be absolute — and generates `robots.txt`, which is why there
+  isn't one in `apps/web/public`. Both default to failing safe: unset
+  `SITE_URL` means the production origin, unset `SITE_INDEXABLE` means
+  `Disallow: /`. The canonical tag matters because App Platform cannot redirect,
+  so prod answers on its `ondigitalocean.app` hostname as well as its domain no
+  matter what, and the tag is the only way to name the real one.
 - **`app_spec_location`, never `app_name`.** The two inputs are mutually
   exclusive and they deploy opposite things: given `app_name`, the action
   fetches the spec from the *live app* and — in its own words — "a potential
   in-repository app spec is ignored". The workflow was written that way until
-  Aug 2026, so nothing in `.do/app.yaml` had ever been applied and the file was
+  Aug 2026, so nothing in the spec had ever been applied and the file was
   documentation rather than configuration. Which app gets deployed now comes
   from the spec's own `name` field; if no app by that name exists, the action
   creates one.
@@ -304,18 +337,21 @@ wrong fails at deploy time, not at review time.
 - **Social preview.** `apps/web/public/og.jpg` is the 1200×630 card, generated
   from the checked-in source `apps/web/branding/og.svg` — regenerate with
   `sips -s format jpeg -s formatOptions 85 apps/web/branding/og.svg --out apps/web/public/og.jpg`.
-  The `og:url` and `og:image` tags are absolute and currently point at the
-  `ondigitalocean.app` hostname; they have to change when a domain is attached.
-- **Rolling back** a bad deploy: DigitalOcean dashboard → the `farkle-game` app
-  → **Activity** tab → pick a previous successful deployment → **Rebuild and
-  Deploy** (or **Revert to this deployment** if offered). This does not touch
-  `main` — no `git revert` is required to get the site back, only to fix the
-  branch itself.
+  The `og:url` and `og:image` tags are absolute and resolve against `SITE_URL`,
+  so each app advertises its own origin.
+- **Rolling back** a bad deploy: DigitalOcean dashboard → the app → **Activity**
+  tab → pick a previous successful deployment → **Rebuild and Deploy** (or
+  **Revert to this deployment** if offered). This does not touch `main` — no
+  `git revert` is required to get the site back, only to fix the branch itself.
+  For prod there is a second route that leaves a record in GitHub: dispatch the
+  prod workflow again with an older SHA.
 - **Secrets this depends on**: a `DIGITALOCEAN_ACCESS_TOKEN` repository secret
-  (Settings → Secrets and variables → Actions in GitHub), and the `farkle-game`
-  app already existing in DigitalOcean (created once by hand in the dashboard —
-  the action updates an app, it doesn't create the first one from scratch
-  against a fresh GitHub authorization).
+  (Settings → Secrets and variables → Actions in GitHub). The app itself does
+  *not* have to exist first — given `app_spec_location`, the action creates an
+  app when it finds no match for the spec's `name`. That is a convenience and a
+  hazard in equal measure: a typo in `name` silently creates a second app rather
+  than failing, which is exactly what would have happened had `.do/app.dev.yaml`
+  been merged still saying `farkle-game` after the rename.
 - **The component must be a Static Site, not a Web Service.** DigitalOcean sees
   a Node.js repo and defaults new components to Web Service, which then
   crash-loops with `determine start command: when there is no default process a
