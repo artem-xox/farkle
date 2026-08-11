@@ -123,12 +123,26 @@ export function expectedKeepValue(dice: readonly DieSpec[]): number {
   const faces: Face[] = new Array(dice.length);
   let pointsWeight = 0;
 
+  /*
+   * The enumeration walks *ordered* tuples, because each die carries its own
+   * weights and the probability of a leaf depends on which die rolled what.
+   * `bestKeep` does not care about order, though — six dice have 46 656
+   * orderings but only 462 distinct multisets, so without this the partition
+   * search runs about a hundred times more often than it has anything new to
+   * decide. Local to the call: the outer `expectedValueCache` already handles
+   * repeat calls, and this handles the repeats *within* one.
+   */
+  const keepPoints = new Map<string, number>();
+
   function recurse(index: number, countSoFar: number): void {
     if (index === dice.length) {
-      const keep = bestKeep(faces);
-      if (keep !== null) {
-        pointsWeight += countSoFar * keep.points;
+      const multiset = [...faces].sort().join('');
+      let points = keepPoints.get(multiset);
+      if (points === undefined) {
+        points = bestKeep(faces)?.points ?? 0;
+        keepPoints.set(multiset, points);
       }
+      pointsWeight += countSoFar * points;
       return;
     }
     const die = dice[index]!;

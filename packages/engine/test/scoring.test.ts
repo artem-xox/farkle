@@ -187,16 +187,10 @@ describe('exhaustive properties over all 46 656 six-dice throws', () => {
     // no-1/no-5/no-triple hands; the extra 360 are the three-pair hands that
     // this variant does not score. See docs/RULES.md §10.
     expect(farkleCount).toBe(1440);
-    /*
-     * 30s, against roughly 4s of real work here.
-     *
-     * This is the one test in the suite that does not fit Vitest's 5s default,
-     * and it is not slow by accident: 46 656 `legalKeeps` calls, each running
-     * the memoised partition search, is the price of the word "exhaustive".
-     * The budget is set per test rather than raised globally so the other 250
-     * keep the tight default — a hang there should still fail fast.
-     */
-  }, 30_000);
+    // ~4.5s of real work: 46 656 `legalKeeps` calls is the price of the word
+    // "exhaustive". The budget it needs now comes from `testTimeout` in
+    // vitest.config.ts, which covers the whole suite rather than this one test.
+  });
 
   it('every reported keep is legal, correctly valued, and indexed into the throw', () => {
     for (const faces of allMultisets(6)) {
