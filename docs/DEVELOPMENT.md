@@ -318,17 +318,26 @@ not stale.
   which have to be absolute — and generates `robots.txt`, which is why there
   isn't one in `apps/web/public`. Both default to failing safe: unset
   `SITE_URL` means the production origin, unset `SITE_INDEXABLE` means
-  `Disallow: /`. The canonical tag matters because a `PRIMARY` domain does not
-  retire the starter one — prod answers on `farkle-prod-fec6b.ondigitalocean.app`
-  as well as on `farkle.iamxox.space` — and the tag is what names the real one.
-  An ingress rule matching the starter authority could `redirect` it away
-  instead; that is a real option here, unlike response headers, and the only
-  reason it isn't in the spec is that it had to wait until the domain was
-  verified and serving. Note that the `${STARTER_DOMAIN}` placeholder the
-  DigitalOcean docs use in that rule cannot be: the deploy action expands the
-  spec through `os.Expand` first, and only keys containing a dot survive as
-  bindables, so `${STARTER_DOMAIN}` arrives as an empty string. Write the
-  hostname out.
+  `Disallow: /`. The canonical tag names the real origin; the ingress redirect
+  below is what enforces it.
+- **The starter hostname 301s to the domain**, via an ingress rule in the prod
+  spec. A `PRIMARY` domain does not retire the starter one on its own, and
+  response headers aren't available to redirect with — but ingress rules are.
+  Two things about that rule are load-bearing and neither is obvious:
+    - **`${STARTER_DOMAIN}` cannot be replaced with the literal hostname.** The
+      API rejects any authority that is not a custom domain in the same spec:
+      `Authority "…" does not have a matching custom domain in app spec`. The
+      placeholder is resolved by DigitalOcean, which is also why recreating the
+      app and minting a new random suffix needs no edit.
+    - **`deploy-prod.yml` sets `STARTER_DOMAIN` to the literal string
+      `${STARTER_DOMAIN}`.** The deploy action runs the spec through Go's
+      `os.Expand`, which leaves a name alone only if it contains a dot (a
+      DigitalOcean bindable) or is one of `APP_DOMAIN`/`APP_URL`/`APP_ID`.
+      `STARTER_DOMAIN` is neither, so unset it expands to *empty* — and an
+      empty authority matches every request, which would 301 the custom domain
+      to itself. Pointing the variable at its own placeholder makes the
+      substitution a no-op. The smoke check at the end of the workflow is the
+      backstop: it follows redirects on the live URL, so a loop fails the run.
 - **`app_spec_location`, never `app_name`.** The two inputs are mutually
   exclusive and they deploy opposite things: given `app_name`, the action
   fetches the spec from the *live app* and — in its own words — "a potential

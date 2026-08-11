@@ -136,7 +136,7 @@ DigitalOcean App Platform, one static-site app, built from GitHub on push to
 | App Platform static site (free tier) | $0.00 |
 | Outbound transfer (~40 MB of a 1 GiB allowance) | $0.00 |
 | DNS hosting on DigitalOcean | $0.00 |
-| TLS certificate (Let's Encrypt, automatic) | $0.00 |
+| TLS certificate (automatic; DigitalOcean picked Google Trust Services) | $0.00 |
 | Domain registration — `.com` at an outside registrar, ~$12–15/year | ~$1.10 |
 | **Total** | **~$1/month — the domain, and nothing else** |
 
