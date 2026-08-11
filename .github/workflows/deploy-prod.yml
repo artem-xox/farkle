@@ -90,13 +90,46 @@ jobs:
         env:
           APP: ${{ steps.deploy.outputs.app }}
         run: |
+          # Everything here retries, because the gap this step exists to cover
+          # is exactly a gap it can fall into. DigitalOcean calls a deployment
+          # ACTIVE before the edge serves it, and for the ~seconds in between
+          # the old URL answers 200 with content that is not the new build.
+          # curl's own --retry is no help: it retries transport errors and 5xx,
+          # never a 200 whose body is wrong, which is the failure that actually
+          # happened here. So the assertion is what retries, not the request.
+          retry() {
+            local what=$1; shift
+            local attempt
+            for attempt in $(seq 1 12); do
+              if "$@"; then
+                # Not `[ … ] && echo …`: the step runs under `bash -e`, where a
+                # standalone && list whose test fails returns 1 and takes the
+                # whole script down with it.
+                if [ "$attempt" -gt 1 ]; then
+                  echo "$what: settled after $attempt attempts"
+                fi
+                return 0
+              fi
+              echo "$what: not ready yet (attempt $attempt)"
+              sleep 5
+            done
+            echo "$what: still wrong after 12 attempts"
+            return 1
+          }
+
           # `//` only falls through on null, and the action leaves live_url as
           # an empty string when the app has no ingress yet, so filter by value.
           url=$(jq -er '[.live_url, .default_ingress]
                         | map(select(. != null and . != "")) | first' <<<"$APP")
+
+          serving() {
+            local body
+            body=$(curl --fail --silent --location "$1") || return 1
+            grep -q '<div id="root">' <<<"$body"
+          }
+
           echo "Checking $url"
-          body=$(curl --fail --silent --show-error --location --retry 5 --retry-delay 5 "$url")
-          grep -q '<div id="root">' <<<"$body"
+          retry "$url" serving "$url"
           echo "Prod is serving from $url" >> "$GITHUB_STEP_SUMMARY"
 
           # Once a custom domain is attached, the starter hostname should 301 to
@@ -104,17 +137,20 @@ jobs:
           # so this reads the redirect itself instead of following it — and it
           # would also catch the rule matching too broadly, which would turn the
           # check above into a redirect loop.
+          redirects_to() {
+            local code target
+            read -r code target < <(
+              curl --silent --output /dev/null \
+                   --write-out '%{http_code} %{redirect_url}' "$1"
+            )
+            echo "  $1 -> $code $target"
+            [ "$code" = "301" ] || return 1
+            case "$target" in "$2"/*|"$2") ;; *) return 1 ;; esac
+          }
+
           starter=$(jq -r '.default_ingress // ""' <<<"$APP")
           if [ -n "$starter" ] && [ "$starter" != "$url" ]; then
-            read -r code target < <(
-              curl --silent --show-error --output /dev/null \
-                   --write-out '%{http_code} %{redirect_url}' "$starter"
-            )
-            echo "Starter $starter -> $code $target"
-            [ "$code" = "301" ] || { echo "expected 301, got $code"; exit 1; }
-            case "$target" in
-              "$url"/*|"$url") ;;
-              *) echo "expected a redirect to $url, got $target"; exit 1 ;;
-            esac
+            echo "Checking $starter redirects to $url"
+            retry "$starter" redirects_to "$starter" "$url"
             echo "Starter hostname 301s to $url" >> "$GITHUB_STEP_SUMMARY"
           fi
