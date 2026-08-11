@@ -122,10 +122,37 @@ jobs:
           url=$(jq -er '[.live_url, .default_ingress]
                         | map(select(. != null and . != "")) | first' <<<"$APP")
 
+          # `<div id="root">` alone is not evidence the site works, and trusting
+          # it shipped a white screen: App Platform's CDN held an index.html
+          # from the previous build for `s-maxage=86400`, that document named
+          # asset filenames this build had deleted, and `catchall_document`
+          # answered each of them with index.html at 200. The browser refuses to
+          # run HTML as a module script, so the page rendered blank — while the
+          # old marker sat in the stale document, passing this check.
+          #
+          # So follow the document to the files it actually depends on. A hashed
+          # asset that comes back as text/html is the catch-all standing in for
+          # something missing, which means the document and the build it is
+          # being served beside do not match.
           serving() {
-            local body
-            body=$(curl --fail --silent --location "$1") || return 1
-            grep -q '<div id="root">' <<<"$body"
+            local base=${1%/} body path type found=0
+            body=$(curl --fail --silent --location "$base") || return 1
+            grep -q '<div id="root">' <<<"$body" || return 1
+
+            while read -r path; do
+              found=1
+              type=$(curl --silent --location --output /dev/null \
+                          --write-out '%{content_type}' "$base$path")
+              case "$type" in
+                text/html*)
+                  echo "  $path served as $type — stale document or missing asset"
+                  return 1
+                  ;;
+              esac
+            done < <(grep -oE '/assets/[A-Za-z0-9._-]+' <<<"$body" | sort -u)
+
+            # A build with no hashed assets at all is not a build worth shipping.
+            [ "$found" = 1 ]
           }
 
           echo "Checking $url"
