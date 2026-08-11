@@ -4,9 +4,13 @@ import {
   DEVIL_DIE,
   DICE,
   IMP_DIE,
+  legalKeeps,
   ODD_DIE,
   WEIGHTED_DIE,
+  WILD,
   type DieSpec,
+  type Face,
+  type Pip,
 } from '@farkle/engine';
 import { describe, expect, it } from 'vitest';
 
@@ -150,6 +154,47 @@ describe('expectedKeepValue', () => {
     // cross-check rather than a restatement.
     expect(expectedKeepValue(new Array(6).fill(BALANCED_DIE) as DieSpec[])).toBeCloseTo(399, 0);
     expect(expectedKeepValue(new Array(3).fill(BALANCED_DIE) as DieSpec[])).toBeCloseTo(86.8, 1);
+  });
+
+  it('agrees with a direct enumeration on a loadout of four different dice', () => {
+    /*
+     * The mixed case is the one worth pinning. `expectedKeepValue` memoises
+     * the best keep per face *multiset* while enumerating ordered tuples,
+     * which is only sound because scoring ignores order while the weights do
+     * not — and it is exactly that distinction a mixed loadout probes, since
+     * every die contributes a different weight to the same face.
+     *
+     * The oracle below shares no code with it: `legalKeeps` reports every
+     * legal keep, so the best one is just the maximum, and the average is
+     * taken over ordered tuples with no memoisation at all. Four dice keeps
+     * it to 1 296 outcomes.
+     */
+    const mixed: DieSpec[] = [DEVIL_DIE, ODD_DIE, CHEAT_DIE, BALANCED_DIE];
+
+    let weighted = 0;
+    let denominator = 0;
+    const faces: Face[] = new Array(mixed.length);
+
+    const walk = (index: number, weightSoFar: number): void => {
+      if (index === mixed.length) {
+        const best = legalKeeps(faces).reduce((most, keep) => Math.max(most, keep.points), 0);
+        weighted += weightSoFar * best;
+        denominator += weightSoFar;
+        return;
+      }
+      const die = mixed[index]!;
+      for (let pip = 1; pip <= 6; pip++) {
+        const weight = die.weights[pip - 1]!;
+        if (weight === 0) {
+          continue;
+        }
+        faces[index] = die.wild === pip ? WILD : (pip as Pip);
+        walk(index + 1, weightSoFar * weight);
+      }
+    };
+    walk(0, 1);
+
+    expect(expectedKeepValue(mixed)).toBeCloseTo(weighted / denominator, 10);
   });
 
   it('is 0 for a die that can never score, and for no dice at all', () => {
