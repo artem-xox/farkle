@@ -55,30 +55,35 @@ export const PRESETS = {
     mistakeRate: 0.18,
   },
   /**
-   * `balanced` with two added risk rules — prototyped and measured in
-   * docs/researches/2026-08-10-smart-bot-prototype.md, not yet promoted to
-   * "settled" the way the other five are:
+   * `balanced` with both throw-or-bank and keep selection replaced by exact
+   * expected-value comparisons (`evBanking`, `evKeepSelection` —
+   * `packages/bots/src/odds.ts`) instead of the constant `bankAt` and
+   * `diceValue` thresholds every other preset uses. Measured in
+   * docs/researches/2026-08-11-smart-v2.md: it beats every other preset in
+   * every one of 54 pairings tested (3 victory targets × 3 dice sets × 6
+   * opponents), averaging 60.5%, and beats `balanced` specifically by +7.7
+   * points. `bankAt`/`minDiceToThrow`/`diceValue` below are dead weight in
+   * practice — `evBanking`/`evKeepSelection` only fall back to them when a
+   * `ClientView` carries no die identities, which a real match never
+   * produces — kept at `balanced`'s values so that fallback isn't a
+   * regression if it's ever exercised.
    *
-   * 1. `bankAt` is target-relative (`bankAtTargetBase`/`bankAtTargetScale`)
-   *    instead of the fixed 350 — higher for a short race, lower for a long
-   *    one. At the engine's default target (2000) this evaluates to 410,
-   *    close to `balanced`'s own 350.
-   * 2. `endgameMargin`/`endgameBankAt`: once this bot is within 300 points of
-   *    the target itself, it caps its bank threshold at 150 — protecting a
-   *    near-certain win instead of gambling for a bigger turn it doesn't need.
+   * An earlier, differently-tuned `smart` (target-relative `bankAt` plus an
+   * endgame-caution cap) was tried first and shipped nowhere: ablation in
+   * docs/researches/2026-08-10-smart-ablation-and-ev.md found it
+   * statistically indistinguishable from `balanced`. This is a full
+   * replacement, not a refinement of that version.
    */
   smart: {
-    bankAt: 410,
-    bankAtTargetBase: 290,
-    bankAtTargetScale: 240_000,
+    bankAt: 350,
     minDiceToThrow: 2,
     diceValue: 15,
     hotDiceAlwaysThrow: true,
     desperationMargin: 200,
     catchUpBonus: 0.5,
     mistakeRate: 0,
-    endgameMargin: 300,
-    endgameBankAt: 150,
+    evBanking: true,
+    evKeepSelection: true,
   },
 } as const satisfies Record<string, BotParams>;
 
