@@ -5,19 +5,19 @@ weighted dice, configurable AI opponents, no badges.
 
 **Play it now on [farkle.iamxox.space](https://farkle.iamxox.space)**
 
-<img src="docs/pics/start-page.png" alt="Setup screen" width="640">
+<img src="docs/pics/start-page.png" alt="Setup screen">
 
 ---
 
 **Table** — roll, set aside scoring dice, and watch the goal countdown for both players.
 
-<img src="docs/pics/game-page.png" alt="Game board" width="640">
+<img src="docs/pics/game-page.png" alt="Game board">
 
 ---
 
 **Dice gallery** — every KCD2 die (ordinary, weighted, Devil's head, Imp's, Odd, Cheat's) with its real face odds.
 
-<img src="docs/pics/dice-page.png" alt="Dice gallery" width="640">
+<img src="docs/pics/dice-page.png" alt="Dice gallery">
 
 ---
 
