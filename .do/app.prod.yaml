@@ -18,15 +18,27 @@ ingress:
 name: farkle-prod
 region: fra
 
-# The custom domain lands here once farkle.iamxox.space has a CNAME pointing at
-# this app's ondigitalocean.app hostname — which cannot be known until the first
-# deploy has created the app. Adding the block before the DNS record exists just
-# leaves the domain stuck in verification and fires the DOMAIN_FAILED alert.
+domains:
+# Depends on a CNAME that already exists in Cloudflare:
+#   farkle.iamxox.space  CNAME  farkle-prod-fec6b.ondigitalocean.app  (DNS only)
+# Order matters — DigitalOcean verifies the record before it will issue a
+# certificate, so adding this block first only parks the domain in verification
+# and fires the DOMAIN_FAILED alert.
 #
-# domains:
-# - domain: farkle.iamxox.space
-#   type: PRIMARY
-#   # No `zone`: DNS lives at Cloudflare, not in DigitalOcean's own DNS.
+# The record must stay unproxied while the certificate is issued: behind
+# Cloudflare's proxy, Let's Encrypt's HTTP validation reaches Cloudflare rather
+# than App Platform and never completes.
+- domain: farkle.iamxox.space
+  type: PRIMARY
+  # No `zone`: that field is for domains whose nameservers DigitalOcean runs,
+  # and these are Cloudflare's.
+  #
+  # The app also keeps answering on farkle-prod-fec6b.ondigitalocean.app —
+  # PRIMARY names the domain, it does not retire the starter one. The canonical
+  # tag in index.html is what says which of the two is real. An ingress rule
+  # matching the starter authority could 301 it away, but only once this domain
+  # is verified and serving; before then it would redirect the sole working URL
+  # into a dead one.
 
 static_sites:
 - name: farkle
