@@ -3,18 +3,32 @@
 A Farkle dice game using the rule set from *Kingdom Come: Deliverance II* —
 weighted dice, configurable AI opponents, no badges.
 
-Milestones M0 through M3 are done: the rules engine is exhaustively verified,
-and the game is playable end to end both in the terminal and in the browser —
-hot-seat or against a bot personality, with full KCD2 scoring, hot dice,
-farkle, and win detection. `farkle sim` runs headless bot-vs-bot matches from
-the CLI.
+**Play it now on [farkle.iamxox.space](https://farkle.iamxox.space)**
+
+<img src="docs/pics/start-page.png" alt="Setup screen" width="640">
+
+---
+
+**Table** — roll, set aside scoring dice, and watch the goal countdown for both players.
+
+<img src="docs/pics/game-page.png" alt="Game board" width="640">
+
+---
+
+**Dice gallery** — every KCD2 die (ordinary, weighted, Devil's head, Imp's, Odd, Cheat's) with its real face odds.
+
+<img src="docs/pics/dice-page.png" alt="Dice gallery" width="640">
+
+---
+
+### Documentation
 
 - [docs/RULES.md](docs/RULES.md) — the rules, specified precisely enough to test against
 - [docs/DESIGN.md](docs/DESIGN.md) — architecture and technology decisions
 - [docs/PLAN.md](docs/PLAN.md) — milestones
 - [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) — repo map, how to run things, current status
 
-## Development
+### Development
 
 ```bash
 npm install
