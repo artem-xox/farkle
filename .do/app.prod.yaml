@@ -33,12 +33,16 @@ static_sites:
   environment_slug: node-js
   github:
     repo: artem-xox/farkle
-    # Not `main`. DigitalOcean builds whatever a branch points at when the
-    # deploy runs, so a workflow that deployed `main` would ship whatever had
-    # been merged by the time somebody pressed the button, not the commit they
-    # chose. `production` is a release pointer that deploy-prod.yml moves to an
-    # explicit SHA immediately before deploying it.
-    branch: production
+    # An App Platform GitHub source names a *branch*, never a commit, and
+    # DigitalOcean resolves it to the tip when the build runs — the deploy
+    # action even forces `UpdateAllSourceVersions`. So prod ships whatever
+    # `main` points at the moment somebody presses the button, and this line is
+    # why deploy-prod.yml pins its own checkout to `main` too: anything else
+    # would test one commit and deploy another.
+    branch: main
+    # The button is the only trigger. Left true, DigitalOcean's own webhook
+    # would deploy prod on every push to main and there would be no button at
+    # all — this single field is what separates prod from dev.
     deploy_on_push: false
   source_dir: /
   build_command: npm ci && npm run build -w @farkle/web

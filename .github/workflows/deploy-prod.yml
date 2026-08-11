@@ -1,0 +1,84 @@
+name: Deploy to production
+
+# The button. Prod has no automatic trigger at all: `.do/app.prod.yaml` sets
+# `deploy_on_push: false`, so DigitalOcean never deploys farkle-prod off its own
+# webhook, and nothing in ci.yml touches the prod spec. This workflow is the
+# only path to farkle.iamxox.space.
+on:
+  workflow_dispatch:
+
+# Two prod deploys at once would race for the same app. Queue rather than
+# cancel: a half-applied spec is worse than waiting.
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to production
+    runs-on: ubuntu-latest
+    # Requires a reviewer's approval before any step runs — see
+    # Settings → Environments → production. The environment is also where a
+    # prod-scoped DIGITALOCEAN_ACCESS_TOKEN would live if the repository secret
+    # is ever narrowed.
+    environment: production
+    permissions:
+      contents: read
+    steps:
+      # Pinned to `main` rather than the dispatch ref on purpose. The prod spec
+      # says `branch: main`, so DigitalOcean builds main whichever branch this
+      # run was launched from; checking out anything else would run the suite
+      # against one commit and ship another.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Record what is being deployed
+        run: |
+          {
+            echo "Deploying \`$(git rev-parse --short HEAD)\` to production"
+            echo
+            git log -1 --pretty='%s%n%n%an, %ad' --date=short
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # main is already green — ci.yml gated the merge — but it was green on the
+      # merge commit, not necessarily on today's tip after several merges, and
+      # this is the last chance to find that out cheaply.
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+      - name: Deploy app spec
+        id: deploy
+        uses: digitalocean/app_action/deploy@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+          app_spec_location: .do/app.prod.yaml
+          print_build_logs: true
+
+      # The action reports success once DigitalOcean says the deployment is
+      # ACTIVE, which is not the same as the site answering. Fetch the app's own
+      # live URL rather than the custom domain, so this still works before DNS
+      # exists and keeps working if the domain is ever moved.
+      #
+      # The app JSON goes through the environment, not through `${{ }}` inside
+      # the script: interpolating it directly would splice a DigitalOcean API
+      # response into a shell command.
+      - name: Smoke check
+        env:
+          APP: ${{ steps.deploy.outputs.app }}
+        run: |
+          # `//` only falls through on null, and the action leaves live_url as
+          # an empty string when the app has no ingress yet, so filter by value.
+          url=$(jq -er '[.live_url, .default_ingress]
+                        | map(select(. != null and . != "")) | first' <<<"$APP")
+          echo "Checking $url"
+          body=$(curl --fail --silent --show-error --location --retry 5 --retry-delay 5 "$url")
+          grep -q '<div id="root">' <<<"$body"
+          echo "Prod is serving from $url" >> "$GITHUB_STEP_SUMMARY"
