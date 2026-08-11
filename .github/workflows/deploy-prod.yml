@@ -61,6 +61,12 @@ jobs:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
           app_spec_location: .do/app.prod.yaml
           print_build_logs: true
+          # The `farkle` project — see the note in ci.yml. This only bites once,
+          # on the run that creates the app, and it already bit: the first prod
+          # deploy created farkle-prod in the default project because this line
+          # was missing. Deleting the app and re-running is what puts it right;
+          # adding the id alone moves nothing.
+          project_id: 95f07e53-8bdc-41ee-a053-00497fce225e
 
       # The action reports success once DigitalOcean says the deployment is
       # ACTIVE, which is not the same as the site answering. Fetch the app's own
