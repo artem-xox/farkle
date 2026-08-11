@@ -258,9 +258,9 @@ model: [PLAN.md#m4](PLAN.md#m4--deployment-on-digitalocean).
 
 **Names, since they don't all match.** The DigitalOcean app is called
 **`farkle-game`**; its single component is called **`farkle`**; the GitHub repo
-is `artem-xox/farkle`. `app_name` in the workflow must match the *app*
-(`farkle-game`), and the `ingress` rule in the spec must match the *component*
-(`farkle`). Getting either wrong fails at deploy time, not at review time.
+is `artem-xox/farkle`. `name` in the spec must match the *app* (`farkle-game`),
+and the `ingress` rule must match the *component* (`farkle`). Getting either
+wrong fails at deploy time, not at review time.
 
 - **`.do/app.yaml`** is the app spec, and it is kept byte-identical to what the
   dashboard's App Spec editor shows — one `static_sites` component, built with
@@ -273,13 +273,23 @@ is `artem-xox/farkle`. `app_name` in the workflow must match the *app*
   typecheck, the full test suite, and a build — this is the only thing that
   happens on a feature branch. `deploy` runs only on push to `main`, `needs:
   test`, so a red suite blocks that job entirely; it then calls
-  `digitalocean/app_action/deploy@v2` against the `farkle-game` app, which reads
-  `.do/app.yaml` from the checked-out commit and redeploys it.
+  `digitalocean/app_action/deploy@v2` with `app_spec_location: .do/app.yaml`,
+  which applies the spec from the checked-out commit.
+- **`app_spec_location`, never `app_name`.** The two inputs are mutually
+  exclusive and they deploy opposite things: given `app_name`, the action
+  fetches the spec from the *live app* and — in its own words — "a potential
+  in-repository app spec is ignored". The workflow was written that way until
+  Aug 2026, so nothing in `.do/app.yaml` had ever been applied and the file was
+  documentation rather than configuration. Which app gets deployed now comes
+  from the spec's own `name` field; if no app by that name exists, the action
+  creates one.
 - **`deploy_on_push: false`** is deliberate and load-bearing. Set to `true`,
   DigitalOcean *also* deploys off its own GitHub webhook, so a push to `main`
   produces two deployments: DO's, which starts immediately and is not gated on
   tests, and the workflow's, which runs after the suite passes. With it off,
-  CI is the only path to production.
+  CI is the only path to production. This is exactly what the `app_name` bug
+  above masked: the live app kept `deploy_on_push: true` and every push to
+  `main` deployed twice, the first of them untested.
 - **No custom response headers.** App Platform static sites can't set them —
   the spec offers CORS and an edge-cache toggle, nothing per-path. Two
   consequences. Caching is whatever DO serves by default,
