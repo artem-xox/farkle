@@ -76,7 +76,7 @@ export function Die({
 
   const content = wild ? (
     <span className="die__wild" aria-hidden="true">
-      <DevilFace />
+      <DevilFace variant={dieId === 'imp' ? 'imp' : 'devil'} />
     </span>
   ) : (
     <span className="die__pips">

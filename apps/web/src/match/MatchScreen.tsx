@@ -322,22 +322,31 @@ export function MatchScreen({
         ) : matchOver ? null : (
           <>
             {/*
-              Only speaks once the player has selected something. The standing
-              "click dice to set them aside" instruction that used to sit here
-              was permanent furniture explaining a board that already explains
-              itself, and it pushed the actions further down every phone screen.
+              Rendered for the whole AwaitingKeep phase, not just while there's
+              a selection to describe — it used to mount only once the player
+              picked a die, which reserved no space beforehand and shoved the
+              buttons and scoring combinations down the instant it appeared.
+              Keeping the element (with reserved height from `.selection-status`)
+              and only swapping its text keeps everything below it still. The
+              standing "click dice to set them aside" instruction that used to
+              sit here permanently was itself removed as furniture explaining a
+              board that already explains itself.
             */}
-            {view.phase === 'AwaitingKeep' && selection.length > 0 && (
+            {view.phase === 'AwaitingKeep' && (
               <p
                 className={
-                  matchedOption !== null
-                    ? 'selection-status selection-status--ok'
-                    : 'selection-status selection-status--bad'
+                  selection.length === 0
+                    ? 'selection-status'
+                    : matchedOption !== null
+                      ? 'selection-status selection-status--ok'
+                      : 'selection-status selection-status--bad'
                 }
               >
-                {matchedOption !== null
-                  ? `${matchedOption.points} points set aside`
-                  : "Those dice don't score together — a 1, a 5, three of a kind, or a straight."}
+                {selection.length === 0
+                  ? ''
+                  : matchedOption !== null
+                    ? `${matchedOption.points} points set aside`
+                    : "Those dice don't score together — a 1, a 5, three of a kind, or a straight."}
               </p>
             )}
 

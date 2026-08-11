@@ -202,42 +202,34 @@ export function SetupScreen({ onStart, onShowRules }: SetupScreenProps) {
   return (
     <div className="setup">
       <h1 className="setup__title">Farkle</h1>
-      <p className="setup__subtitle">Kingdom Come: Deliverance II rules</p>
+      <p className="setup__subtitle">
+        <button type="button" className="setup__link setup__link--subtitle" onClick={onShowRules}>
+          Kingdom Come: Deliverance II rules
+        </button>
+      </p>
 
       <HeroDice />
 
       {/*
-        The pitch and the record are mutually exclusive on purpose. Someone who
-        has played a dozen matches does not need Farkle explained, and someone
-        who has played none has no record to show — so the same slot serves
-        both, and the screen doesn't grow a line for whichever of the two is
-        currently irrelevant.
+        The returning player's record is the only thing that used to share
+        this slot with the pitch text. Nobody with none yet has anything to
+        show here, so the line simply isn't there for them — minimalism over
+        an empty placeholder.
       */}
-      <p className="setup__pitch">
-        {record === null ? (
-          <>
-            Throw six dice, keep what scores, and push your luck — until a throw scores nothing and
-            the whole turn is gone.{' '}
-          </>
-        ) : (
-          <>
-            <span className="setup__record">
-              {record.bots.wins}&ndash;{record.bots.losses} against bots
-              {record.versus !== null && mode === 'bot' && (
-                <>
-                  {' · '}
-                  {record.versus.wins}&ndash;{record.versus.losses} vs {capitalize(preset)}
-                </>
-              )}
-              {record.bestTurn > 0 && <>{' · '}best turn {record.bestTurn}</>}
-            </span>
-            {' · '}
-          </>
-        )}
-        <button type="button" className="setup__link" onClick={onShowRules}>
-          How it works
-        </button>
-      </p>
+      {record !== null && (
+        <p className="setup__pitch">
+          <span className="setup__record">
+            {record.bots.wins}&ndash;{record.bots.losses} against bots
+            {record.versus !== null && mode === 'bot' && (
+              <>
+                {' · '}
+                {record.versus.wins}&ndash;{record.versus.losses} vs {capitalize(preset)}
+              </>
+            )}
+            {record.bestTurn > 0 && <>{' · '}best turn {record.bestTurn}</>}
+          </span>
+        </p>
+      )}
 
       <form className="setup__form" onSubmit={handleSubmit}>
         <label className="field">
@@ -356,7 +348,7 @@ export function SetupScreen({ onStart, onShowRules }: SetupScreenProps) {
               onChange={(event) => setBotMirrors(event.target.checked)}
             />
             <span>
-              <span className="setup__mirror-label">{capitalize(preset)} plays the same dice</span>
+              <span className="setup__mirror-label">Bot plays the same dice</span>
               <span className="setup__mirror-hint">
                 {botMirrors
                   ? 'An even match — both sides throw the same six.'

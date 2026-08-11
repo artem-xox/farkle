@@ -168,6 +168,17 @@ button:disabled {
   color: var(--parchment);
 }
 
+/* The subtitle doubles as the way into Rules — dotted rather than solid underline, and parchment-dim rather than gold, so it still reads as a caption first and a control second. */
+.setup__link--subtitle {
+  color: var(--parchment-dim);
+  text-decoration-style: dotted;
+  white-space: normal;
+}
+
+.setup__link--subtitle:hover {
+  color: var(--gold-bright);
+}
+
 .setup__form {
   display: flex;
   flex-direction: column;
@@ -516,8 +527,15 @@ button:disabled {
   overflow: hidden;
 }
 
+/*
+ * `flex: 1` so a card stretched taller than its content (grid rows stretch to
+ * match the tallest card in the row) grows here rather than leaving a blank
+ * gap below "Fill all 6" — the button stays flush with the card's true
+ * bottom edge regardless of what its row neighbour's description does.
+ */
 .loadout-card__pick {
   display: flex;
+  flex: 1;
   align-items: flex-start;
   gap: 0.6rem;
   padding: 0.65rem 0.7rem;
@@ -550,7 +568,12 @@ button:disabled {
   font-size: 0.9rem;
 }
 
+/* A hard cap at two lines, so a description that runs long clips with an ellipsis instead of shoving the card's footer button down. */
 .loadout-card__description {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
   font-size: 0.74rem;
   line-height: 1.3;
   color: var(--parchment-dim);
@@ -1175,6 +1198,43 @@ button:disabled {
     0 6px 0 rgb(0 0 0 / 0.4),
     0 0 0 3px var(--gold-bright),
     0 0 16px rgb(184 80 63 / 0.75);
+}
+
+/*
+ * The Imp's die keeps its own green identity even while showing the wildcard
+ * face. Without this, `.die--wild` (equal specificity, later in the file)
+ * would always win over `.die--id-imp` and paint it the same maroon as the
+ * Devil's Head die — and since the Imp's wildcard pip is its most-shown face
+ * (see `iconicFace`), that made the two dice look identical everywhere but
+ * their card text. Higher specificity here beats `.die--wild` outright.
+ */
+.die--id-imp.die--wild {
+  background: linear-gradient(160deg, #4a6234, #1e2c14);
+  box-shadow:
+    0 3px 0 rgb(0 0 0 / 0.4),
+    0 0 0 2px rgb(150 190 110 / 0.7),
+    0 0 10px rgb(150 190 110 / 0.45);
+}
+
+.die--id-imp.die--wild:not(:disabled):hover {
+  box-shadow:
+    0 6px 0 rgb(0 0 0 / 0.4),
+    0 0 0 2px rgb(196 224 168 / 0.8),
+    0 0 14px rgb(150 190 110 / 0.6);
+}
+
+.die--id-imp.die--wild.die--selected {
+  box-shadow:
+    0 3px 0 rgb(0 0 0 / 0.4),
+    0 0 0 3px var(--gold-bright),
+    0 0 12px rgb(150 190 110 / 0.6);
+}
+
+.die--id-imp.die--wild.die--selected:not(:disabled):hover {
+  box-shadow:
+    0 6px 0 rgb(0 0 0 / 0.4),
+    0 0 0 3px var(--gold-bright),
+    0 0 16px rgb(150 190 110 / 0.75);
 }
 
 .die__wild {
