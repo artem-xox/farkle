@@ -19,6 +19,8 @@ interface MatchSession {
 
 type Tab = 'play' | 'dice' | 'rules';
 
+const randomSeed = (): number => (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0;
+
 function freshId(): string {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto
     ? crypto.randomUUID()
@@ -78,6 +80,31 @@ export function App() {
     setSession(null);
   }
 
+  /**
+   * Deals the same match again on a fresh seed — same players, same dice, same
+   * target, different luck.
+   *
+   * Everything it needs is already in the current match's own config, so this
+   * costs no extra plumbing: `MatchConfig` carries the players (with their
+   * loadouts) and the target, and a resumed match carries them just the same.
+   * Only the seat and personality live outside it. The new `id` is what
+   * remounts `MatchScreen`, whose `LocalHost` is created once per mount.
+   */
+  function restartMatch(): void {
+    if (session === null) {
+      return;
+    }
+    clearMatch();
+    const { players, target } = session.initial.config;
+    setSession({
+      id: freshId(),
+      initial: createMatch({ players, target, seed: randomSeed() }),
+      botSeat: session.botSeat,
+      botPreset: session.botPreset,
+      bestTurn: 0,
+    });
+  }
+
   return (
     <div className="app">
       <nav className="tabs" aria-label="Sections">
@@ -123,6 +150,7 @@ export function App() {
             botPreset={session.botPreset}
             initialBestTurn={session.bestTurn}
             onExit={exitMatch}
+            onRestart={restartMatch}
           />
         )}
       </main>

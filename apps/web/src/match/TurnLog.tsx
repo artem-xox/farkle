@@ -67,27 +67,39 @@ export function TurnLog({ events, names, autoScroll = true }: TurnLogProps) {
     }
   }, [turns.length, autoScroll]);
 
-  if (turns.length === 0) {
-    return (
-      <div className="log log--empty">
-        <p>The turn log will fill in as the match plays out.</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="log" ref={containerRef}>
-      {turns.map((turnBlock) => (
-        <section key={`${turnBlock.turn}-${turnBlock.player}`} className="log__turn">
-          <header className="log__turn-head">
-            <span className="log__turn-number">Turn {turnBlock.turn}</span>
-            <span className="log__turn-player">{turnBlock.player}</span>
-          </header>
-          {turnBlock.entries.map((entry, position) => (
-            <EntryRow key={position} entry={entry} />
+    /*
+     * The heading is the point of this wrapper. Without it the log was an
+     * unlabelled stack of dice-glyph rows directly under "Scoring
+     * combinations" — which is also a stack of dice-glyph rows — so on a phone
+     * the two read as one long list where the top half was tappable and the
+     * bottom half was not. A name, a rule, and a sunken well now say "this is
+     * the past, not a choice".
+     */
+    <section className="log-panel" aria-labelledby="log-heading">
+      <h2 className="log-panel__heading" id="log-heading">
+        Match log
+      </h2>
+
+      {turns.length === 0 ? (
+        <div className="log log--empty">
+          <p>The turn log will fill in as the match plays out.</p>
+        </div>
+      ) : (
+        <div className="log" ref={containerRef}>
+          {turns.map((turnBlock) => (
+            <section key={`${turnBlock.turn}-${turnBlock.player}`} className="log__turn">
+              <header className="log__turn-head">
+                <span className="log__turn-number">Turn {turnBlock.turn}</span>
+                <span className="log__turn-player">{turnBlock.player}</span>
+              </header>
+              {turnBlock.entries.map((entry, position) => (
+                <EntryRow key={position} entry={entry} />
+              ))}
+            </section>
           ))}
-        </section>
-      ))}
-    </div>
+        </div>
+      )}
+    </section>
   );
 }

@@ -415,6 +415,44 @@ The last thing M5.1 left open. Finished matches are kept in
 Deliberately absent: a detail view of past matches. The loop is the point; a
 list is a screen, and M7 is where opponents and progression get one.
 
+### M5.4 — UI pass over setup and the table
+
+Seven fixes from playing on a phone. Nothing here changes a rule or a number;
+it is all about what the screens make easy to see.
+
+- **The setup screen is down to two loadout cards**, Ordinary and Custom.
+  `worn` and `devil` shipped as "Steady" and "Devil's luck" in M5.2 and
+  measured well, but four cards pushed the screen past two phone screens for a
+  decision most players make once. The dice are untouched and all nine are one
+  tap away in Custom.
+- **A custom loadout is remembered** (`customLoadout` in `farkle:setup:v1`,
+  stored as die ids so a reweighted die reaches a saved build instead of
+  resurrecting old numbers). Opening Custom no longer re-seeds the picker from
+  the showing preset either — with Ordinary as the only other card, that would
+  have wiped the build the player came back for.
+- **The scoreboard splits the players around the goal** instead of packing all
+  three facts left, and each side now says how much it still needs. Safe to
+  assume exactly two seats: `NewMatchOptions.players` is a two-tuple.
+- **"Click dice to set them aside" is gone.** It was permanent furniture
+  explaining a board that explains itself, and it pushed the actions down every
+  phone screen. The status line now speaks only once dice are selected.
+- **The turn log is a labelled, sunken section.** This was the real problem
+  behind "they blur together": the log had *no heading at all*, so its
+  dice-glyph rows read as a continuation of the dice-glyph rows under "Scoring
+  combinations". The two now differ on every axis — the choices are raised,
+  gold-labelled and interactive; the log is recessed, dim-labelled, headed
+  "Match log", separated by a rule and 38px of air, and each turn carries a
+  gold rail so the rhythm reads as a timeline rather than a list.
+- **"Start again"** sits beside "Quit to menu" and deals the same match on a
+  fresh seed. It needs no new plumbing: `MatchConfig` already carries the
+  players with their loadouts and the target, so the current match is its own
+  recipe.
+- **Both of those confirm first**, since both throw a match away — the
+  follow-up flagged when quitting became destructive in M5.3. Focus lands on
+  "Keep playing", and Escape or a backdrop click cancels. The dialog is skipped
+  when there is nothing to lose: a finished match, or one nobody has thrown in
+  yet.
+
 ## M6 — Optimal play and hints
 
 Deferred until a prototype exists. Kept here so the shape is on record.
