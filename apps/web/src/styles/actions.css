@@ -13,34 +13,21 @@
   font-variant-numeric: tabular-nums;
 }
 
-.selection-status {
-  margin: 0;
-  min-height: 1.4rem;
-  text-align: center;
-  font-size: 0.95rem;
-}
-
-
-.selection-status--ok {
-  color: var(--gold-bright);
-  font-weight: 600;
-}
-
-.selection-status--bad {
-  color: var(--danger-soft);
-}
-
 .match__actions {
   display: flex;
+  flex-direction: column;
   gap: 0.6rem;
-  flex-wrap: wrap;
-  justify-content: center;
+  width: 100%;
+}
+
+.match__actions-row {
+  display: flex;
+  gap: 0.6rem;
   width: 100%;
 }
 
 .action {
   flex: 1 1 10rem;
-  max-width: 15rem;
   padding: 0.75rem 1.1rem;
   border-radius: 0.6rem;
   border: 1px solid var(--gold);
@@ -51,6 +38,11 @@
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
+}
+
+/* The Throw button spans the full row on its own; only Keep and Bank, sharing `.match__actions-row`, split the width evenly. */
+.action--throw {
+  width: 100%;
 }
 
 .action--primary {
@@ -119,6 +111,11 @@
   color: rgb(243 233 210 / 0.5);
 }
 
+/*
+ * Sized for about three rows and left to grow past that — but never to
+ * shrink below it — so the panel doesn't resize (and shove the log below it
+ * around) every time a throw offers a different number of combinations.
+ */
 .keep-options__list {
   list-style: none;
   margin: 0;
@@ -126,6 +123,18 @@
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  min-height: 8.5rem;
+}
+
+/* Reserves the same height as the list above so switching between the two never moves anything below the panel. */
+.keep-options__empty {
+  margin: 0;
+  min-height: 8.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgb(243 233 210 / 0.35);
+  font-size: 0.9rem;
 }
 
 .keep-option {

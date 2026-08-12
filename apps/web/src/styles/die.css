@@ -321,18 +321,20 @@
 /*
  * King and Queen keep their crimson/green identity even while showing the
  * crown — same reasoning and same specificity trick as `.die--id-imp.die--wild`
- * above. Resting stays muted-amber-and-no-glow (matching `.die--id-king`'s
- * own resting ring, see the comment there); the glow is saved entirely for
- * the selected state below, so a picked crown die gets *two* new signals
- * (brighter ring, plus a glow it didn't have a second ago) rather than one
- * subtle one.
+ * above. Resting used to be muted-amber-and-*no*-glow, with the glow saved
+ * entirely for the selected state — but that meant tapping a crown die and
+ * releasing it again made its glow visibly vanish rather than just dim,
+ * unlike every other wild die (`.die--wild` below keeps a soft glow at rest
+ * too). Resting now keeps a faint version of the same glow, which only
+ * brightens — never disappears — through hover, selection, and the
+ * crown-paired pulse below.
  */
 .die--id-king.die--wild {
   background: linear-gradient(160deg, #c22a3e, #6e1220);
   box-shadow:
     0 3px 0 rgb(0 0 0 / 0.4),
     0 0 0 2px var(--gold),
-    0 0 0 0 rgb(230 184 79 / 0);
+    0 0 8px rgb(230 184 79 / 0.35);
 }
 
 .die--id-king.die--wild:not(:disabled):hover {
@@ -361,7 +363,7 @@
   box-shadow:
     0 3px 0 rgb(0 0 0 / 0.4),
     0 0 0 2px var(--gold),
-    0 0 0 0 rgb(230 184 79 / 0);
+    0 0 8px rgb(230 184 79 / 0.35);
 }
 
 .die--id-queen.die--wild:not(:disabled):hover {

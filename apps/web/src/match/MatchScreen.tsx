@@ -18,7 +18,7 @@ import { ConfirmDialog } from './ConfirmDialog';
 import { FarkleNotice } from './FarkleNotice';
 import { KeepOptions } from './KeepOptions';
 import { MatchOverOverlay } from './MatchOverOverlay';
-import { botThinkTime, farklePauseMs, THROW_AFTER_KEEP_MS } from './pacing';
+import { botThinkTime, farklePauseMs, KEEP_SETTLE_MS } from './pacing';
 import { Scoreboard } from './Scoreboard';
 import { matchingKeepOption, sameIndices } from './selection';
 import { TurnLog } from './TurnLog';
@@ -141,6 +141,15 @@ export function MatchScreen({
           lastThrow = event.faces;
         } else if (event.type === 'Kept') {
           setKeptIndices(event.indices);
+          // `event.dice` covers both the player's own keeps and the bot's —
+          // unlike the old approach of snapshotting `view.inPlayDice` inside
+          // `keepThen`, which only ever ran for the player's own clicks and
+          // left the bot's kept dice in the rail with no identity colour.
+          if (event.dice !== undefined) {
+            keptDiceRef.current = [...keptDiceRef.current, ...event.dice];
+            setKeptDiceThisTurn(keptDiceRef.current);
+          }
+          keptFacesRef.current = [...keptFacesRef.current, ...event.faces];
         } else if (event.type === 'Farkled') {
           setFarkleHold({
             player: event.player,
@@ -283,29 +292,40 @@ export function MatchScreen({
    * Commits the selection and immediately follows it with the player's real
    * decision. The engine still passes through `AwaitingBankOrThrow` in
    * between; chaining the two here just spares the player a screen whose only
-   * content was a choice they had already made.
+   * content was a choice they had already made. Always pauses between the two
+   * dispatches — see `KEEP_SETTLE_MS` in pacing.ts — so the kept dice's flight
+   * into the rail finishes before whatever comes next (a new tumble-in, or the
+   * turn handing off to the bot) starts on top of it.
    */
   async function keepThen(next: 'Bank' | 'Throw'): Promise<void> {
     if (matchedOption === null || selection.length === 0) {
       return;
     }
     setBusy(true);
-    // Snapshot which dice are being kept before dispatching — `view` (and so
-    // `view.inPlayDice`) is stale the instant the engine state moves on.
-    const keptSpecs = selection.map((index) => view.inPlayDice[index]!);
-    const keptFacesNow = selection.map((index) => view.thrown[index]!);
     try {
       await dispatch({ type: 'Keep', indices: selection });
-      keptDiceRef.current = [...keptDiceRef.current, ...keptSpecs];
-      keptFacesRef.current = [...keptFacesRef.current, ...keptFacesNow];
-      setKeptDiceThisTurn(keptDiceRef.current);
-      if (next === 'Throw') {
-        // Otherwise the kept dice's flight into the rail and the next throw's
-        // tumble-in start on the very same tick and animate on top of each
-        // other — see THROW_AFTER_KEEP_MS in pacing.ts.
-        await sleep(THROW_AFTER_KEEP_MS);
-      }
+      await sleep(KEEP_SETTLE_MS);
       await dispatch({ type: next });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /**
+   * The Bank button's handler, reachable from two different engine phases —
+   * `AwaitingKeep` when the player still has a selection on the board to
+   * commit first, and `AwaitingBankOrThrow` when the dice are already in the
+   * rail and there's nothing left to do but pause and bank.
+   */
+  async function bank(): Promise<void> {
+    if (view.phase === 'AwaitingKeep') {
+      await keepThen('Bank');
+      return;
+    }
+    setBusy(true);
+    try {
+      await sleep(KEEP_SETTLE_MS);
+      await dispatch({ type: 'Bank' });
     } finally {
       setBusy(false);
     }
@@ -317,11 +337,22 @@ export function MatchScreen({
   const boardKeptDice = farkleHold !== null ? farkleHold.keptDice : keptDiceThisTurn;
   const selectable = canAct && view.phase === 'AwaitingKeep' && farkleHold === null;
 
-  // Dice back in play after this keep — a keep that clears the board earns all
-  // six back (hot dice) rather than leaving the player with nothing to throw.
-  const diceAfterKeep =
-    matchedOption === null ? 0 : matchedOption.diceLeft === 0 ? 6 : matchedOption.diceLeft;
   const bankAfterKeep = matchedOption === null ? view.turnScore : view.turnScore + matchedOption.points;
+  const bankAmount = matchedOption !== null ? bankAfterKeep : view.turnScore;
+
+  /**
+   * The three action buttons are permanent fixtures of the layout — see
+   * `.match__actions` in actions.css — rather than swapped in and out per
+   * phase, so which of the three is actually clickable right now is just
+   * this: one gate per button, everything else about their position and
+   * presence stays constant. `canAct` alone already covers the bot's turn,
+   * a farkle hold and a finished match, so none of those need a separate
+   * check here.
+   */
+  const canThrow = canAct && (view.phase === 'AwaitingThrow' || view.phase === 'AwaitingBankOrThrow');
+  const canKeep = canAct && view.phase === 'AwaitingKeep' && matchedOption !== null;
+  const canBank =
+    canAct && (view.phase === 'AwaitingBankOrThrow' || (view.phase === 'AwaitingKeep' && matchedOption !== null));
 
   const boardHint = (() => {
     if (farkleHold !== null) {
@@ -364,114 +395,58 @@ export function MatchScreen({
           </span>
         </div>
 
-        {farkleHold !== null ? (
+        {farkleHold !== null && (
           <FarkleNotice
             playerName={view.players[farkleHold.player]?.name ?? 'Player'}
             lost={farkleHold.lost}
             secondsLeft={secondsLeft}
             onContinue={() => setFarkleHold(null)}
           />
-        ) : isBotTurn && !matchOver ? (
-          <p className="thinking">{currentPlayer.name} is thinking…</p>
-        ) : matchOver ? null : (
-          <>
-            {/*
-              Rendered for the whole AwaitingKeep phase, not just while there's
-              a selection to describe — it used to mount only once the player
-              picked a die, which reserved no space beforehand and shoved the
-              buttons and scoring combinations down the instant it appeared.
-              Keeping the element (with reserved height from `.selection-status`)
-              and only swapping its text keeps everything below it still. The
-              standing "click dice to set them aside" instruction that used to
-              sit here permanently was itself removed as furniture explaining a
-              board that already explains itself.
-            */}
-            {view.phase === 'AwaitingKeep' && (
-              <p
-                className={
-                  selection.length === 0
-                    ? 'selection-status'
-                    : matchedOption !== null
-                      ? 'selection-status selection-status--ok'
-                      : 'selection-status selection-status--bad'
-                }
-              >
-                {selection.length === 0
-                  ? ''
-                  : matchedOption !== null
-                    ? `${matchedOption.points} points set aside`
-                    : "Those dice don't score together — a 1, a 5, three of a kind, or a straight."}
-              </p>
-            )}
-
-            <div className="match__actions">
-              {view.phase === 'AwaitingThrow' && (
-                <button
-                  type="button"
-                  className="action action--primary"
-                  disabled={!canAct}
-                  onClick={() => void dispatch({ type: 'Throw' })}
-                >
-                  Throw {view.diceInPlay} dice
-                </button>
-              )}
-
-              {view.phase === 'AwaitingKeep' && (
-                <>
-                  <button
-                    type="button"
-                    className="action action--primary"
-                    disabled={!canAct || matchedOption === null}
-                    onClick={() => void keepThen('Throw')}
-                  >
-                    Keep &amp; throw {diceAfterKeep}
-                    {matchedOption?.diceLeft === 0 && <span className="action__note">hot dice</span>}
-                  </button>
-                  <button
-                    type="button"
-                    className="action"
-                    disabled={!canAct || matchedOption === null}
-                    onClick={() => void keepThen('Bank')}
-                  >
-                    Keep &amp; bank {bankAfterKeep}
-                  </button>
-                </>
-              )}
-
-              {/* Only reachable if a keep-and-act chain is interrupted. */}
-              {view.phase === 'AwaitingBankOrThrow' && (
-                <>
-                  <button
-                    type="button"
-                    className="action action--primary"
-                    disabled={!canAct}
-                    onClick={() => void dispatch({ type: 'Throw' })}
-                  >
-                    Throw {view.diceInPlay}
-                  </button>
-                  <button
-                    type="button"
-                    className="action"
-                    disabled={!canAct}
-                    onClick={() => void dispatch({ type: 'Bank' })}
-                  >
-                    Bank {view.turnScore}
-                  </button>
-                </>
-              )}
-            </div>
-
-            {view.phase === 'AwaitingKeep' && (
-              <KeepOptions
-                options={view.keeps}
-                thrown={view.thrown}
-                selection={selection}
-                disabled={!canAct}
-                onPick={pickOption}
-              />
-            )}
-          </>
         )}
+        {farkleHold === null && isBotTurn && !matchOver && (
+          <p className="thinking">{currentPlayer.name} is thinking…</p>
+        )}
+
+        {/*
+          All three buttons are permanent fixtures — always rendered, in the
+          same place, just enabled or disabled per `canThrow`/`canKeep`/
+          `canBank` — rather than swapped in and out per phase. They used to
+          be an entirely different set of elements depending on the phase
+          (and on whose turn it was), which meant this whole area jumped and
+          resized on almost every action.
+        */}
+        <div className="match__actions">
+          <button
+            type="button"
+            className="action action--primary action--throw"
+            disabled={!canThrow}
+            onClick={() => void dispatch({ type: 'Throw' })}
+          >
+            Throw
+          </button>
+          <div className="match__actions-row">
+            <button
+              type="button"
+              className="action action--primary"
+              disabled={!canKeep}
+              onClick={() => void keepThen('Throw')}
+            >
+              Keep{matchedOption !== null ? ` ${matchedOption.points}` : ''}
+              {matchedOption?.diceLeft === 0 && <span className="action__note">hot dice</span>}
+            </button>
+            <button type="button" className="action" disabled={!canBank} onClick={() => void bank()}>
+              Bank {bankAmount}
+            </button>
+          </div>
+        </div>
+
+        <KeepOptions
+          options={view.phase === 'AwaitingKeep' ? view.keeps : []}
+          thrown={view.thrown}
+          selection={selection}
+          disabled={!selectable}
+          onPick={pickOption}
+        />
       </div>
 
       <TurnLog
