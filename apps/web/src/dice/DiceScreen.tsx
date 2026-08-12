@@ -2,7 +2,7 @@ import { DICE, faceProbabilities, type DieSpec } from '@farkle/engine';
 
 import { Die } from '../match/Die';
 import { DIE_DESCRIPTIONS, iconicFace } from './descriptions';
-import { powerRating, riskRating } from './stats';
+import { DIE_STATS, powerRating, riskRating, TIER_ICON, TIER_LABEL } from './stats';
 
 const DICE_LIST: readonly DieSpec[] = Object.values(DICE);
 
@@ -35,8 +35,13 @@ function DieCard({ die }: { die: DieSpec }) {
   const probabilities = faceProbabilities(die);
   const risk = riskRating(die.id);
   const power = powerRating(die.id);
+  const tier = DIE_STATS[die.id]!.tier;
   return (
     <div className="dice-stats__card">
+      <span className="dice-stats__tier-badge" title={`${TIER_LABEL[tier]} league`}>
+        <span aria-hidden="true">{TIER_ICON[tier]}</span> {TIER_LABEL[tier]}
+      </span>
+
       <div className="dice-stats__heading">
         <Die face={iconicFace(die)} dieId={die.id} />
         <div className="dice-stats__heading-text">
@@ -80,16 +85,17 @@ function DieCard({ die }: { die: DieSpec }) {
 const RATING_SCALE = 10;
 
 /**
- * A die's Risk and Power read off `farkle6`/`ev6` directly rather than
- * `win6` — see `riskRating`/`powerRating` in `dice/stats.ts` for why that's a
- * different number from the loadout picker's stat bars. Rounded to the
- * nearest whole point for display; the raw rating can run past the 1–10
- * scale's ends (the anchors were deliberately left short of them, `dice/
- * stats.ts` again), so the bar's fill is clamped even though the printed
- * number isn't.
+ * A die's Risk and Power, from `riskRating`/`powerRating` in `dice/stats.ts`
+ * — the same numbers the loadout picker's stat bars are built from, so a die
+ * reads the same on both screens. Risk is safety, not danger: higher is
+ * better, the same direction as Power, which is why `worn` and `devil` both
+ * end up near the top of their own bar. Shown to one decimal place since the
+ * two anchor dice sit at a clean 9.0 and everything else is a fraction of
+ * that; the raw rating can run past the 1–10 scale's ends (the anchors were
+ * deliberately left short of them), so the bar's fill is clamped even
+ * though the printed number isn't.
  */
 function RatingBar({ label, kind, rating }: { label: string; kind: 'risk' | 'power'; rating: number }) {
-  const rounded = Math.round(rating);
   const fillPercent = Math.min(100, Math.max(0, (rating / RATING_SCALE) * 100));
   return (
     <span className={`dice-stats__rating dice-stats__rating--${kind}`}>
@@ -97,7 +103,7 @@ function RatingBar({ label, kind, rating }: { label: string; kind: 'risk' | 'pow
       <span className="dice-stats__rating-track">
         <span className="dice-stats__rating-fill" style={{ width: `${fillPercent}%` }} />
       </span>
-      <span className="dice-stats__rating-value">{rounded}/{RATING_SCALE}</span>
+      <span className="dice-stats__rating-value">{rating.toFixed(1)}/{RATING_SCALE}</span>
     </span>
   );
 }

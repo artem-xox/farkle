@@ -691,12 +691,30 @@ button:disabled {
 }
 
 .dice-stats__card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
-  padding: 0.8rem;
+  padding: 1.7rem 0.8rem 0.8rem;
   border-radius: 0.6rem;
   background: rgb(0 0 0 / 0.2);
+}
+
+/* A corner tag rather than another row — the card is already heading, ratings and a distribution chart deep, so the tier reads at a glance instead of competing with them for space. */
+.dice-stats__tier-badge {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.7rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.3);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--parchment-dim);
 }
 
 .dice-stats__heading {
