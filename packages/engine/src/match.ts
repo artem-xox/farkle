@@ -73,6 +73,8 @@ export type GameEvent =
       readonly player: PlayerId;
       readonly indices: readonly number[];
       readonly faces: readonly Face[];
+      /** The dice that produced `faces`, parallel to it. Optional so hand-built test fixtures don't need to supply it — `applyKeep` always includes it for real play. */
+      readonly dice?: readonly DieSpec[];
       readonly combos: readonly Combo[];
       readonly points: number;
       readonly turnScore: number;
@@ -231,6 +233,8 @@ function applyThrow(state: GameState): ReduceResult {
 
 function applyKeep(state: GameState, indices: readonly number[]): ReduceResult {
   const faces = indices.map((index) => state.thrown[index]!);
+  const player = state.config.players[state.current]!;
+  const dice = indices.map((index) => player.loadout[state.inPlay[index]!]!);
   // Validated by `validateAction`, which `reduce` runs first.
   const scored = scoreKeep(faces)!;
   const turnScore = state.turnScore + scored.points;
@@ -245,6 +249,7 @@ function applyKeep(state: GameState, indices: readonly number[]): ReduceResult {
       player: state.current,
       indices,
       faces,
+      dice,
       combos: scored.combos,
       points: scored.points,
       turnScore,

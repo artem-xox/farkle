@@ -20,11 +20,15 @@ export interface KeepOptionsProps {
  *
  * It also exists so "which combinations were read" is always visible rather
  * than implied by a bare score (docs/PLAN.md M3).
+ *
+ * Rendered permanently — even with nothing to show — rather than mounting
+ * and unmounting with the phase, and its list keeps a reserved minimum
+ * height (see `.keep-options__list` in actions.css) sized for a few rows.
+ * Both exist for the same reason: this panel used to appear and disappear,
+ * and grow and shrink, with every throw, which shoved everything below it
+ * around the screen constantly.
  */
 export function KeepOptions({ options, thrown, selection, disabled, onPick }: KeepOptionsProps) {
-  if (options.length === 0) {
-    return null;
-  }
   const selectedKey = selection.length === 0 ? null : facesKey(selection.map((index) => thrown[index]!));
 
   return (
@@ -33,29 +37,33 @@ export function KeepOptions({ options, thrown, selection, disabled, onPick }: Ke
         Scoring combinations
         <span className="keep-options__nudge">tap to set aside</span>
       </span>
-      <ul className="keep-options__list">
-        {options.map((option) => {
-          const active = selectedKey !== null && facesKey(option.faces) === selectedKey;
-          return (
-            // `option.indices` — not `facesKey` — because two options can share the same
-            // face values while leaving different dice behind (e.g. a mixed King/Queen
-            // loadout, where both can show a real 1): legalKeeps keeps both as distinct
-            // choices, so the key has to as well, or React sees duplicate keys.
-            <li key={option.indices.join(',')}>
-              <button
-                type="button"
-                className={`keep-option${active ? ' keep-option--active' : ''}`}
-                disabled={disabled}
-                onClick={() => onPick(option)}
-              >
-                <span className="keep-option__dice">{diceGlyphs(option.faces)}</span>
-                <span className="keep-option__detail">{describeCombos(option.combos)}</span>
-                <span className="keep-option__points">+{option.points}</span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+      {options.length === 0 ? (
+        <p className="keep-options__empty">—</p>
+      ) : (
+        <ul className="keep-options__list">
+          {options.map((option) => {
+            const active = selectedKey !== null && facesKey(option.faces) === selectedKey;
+            return (
+              // `option.indices` — not `facesKey` — because two options can share the same
+              // face values while leaving different dice behind (e.g. a mixed King/Queen
+              // loadout, where both can show a real 1): legalKeeps keeps both as distinct
+              // choices, so the key has to as well, or React sees duplicate keys.
+              <li key={option.indices.join(',')}>
+                <button
+                  type="button"
+                  className={`keep-option${active ? ' keep-option--active' : ''}`}
+                  disabled={disabled}
+                  onClick={() => onPick(option)}
+                >
+                  <span className="keep-option__dice">{diceGlyphs(option.faces)}</span>
+                  <span className="keep-option__detail">{describeCombos(option.combos)}</span>
+                  <span className="keep-option__points">+{option.points}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }
