@@ -3,17 +3,10 @@ import { useState } from 'react';
 import { BALANCED_DIE, DICE, type DieSpec } from '@farkle/engine';
 
 import { DIE_DESCRIPTIONS, iconicFace } from '../dice/descriptions';
-import {
-  barWidth,
-  DIE_STATS,
-  POWER_RANGE,
-  RISK_RANGE,
-  TIER_ICON,
-  TIER_LABEL,
-  TIER_ORDER,
-  type DieTier,
-} from '../dice/stats';
+import { DIE_STATS, powerRating, riskRating, TIER_ICON, TIER_LABEL, TIER_ORDER, type DieTier } from '../dice/stats';
 import { Die } from '../match/Die';
+
+const RATING_SCALE = 10;
 
 /** Weakest to strongest tier, and by win6 within a tier — a catalog you can browse top to bottom as a difficulty curve. */
 const DICE_BY_TIER: readonly { tier: DieTier; dice: readonly DieSpec[] }[] = TIER_ORDER.map((tier) => ({
@@ -124,7 +117,8 @@ export function LoadoutPicker({ label, loadout, onChange, disabled = false }: Lo
 
                 <div className="loadout__tier-cards">
                   {dice.map((option) => {
-                    const stats = DIE_STATS[option.id];
+                    const risk = riskRating(option.id);
+                    const power = powerRating(option.id);
                     return (
                       <div className="loadout-card" key={option.id}>
                         <button type="button" className="loadout-card__pick" onClick={() => assign(option.id)}>
@@ -139,7 +133,7 @@ export function LoadoutPicker({ label, loadout, onChange, disabled = false }: Lo
                               <span className="stat-bar__track">
                                 <span
                                   className="stat-bar__fill"
-                                  style={{ width: `${Math.max(6, barWidth(1 - stats.farkle6, RISK_RANGE))}%` }}
+                                  style={{ width: `${Math.max(6, (risk / RATING_SCALE) * 100)}%` }}
                                 />
                               </span>
                             </span>
@@ -148,7 +142,7 @@ export function LoadoutPicker({ label, loadout, onChange, disabled = false }: Lo
                               <span className="stat-bar__track">
                                 <span
                                   className="stat-bar__fill"
-                                  style={{ width: `${Math.max(6, barWidth(stats.win6, POWER_RANGE))}%` }}
+                                  style={{ width: `${Math.max(6, (power / RATING_SCALE) * 100)}%` }}
                                 />
                               </span>
                             </span>

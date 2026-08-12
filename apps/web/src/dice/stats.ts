@@ -14,11 +14,11 @@
 export type DieTier = 'bronze' | 'silver' | 'gold' | 'diamond';
 
 export interface DieStats {
-  /** Farkle probability on a full six-die throw of this die. Also what a die's Dice-screen Risk rating is scaled from. */
+  /** Farkle probability on a full six-die throw of this die. What a die's Risk rating (`riskRating` below) is scaled from. */
   readonly farkle6: number;
-  /** Win rate for six of this die against six ordinary dice — the project's own balance metric, and what the loadout picker's Power bar shows. */
+  /** Win rate for six of this die against six ordinary dice — the project's own balance metric. Drives tier assignment and the within-tier sort, not the Risk/Power ratings. */
   readonly win6: number;
-  /** Expected value of a full six-die throw's best keep. What a die's Dice-screen Power rating is scaled from. */
+  /** Expected value of a full six-die throw's best keep. What a die's Power rating (`powerRating` below) is scaled from. */
   readonly ev6: number;
   /** Strength tier from the tier-report cut (research §2): gaps are only real where the 95% CIs on either side don't overlap. */
   readonly tier: DieTier;
@@ -58,45 +58,29 @@ export const TIER_ICON: Record<DieTier, string> = {
   diamond: '💎',
 };
 
-function range(values: readonly number[]): readonly [number, number] {
-  return [Math.min(...values), Math.max(...values)];
-}
-
-const allStats = Object.values(DIE_STATS);
-
-/** [min, max] of `1 - farkle6` across the roster — the scale a Risk bar is drawn against. */
-export const RISK_RANGE = range(allStats.map((stats) => 1 - stats.farkle6));
-
-/** [min, max] of `win6` across the roster — the scale a Power bar is drawn against. */
-export const POWER_RANGE = range(allStats.map((stats) => stats.win6));
-
-/** Where `value` falls between `[min, max]`, as a 0–100 bar width. Flat roster (min === max) draws a full bar rather than dividing by zero. */
-export function barWidth(value: number, [min, max]: readonly [number, number]): number {
-  if (max === min) {
-    return 100;
-  }
-  return ((value - min) / (max - min)) * 100;
-}
-
 /**
- * The Dice screen's Risk and Power ratings — a 1–10 read off `farkle6` and
- * `ev6` directly, unlike the loadout picker's bars (`RISK_RANGE`/
- * `POWER_RANGE` above), which are `win6`-based and stretched to fill the
- * roster's own min/max every time. These are zero-anchored against one
- * reference die each instead, so today's extremes don't have to sit at the
- * scale's ends: `worn`, the safest die shipped, rates Risk 1, and every
- * other die's rating is its `farkle6` as a multiple of `worn`'s. `devil`,
- * the highest-EV die shipped, rates Power 9 the same way — one point short
- * of the scale's ceiling, left open for whatever ships next.
+ * The single Risk/Power rating per die — a 1–10 read off `farkle6` and `ev6`
+ * directly (not `win6`), shared by both the Dice screen's numeric readout
+ * and the loadout picker's stat bars, rather than each computing its own.
+ * Zero-anchored against one reference die each, so today's extremes don't
+ * have to sit at the scale's ends: `devil`, the highest-EV die shipped,
+ * rates Power exactly 9 — one point short of the scale's ceiling, left open
+ * for whatever ships next. Risk is deliberately the same shape, not
+ * `farkle6` read straight: **higher is safer**, matching "how much risk
+ * you can afford to take with this die" rather than "how dangerous it is",
+ * so `worn`, the safest die shipped, rates Risk 9 the same way `devil`
+ * rates Power 9 — every other die is cheaper by however great a multiple
+ * its own farkle6 is of `worn`'s.
  */
 export const RISK_ANCHOR_ID = 'worn';
 export const POWER_ANCHOR_ID = 'devil';
-const POWER_ANCHOR_RATING = 9;
+const RATING_ANCHOR = 9;
 
 export function riskRating(dieId: string): number {
-  return DIE_STATS[dieId]!.farkle6 / DIE_STATS[RISK_ANCHOR_ID]!.farkle6;
+  const dangerRatio = DIE_STATS[dieId]!.farkle6 / DIE_STATS[RISK_ANCHOR_ID]!.farkle6;
+  return RATING_ANCHOR + 1 - dangerRatio;
 }
 
 export function powerRating(dieId: string): number {
-  return (DIE_STATS[dieId]!.ev6 / DIE_STATS[POWER_ANCHOR_ID]!.ev6) * POWER_ANCHOR_RATING;
+  return (DIE_STATS[dieId]!.ev6 / DIE_STATS[POWER_ANCHOR_ID]!.ev6) * RATING_ANCHOR;
 }
