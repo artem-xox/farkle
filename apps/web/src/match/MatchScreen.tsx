@@ -20,7 +20,7 @@ import { KeepOptions } from './KeepOptions';
 import { MatchOverOverlay } from './MatchOverOverlay';
 import { botThinkTime, farklePauseMs, THROW_AFTER_KEEP_MS } from './pacing';
 import { Scoreboard } from './Scoreboard';
-import { matchingKeepOption } from './selection';
+import { matchingKeepOption, sameIndices } from './selection';
 import { TurnLog } from './TurnLog';
 
 export interface MatchScreenProps {
@@ -242,8 +242,13 @@ export function MatchScreen({
     );
   }
 
+  /**
+   * Picking the option that's already selected clears the selection instead
+   * of re-applying it — otherwise the only way to undo a combo tap was to
+   * click every one of its dice individually.
+   */
   function pickOption(option: KeepOption): void {
-    setSelection(option.indices);
+    setSelection((prev) => (sameIndices(prev, option.indices) ? [] : option.indices));
   }
 
   /**

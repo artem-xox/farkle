@@ -12,6 +12,16 @@ export function facesKey(faces: readonly Face[]): string {
   return [...faces].sort((a, b) => faceRank(a) - faceRank(b)).join(',');
 }
 
+/** Same dice by position, order aside — used to detect "the active combo was tapped again". */
+export function sameIndices(a: Selection, b: Selection): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  const sortedA = [...a].sort((x, y) => x - y);
+  const sortedB = [...b].sort((x, y) => x - y);
+  return sortedA.every((value, i) => value === sortedB[i]);
+}
+
 /**
  * The legal keep matching this selection's face *values*, if any.
  *
