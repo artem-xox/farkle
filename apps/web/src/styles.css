@@ -1143,20 +1143,28 @@ button:disabled {
     0 0 0 1px rgb(184 80 63 / 0.4);
 }
 
-/* Crimson and gold — King's crown sits on the rare 5. Thicker gold ring than the rest of the identity dice, to read as a matched pair with Queen. */
+/*
+ * Crimson and gold — King's crown sits on the rare 5. The ring is `--gold`
+ * (muted amber), not `--gold-bright`: that's the same colour `.die--selected`
+ * uses for its own ring below, so resting and selected King/Queen dice used
+ * to be nearly indistinguishable on a board with several of them out at
+ * once — picking one didn't visibly change anything. Muted-amber-at-rest,
+ * bright-gold-when-picked keeps the "thick gold ring" identity while
+ * leaving room for selection to actually read as a change.
+ */
 .die--id-king {
   background: linear-gradient(160deg, #9c1f2e, #5c0f1a);
   box-shadow:
     0 3px 0 rgb(0 0 0 / 0.3),
-    0 0 0 3px rgb(230 184 79 / 0.85);
+    0 0 0 2px var(--gold);
 }
 
-/* King's mirror in green — Queen's crown sits on the rarer 6. Same thick gold ring as King. */
+/* King's mirror in green — Queen's crown sits on the rarer 6. Same muted amber ring as King, same reason. */
 .die--id-queen {
   background: linear-gradient(160deg, #157a45, #0a4526);
   box-shadow:
     0 3px 0 rgb(0 0 0 / 0.3),
-    0 0 0 3px rgb(230 184 79 / 0.85);
+    0 0 0 2px var(--gold);
 }
 
 .die--id-imp {
@@ -1392,22 +1400,24 @@ button:disabled {
 /*
  * King and Queen keep their crimson/green identity even while showing the
  * crown — same reasoning and same specificity trick as `.die--id-imp.die--wild`
- * above, plus a thicker gold ring (matching their resting identity colour)
- * rather than the maroon `.die--wild` would otherwise paint them.
+ * above. Resting stays muted-amber-and-no-glow (matching `.die--id-king`'s
+ * own resting ring, see the comment there); the glow is saved entirely for
+ * the selected state below, so a picked crown die gets *two* new signals
+ * (brighter ring, plus a glow it didn't have a second ago) rather than one
+ * subtle one.
  */
 .die--id-king.die--wild {
   background: linear-gradient(160deg, #c22a3e, #6e1220);
   box-shadow:
     0 3px 0 rgb(0 0 0 / 0.4),
-    0 0 0 3px rgb(230 184 79 / 0.9),
-    0 0 12px rgb(230 184 79 / 0.5);
+    0 0 0 2px var(--gold);
 }
 
 .die--id-king.die--wild:not(:disabled):hover {
   box-shadow:
     0 6px 0 rgb(0 0 0 / 0.4),
-    0 0 0 3px rgb(230 184 79 / 0.95),
-    0 0 16px rgb(230 184 79 / 0.65);
+    0 0 0 2px var(--gold),
+    0 0 10px rgb(230 184 79 / 0.4);
 }
 
 .die--id-king.die--wild.die--selected {
@@ -1428,15 +1438,14 @@ button:disabled {
   background: linear-gradient(160deg, #1c9954, #0d5c30);
   box-shadow:
     0 3px 0 rgb(0 0 0 / 0.4),
-    0 0 0 3px rgb(230 184 79 / 0.9),
-    0 0 12px rgb(230 184 79 / 0.5);
+    0 0 0 2px var(--gold);
 }
 
 .die--id-queen.die--wild:not(:disabled):hover {
   box-shadow:
     0 6px 0 rgb(0 0 0 / 0.4),
-    0 0 0 3px rgb(230 184 79 / 0.95),
-    0 0 16px rgb(230 184 79 / 0.65);
+    0 0 0 2px var(--gold),
+    0 0 10px rgb(230 184 79 / 0.4);
 }
 
 .die--id-queen.die--wild.die--selected {
