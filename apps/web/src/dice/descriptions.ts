@@ -8,7 +8,7 @@ import { WILD, type DieSpec, type Face } from '@farkle/engine';
  * just shows `1`; there's nothing more representative about any one face.
  */
 export function iconicFace(die: DieSpec): Face {
-  return die.wild !== undefined ? WILD : 1;
+  return die.wild !== undefined ? (die.wildFace ?? WILD) : 1;
 }
 
 /** Two-line-max blurbs on what makes each die different — the loadout picker keeps just the name; this is where the "why" lives. Kept short on purpose: the picker card is narrow, and a third line pushes its "Fill all 6" button out of alignment with its neighbours. */
@@ -16,7 +16,8 @@ export const DIE_DESCRIPTIONS: Record<string, string> = {
   balanced: 'A fair cube — every face equally likely.',
   weighted: 'Loaded toward 1, the priciest single. Fewer farkles, more points.',
   devil: "A wildcard 1 that only scores in combos — this die keeps no plain 1s.",
-  king: "Black and gold, loaded toward 5 and 6 — the roster's two best faces.",
+  king: 'A wildcard crown on the rare 5, backed by a heavy 6. Pairs with a Queen for a bonus.',
+  queen: 'A wildcard crown on the 6, otherwise flat 1 to 5. Pairs with a King for a bonus.',
   imp: 'A wildcard on the dead 6 — often lands on nothing at all.',
   odd: 'Slightly favours 1, 3 and 5 over the even faces.',
   even: "A faint lean toward 2, 4 and 6 — the odd die's pale opposite.",

@@ -60,11 +60,13 @@ function DieCard({ die }: { die: DieSpec }) {
           const pip = index + 1;
           const wild = die.wild === pip;
           const percent = probability * 100;
+          const wildLabel = die.id === 'king' ? 'King' : die.id === 'queen' ? 'Queen' : "Devil's Head";
+          const wildGlyph = die.id === 'king' || die.id === 'queen' ? '👑' : '😈';
           return (
             <div
               className="die-distribution__slot"
               key={pip}
-              title={`${wild ? "Devil's Head" : pip}: ${percent.toFixed(1)}%`}
+              title={`${wild ? wildLabel : pip}: ${percent.toFixed(1)}%`}
             >
               <div className="die-distribution__track">
                 <div
@@ -72,7 +74,7 @@ function DieCard({ die }: { die: DieSpec }) {
                   style={{ height: `${percent}%` }}
                 />
               </div>
-              <span className="die-distribution__face">{wild ? '😈' : pip}</span>
+              <span className="die-distribution__face">{wild ? wildGlyph : pip}</span>
               <span className="die-distribution__percent">{percent.toFixed(1)}%</span>
             </div>
           );

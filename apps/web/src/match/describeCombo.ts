@@ -3,12 +3,18 @@ import type { Combo } from '@farkle/engine';
 const COUNT_WORDS = ['', '', 'two', 'three', 'four', 'five', 'six'];
 const WILD_COUNT_WORDS = ['', 'one', 'two', 'three', 'four', 'five', 'six'];
 
-/** "(one devil)" / "(two devils)" for a combo that used a resolved Devil's Head, else nothing. */
+/**
+ * "(one wildcard)" / "(two wildcards)" for a combo that used a resolved
+ * wildcard, else nothing. Deliberately generic rather than "devil" — a
+ * `Combo` only carries a count, not which die (Devil, Imp, King, Queen) it
+ * came from, and getting that specific would mean threading the original
+ * `Face[]` through here just for this label.
+ */
 function wildSuffix(combo: Combo): string {
   if (combo.wilds === 0) {
     return '';
   }
-  const noun = combo.wilds === 1 ? 'devil' : 'devils';
+  const noun = combo.wilds === 1 ? 'wildcard' : 'wildcards';
   return ` (${WILD_COUNT_WORDS[combo.wilds]} ${noun})`;
 }
 
@@ -26,6 +32,8 @@ export function describeCombo(combo: Combo): string {
         return '2–6 straight';
       case 'StraightFull':
         return 'full straight';
+      case 'CrownBonus':
+        return 'Crown Bonus';
     }
   })();
   return base + wildSuffix(combo);

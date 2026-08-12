@@ -1,5 +1,6 @@
-import { isWild, type Face, type Pip } from '@farkle/engine';
+import { isWild, WILD_KING, WILD_QUEEN, type Face, type Pip } from '@farkle/engine';
 
+import { CrownFace } from './CrownFace';
 import { DevilFace } from './DevilFace';
 import { TUMBLE_MS } from './pacing';
 
@@ -14,6 +15,7 @@ const IDENTITY_DICE = new Set([
   'weighted',
   'devil',
   'king',
+  'queen',
   'imp',
   'odd',
   'even',
@@ -32,6 +34,7 @@ const DIE_TYPE_LABEL: Record<string, string> = {
   weighted: 'Weighted',
   devil: 'Devil',
   king: 'King',
+  queen: 'Queen',
   imp: 'Imp',
   odd: 'Odd',
   even: 'Even',
@@ -68,6 +71,8 @@ export interface DieProps {
   tumbling?: boolean;
   tone?: DieTone;
   disabled?: boolean;
+  /** True for a King/Queen die showing its crown *while the other is also showing theirs in the same throw* — RULES.md §12's Crown Bonus. Drives the paired pulse in styles.css rather than the plain wild glow. */
+  crownPaired?: boolean;
   onClick?: () => void;
 }
 
@@ -77,6 +82,7 @@ export function Die({
   tumbling = false,
   tone = 'default',
   disabled = false,
+  crownPaired = false,
   onClick,
 }: DieProps) {
   const wild = isWild(face);
@@ -86,6 +92,7 @@ export function Die({
     'die',
     identity !== null ? `die--id-${identity}` : '',
     wild ? 'die--wild' : '',
+    crownPaired ? 'die--crown-paired' : '',
     tone !== 'default' ? `die--${tone}` : '',
     tumbling ? 'die--tumbling' : '',
     interactive ? '' : 'die--static',
@@ -95,7 +102,13 @@ export function Die({
 
   const content = wild ? (
     <span className="die__wild" aria-hidden="true">
-      <DevilFace variant={dieId === 'imp' ? 'imp' : 'devil'} />
+      {face === WILD_KING ? (
+        <CrownFace variant="king" />
+      ) : face === WILD_QUEEN ? (
+        <CrownFace variant="queen" />
+      ) : (
+        <DevilFace variant={dieId === 'imp' ? 'imp' : 'devil'} />
+      )}
     </span>
   ) : (
     <span className="die__pips">
@@ -106,7 +119,14 @@ export function Die({
     </span>
   );
 
-  const label = wild ? "die showing the Devil's Head" : `die showing ${face}`;
+  const label =
+    face === WILD_KING
+      ? 'die showing the King'
+      : face === WILD_QUEEN
+        ? 'die showing the Queen'
+        : wild
+          ? "die showing the Devil's Head"
+          : `die showing ${face}`;
   const typeLabel = dieId !== undefined ? DIE_TYPE_LABEL[dieId] : undefined;
 
   if (!interactive) {

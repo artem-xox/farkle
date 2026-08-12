@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
-import type { DieSpec, Face } from '@farkle/engine';
+import { WILD_KING, WILD_QUEEN, type DieSpec, type Face } from '@farkle/engine';
 
 import { Die } from './Die';
 import { FLY_MS, FLY_STAGGER_MS, TUMBLE_MS } from './pacing';
@@ -152,6 +152,12 @@ export function Board({
     picked: selection.includes(index),
   }));
 
+  // RULES.md §12: the Crown Bonus is only ever *available* this throw when a
+  // King and a Queen are both showing their crown at once — true regardless
+  // of whether the player ends up keeping them together, so the pulse marks
+  // the throw's potential, not (yet) a committed keep.
+  const crownsPaired = onBoard.some((die) => die.face === WILD_KING) && onBoard.some((die) => die.face === WILD_QUEEN);
+
   const asideEmpty = keptThisTurn.length === 0;
 
   return (
@@ -169,6 +175,7 @@ export function Board({
                 tumbling={!settled}
                 tone={farkled ? 'dead' : die.picked ? 'selected' : 'default'}
                 disabled={!selectable || !settled}
+                crownPaired={crownsPaired && (die.face === WILD_KING || die.face === WILD_QUEEN)}
                 {...(selectable ? { onClick: () => onToggle(die.index) } : {})}
               />
             ))}

@@ -1,5 +1,5 @@
 import { nextBelow, type RngState } from './rng.js';
-import { WILD, type Face, type Pip } from './types.js';
+import { WILD, WILD_KING, WILD_QUEEN, type Face, type Pip, type Wild } from './types.js';
 
 /**
  * A die is an integer weight per face rather than a probability, so
@@ -12,12 +12,27 @@ export interface DieSpec {
   readonly name: string;
   readonly weights: readonly [number, number, number, number, number, number];
   /**
-   * The physical pip that is painted as a Devil's Head instead of its own
-   * value. Rolling it produces `WILD`, but its likelihood still comes from
-   * `weights[wild - 1]` — the die stays one honest set of six weights rather
-   * than growing a seventh, separate probability.
+   * The physical pip that is painted as a wildcard instead of its own value.
+   * Rolling it produces `wildFace` (or plain `WILD` if that's unset), but its
+   * likelihood still comes from `weights[wild - 1]` — the die stays one
+   * honest set of six weights rather than growing a seventh, separate
+   * probability.
    */
   readonly wild?: Pip;
+  /**
+   * Which wildcard sentinel `wild` resolves to — `WILD` (a Devil's Head) if
+   * omitted. Every wild face resolves combinations identically regardless of
+   * this (RULES.md §11): it's a display/identity distinction, not a rules
+   * one, that exists solely so `scoreKeep` can tell King's crown apart from
+   * Queen's for the Crown Bonus (RULES.md §12) — two Devil's Heads, or a
+   * Devil's Head and a King, never trigger it.
+   */
+  readonly wildFace?: Wild;
+}
+
+/** The face `die` shows for physical pip `pip` — `pip` itself, or whichever wildcard sentinel `die.wild` resolves to. */
+export function faceFor(die: DieSpec, pip: Pip): Face {
+  return die.wild === pip ? (die.wildFace ?? WILD) : pip;
 }
 
 export const BALANCED_DIE: DieSpec = {
@@ -60,31 +75,54 @@ export const WEIGHTED_DIE: DieSpec = {
  * can't join into such a combination, scores nothing at all.
  *
  * So the wildcard is not this die's only departure from ordinary: painting the
- * `1` over *removes* the 100-point single entirely. Retuned for the diamond
- * league at a heavier wild than the original gold-tier printing — it now
- * farkles more than an ordinary die on a full throw (5.2% against 3.1%) and
- * wins often enough (68.2% win6) to earn the promotion.
+ * `1` over *removes* the 100-point single entirely. Retuned twice now: M6
+ * promoted it to Diamond at a heavier wild than the original Gold-tier
+ * printing (68.2% win6); M7 raised the whole league's band to 70–75%, so this
+ * went from 1-in-11 to 1-in-9 (11.1%) — it now farkles more than an ordinary
+ * die on a full throw (4.6% against 3.1%) and wins 71.1%.
  */
 export const DEVIL_DIE: DieSpec = {
   id: 'devil',
   name: "Devil's head die",
-  weights: [1, 2, 2, 2, 2, 2],
+  weights: [5, 8, 8, 8, 8, 8],
   wild: 1,
 };
 
 /**
- * The diamond league's plain powerhouse: a heavy `6` (1/3 of throws) backed by
- * a heavy `5` (2/9), so the die that never scores alone sits next to the one
- * that always does. The `5` is what keeps a throw safe on the way down to one
- * or two dice left; the `6` is what turns a full throw into cheap triples and
- * straights once several are still in play. No wildcard, no missing face —
- * just the roster's two best faces stacked on top of each other, painted
- * black and gold.
+ * RULES.md §12. `5` is painted as a King instead of its printed pip — a
+ * wildcard exactly like a Devil's Head (can't complete a `Single` alone,
+ * free to resolve into any `OfAKind` or straight), rare (8.7%) and backed by
+ * a heavy real `6` so the die that never scores alone sits next to the one
+ * that always builds the biggest triples. Kept alongside a Queen's die
+ * (below) in the same keep, the two crowns' combination pays the Crown
+ * Bonus — see `scoreKeep` in scoring.ts. 71.7% win6 alone.
  */
 export const KING_DIE: DieSpec = {
   id: 'king',
   name: "King's die",
-  weights: [1, 1, 1, 1, 2, 3],
+  weights: [4, 4, 4, 4, 2, 5],
+  wild: 5,
+  wildFace: WILD_KING,
+};
+
+/**
+ * `6` is painted as a Queen instead of its printed pip. Unlike King, Queen
+ * carries no heavy real face at all — flat across `1`–`5` (2 each) with the
+ * crown itself the only outlier, and a *rarer* wildcard face than King's own
+ * (weight 1 of 11, 9.1%, against King's 8.7%) is still enough to run well
+ * past King's win6 alone (no heavy real face to give up also means no
+ * safety net to lose): a flat, otherwise-ordinary die pays for its crown far
+ * more cheaply than King's shape does. Left deliberately hot rather than
+ * retuned down — see the M7 crown-tuning research for the exact number and
+ * why it's still an open question. Same Crown Bonus as King when both
+ * crowns land in the same keep.
+ */
+export const QUEEN_DIE: DieSpec = {
+  id: 'queen',
+  name: "Queen's die",
+  weights: [2, 2, 2, 2, 2, 1],
+  wild: 6,
+  wildFace: WILD_QUEEN,
 };
 
 /**
@@ -211,6 +249,7 @@ export const DICE: Readonly<Record<string, DieSpec>> = {
   [WEIGHTED_DIE.id]: WEIGHTED_DIE,
   [DEVIL_DIE.id]: DEVIL_DIE,
   [KING_DIE.id]: KING_DIE,
+  [QUEEN_DIE.id]: QUEEN_DIE,
   [IMP_DIE.id]: IMP_DIE,
   [ODD_DIE.id]: ODD_DIE,
   [EVEN_DIE.id]: EVEN_DIE,
@@ -240,6 +279,8 @@ export function assertValidDie(die: DieSpec): void {
     if (die.weights[die.wild - 1] === 0) {
       throw new RangeError(`die "${die.id}" marks a zero-weight face as wild — it can never come up`);
     }
+  } else if (die.wildFace !== undefined) {
+    throw new RangeError(`die "${die.id}" sets wildFace without a wild pip to apply it to`);
   }
 }
 
@@ -271,7 +312,7 @@ export function rollDie(die: DieSpec, state: RngState): { face: Face; state: Rng
     cumulative += die.weights[index]!;
     if (pick.value < cumulative) {
       const pip = (index + 1) as Pip;
-      return { face: die.wild === pip ? WILD : pip, state: pick.state };
+      return { face: faceFor(die, pip), state: pick.state };
     }
   }
   // Unreachable while the weights sum to `total`.

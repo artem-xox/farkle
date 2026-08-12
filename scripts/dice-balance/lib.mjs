@@ -2,7 +2,7 @@
 // packages (`npm run build`) via their normal `@farkle/*` package names —
 // not `dist/` paths directly — so they keep working if the build output
 // moves, and so they exercise exactly what the game ships.
-import { bestKeep, hasScoringDice, WILD } from '@farkle/engine';
+import { bestKeep, faceFor, hasScoringDice } from '@farkle/engine';
 import { runSimulation, createPreset } from '@farkle/bots';
 
 /**
@@ -36,7 +36,7 @@ export function analyticalMetricsMixed(loadout) {
       const weight = die.weights[pipIndex];
       if (!weight) continue;
       const pip = pipIndex + 1;
-      faces[index] = die.wild === pip ? WILD : pip;
+      faces[index] = faceFor(die, pip);
       recurse(index + 1, weightSoFar * weight);
     }
   }

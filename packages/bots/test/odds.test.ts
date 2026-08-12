@@ -36,10 +36,10 @@ describe('farkleProbability', () => {
   });
 
   it('a lone Devil\'s Head die farkles more often than a lone balanced die', () => {
-    // The devil die's only scoring single is its 5 (2 weights in 11); the
+    // The devil die's only scoring single is its 5 (8 weights in 45); the
     // wildcard on its 1 face can't complete a Single alone, so on one die
     // the wildcard is worth exactly nothing.
-    expect(farkleProbability([DEVIL_DIE])).toBeCloseTo(9 / 11, 12);
+    expect(farkleProbability([DEVIL_DIE])).toBeCloseTo(37 / 45, 12);
     expect(farkleProbability([DEVIL_DIE])).toBeGreaterThan(farkleProbability([BALANCED_DIE]));
   });
 
@@ -94,11 +94,14 @@ describe('farkleProbability', () => {
   it('ranks the whole roster on a full six-die throw', () => {
     // The balance target is docs/DESIGN.md §5: every die in the roster is a
     // sidegrade, so none of them may drift into "never farkles" territory
-    // the way the pre-M6 weighted die (0.01% on six) did.
+    // the way the pre-M6 weighted die (0.01% on six) did. `queen` is the
+    // current floor at 0.41% (its heavy real 5 makes a full farkle rare even
+    // though nothing here is anywhere close to `weighted`'s old 0.01%), so
+    // the lower bound sits under that rather than `worn`'s older 0.58%.
     for (const die of Object.values(DICE)) {
       const six = new Array<DieSpec>(6).fill(die);
       expect(farkleProbability(six), die.id).toBeLessThan(0.07);
-      expect(farkleProbability(six), die.id).toBeGreaterThan(0.005);
+      expect(farkleProbability(six), die.id).toBeGreaterThan(0.003);
     }
   });
 });

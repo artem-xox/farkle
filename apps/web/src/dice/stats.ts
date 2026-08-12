@@ -1,11 +1,9 @@
 /**
- * Balance numbers and tiers copied from
- * docs/researches/2026-08-12-diamond-league-and-fun-dice.md (itself
- * `npm run dice:roster` / `npm run dice:tiers`) rather than recomputed here —
- * an exact recompute means enumerating up to 6^6 throws per die
- * (`scripts/dice-balance/lib.mjs`'s `analyticalMetrics`), fine as an offline
- * Node script but not as something fourteen dice redo on every render of the
- * picker.
+ * Balance numbers and tiers copied from offline `npm run dice:roster` /
+ * `npm run dice:tiers` runs rather than recomputed here — an exact recompute
+ * means enumerating up to 6^6 throws per die (`scripts/dice-balance/lib.mjs`'s
+ * `analyticalMetrics`), fine as an offline Node script but not as something
+ * fifteen dice redo on every render of the picker.
  *
  * Regenerate with `npm run dice:roster` / `npm run dice:tiers` after
  * changing a die's weights or adding a new one, and copy `farkle6`, `win6`
@@ -37,8 +35,9 @@ export const DIE_STATS: Record<string, DieStats> = {
   weighted: { farkle6: 0.0191, win6: 0.613, ev6: 473, tier: 'gold' },
   worn: { farkle6: 0.0058, win6: 0.618, ev6: 467, tier: 'gold' },
   cheat: { farkle6: 0.0365, win6: 0.624, ev6: 514, tier: 'gold' },
-  king: { farkle6: 0.0169, win6: 0.669, ev6: 543, tier: 'diamond' },
-  devil: { farkle6: 0.0520, win6: 0.682, ev6: 584, tier: 'diamond' },
+  devil: { farkle6: 0.0455, win6: 0.711, ev6: 633, tier: 'diamond' },
+  king: { farkle6: 0.0562, win6: 0.717, ev6: 655, tier: 'diamond' },
+  queen: { farkle6: 0.0033, win6: 0.821, ev6: 691, tier: 'diamond' },
 };
 
 /** Weakest to strongest — the order the loadout picker's catalog is grouped in. */
@@ -63,17 +62,27 @@ export const TIER_ICON: Record<DieTier, string> = {
  * directly (not `win6`), shared by both the Dice screen's numeric readout
  * and the loadout picker's stat bars, rather than each computing its own.
  * Zero-anchored against one reference die each, so today's extremes don't
- * have to sit at the scale's ends: `devil`, the highest-EV die shipped,
+ * have to sit at the scale's ends: `queen`, the highest-EV die shipped,
  * rates Power exactly 9 — one point short of the scale's ceiling, left open
  * for whatever ships next. Risk is deliberately the same shape, not
- * `farkle6` read straight: **higher is safer**, matching "how much risk
- * you can afford to take with this die" rather than "how dangerous it is",
- * so `worn`, the safest die shipped, rates Risk 9 the same way `devil`
- * rates Power 9 — every other die is cheaper by however great a multiple
- * its own farkle6 is of `worn`'s.
+ * `farkle6` read straight: **higher is safer**, matching "how much risk you
+ * can afford to take with this die" rather than "how dangerous it is", so
+ * `worn` rates Risk 9 the same way `queen` rates Power 9 — every other die
+ * is cheaper by however great a multiple its own farkle6 is of `worn`'s.
+ *
+ * `queen` is also the safest die shipped now (0.33% farkle6 against
+ * `worn`'s 0.58%), but the Risk anchor deliberately did *not* move to her:
+ * `worn` to `queen` is a 1.8x gap, big enough that re-anchoring on so much
+ * smaller a farkle6 would push several other dice to or below 0 — the
+ * ceiling headroom exists precisely to absorb an outlier like this (`queen`
+ * lands at 9.4 instead) rather than redrawing the whole scale around it.
+ * Contrast
+ * `POWER_ANCHOR_ID`, which *did* move (`king`'s 655 ev6 to `queen`'s 691):
+ * that gap is only 1.05x, small enough that moving it barely perturbs
+ * anyone else's number the way the Risk move would have.
  */
 export const RISK_ANCHOR_ID = 'worn';
-export const POWER_ANCHOR_ID = 'devil';
+export const POWER_ANCHOR_ID = 'queen';
 const RATING_ANCHOR = 9;
 
 export function riskRating(dieId: string): number {
