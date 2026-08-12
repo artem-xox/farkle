@@ -399,47 +399,53 @@ export function MatchScreen({
           A fixed-height slot holding exactly one of three things: the three
           action buttons (the player's own turn), the farkle notice, or the
           "thinking" indicator — never more than one at a time, and never
-          stacked with the buttons, so this area doesn't grow taller while
-          the player can't act. The buttons themselves are still a permanent
-          fixture *within* their own turn — always rendered, just enabled or
-          disabled per `canThrow`/`canKeep`/`canBank` — rather than a
-          different set of elements per phase.
+          stacked with the buttons. `.match__actions-slot` in actions.css
+          reserves the tallest of the three (the farkle notice) as a
+          `min-height`, or everything below it — the scoring-combinations
+          panel included — would still shift up and down as this slot's
+          actual content changed height between the three. The buttons
+          themselves are still a permanent fixture *within* their own turn —
+          always rendered, just enabled or disabled per
+          `canThrow`/`canKeep`/`canBank` — rather than a different set of
+          elements per phase.
         */}
-        {farkleHold !== null ? (
-          <FarkleNotice
-            playerName={view.players[farkleHold.player]?.name ?? 'Player'}
-            lost={farkleHold.lost}
-            secondsLeft={secondsLeft}
-            onContinue={() => setFarkleHold(null)}
-          />
-        ) : isBotTurn && !matchOver ? (
-          <p className="thinking">{currentPlayer.name} is thinking…</p>
-        ) : (
-          <div className="match__actions">
-            <button
-              type="button"
-              className="action action--primary action--throw"
-              disabled={!canThrow}
-              onClick={() => void dispatch({ type: 'Throw' })}
-            >
-              Throw
-            </button>
-            <div className="match__actions-row">
+        <div className="match__actions-slot">
+          {farkleHold !== null ? (
+            <FarkleNotice
+              playerName={view.players[farkleHold.player]?.name ?? 'Player'}
+              lost={farkleHold.lost}
+              secondsLeft={secondsLeft}
+              onContinue={() => setFarkleHold(null)}
+            />
+          ) : isBotTurn && !matchOver ? (
+            <p className="thinking">{currentPlayer.name} is thinking…</p>
+          ) : (
+            <div className="match__actions">
               <button
                 type="button"
-                className="action action--primary"
-                disabled={!canKeep}
-                onClick={() => void keepThen('Throw')}
+                className="action action--primary action--throw"
+                disabled={!canThrow}
+                onClick={() => void dispatch({ type: 'Throw' })}
               >
-                Keep{matchedOption !== null ? ` ${matchedOption.points}` : ''}
-                {matchedOption?.diceLeft === 0 && <span className="action__note">hot dice</span>}
+                Throw
               </button>
-              <button type="button" className="action" disabled={!canBank} onClick={() => void bank()}>
-                Bank {bankAmount}
-              </button>
+              <div className="match__actions-row">
+                <button
+                  type="button"
+                  className="action action--primary"
+                  disabled={!canKeep}
+                  onClick={() => void keepThen('Throw')}
+                >
+                  Keep{matchedOption !== null ? ` ${matchedOption.points}` : ''}
+                  {matchedOption?.diceLeft === 0 && <span className="action__note">hot dice</span>}
+                </button>
+                <button type="button" className="action" disabled={!canBank} onClick={() => void bank()}>
+                  Bank {bankAmount}
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         <KeepOptions
           options={view.phase === 'AwaitingKeep' ? view.keeps : []}

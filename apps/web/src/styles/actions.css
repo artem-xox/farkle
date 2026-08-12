@@ -13,6 +13,22 @@
   font-variant-numeric: tabular-nums;
 }
 
+/*
+ * Reserves the tallest of the three things this slot ever holds — the farkle
+ * notice, at ~7.65rem — as a floor, and centers whichever one is actually
+ * rendered inside it. Without this, everything below (the scoring
+ * combinations panel, the log) shifted up or down every time the slot's
+ * content swapped between the buttons, the farkle notice and the bot's
+ * "thinking" line, each a different natural height.
+ */
+.match__actions-slot {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 7.7rem;
+  width: 100%;
+}
+
 .match__actions {
   display: flex;
   flex-direction: column;
