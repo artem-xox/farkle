@@ -122,16 +122,17 @@ describe('die specs', () => {
     expect(probabilities[5]).toBeGreaterThan(probabilities[0]!);
   });
 
-  it("the queen die's 6 is a Queen, otherwise flat across the other five faces", () => {
+  it("the queen die's 6 is a Queen, and both scoring singles (1 and 5) are suppressed", () => {
     expect(QUEEN_DIE.wild).toBe(6);
     expect(QUEEN_DIE.wildFace).toBe(WILD_QUEEN);
-    expect(wildProbability(QUEEN_DIE)).toBeCloseTo(1 / 11, 12);
+    expect(wildProbability(QUEEN_DIE)).toBeCloseTo(1 / 9, 12);
     const probabilities = faceProbabilities(QUEEN_DIE);
-    expect(probabilities[4]).toBeCloseTo(2 / 11, 12);
-    for (const face of [1, 2, 3, 4]) {
-      expect(probabilities[face - 1]).toBeCloseTo(2 / 11, 12);
+    expect(probabilities[0]).toBeCloseTo(1 / 9, 12); // 1
+    expect(probabilities[4]).toBeCloseTo(1 / 9, 12); // 5
+    for (const face of [2, 3, 4]) {
+      expect(probabilities[face - 1]).toBeCloseTo(2 / 9, 12);
     }
-    expect(probabilities[4]).toBeCloseTo(probabilities[0]!, 12);
+    expect(probabilities[1]).toBeGreaterThan(probabilities[0]!);
     expect(wildProbability(QUEEN_DIE)).toBeGreaterThan(wildProbability(KING_DIE));
   });
 

@@ -37,7 +37,11 @@ export function KeepOptions({ options, thrown, selection, disabled, onPick }: Ke
         {options.map((option) => {
           const active = selectedKey !== null && facesKey(option.faces) === selectedKey;
           return (
-            <li key={facesKey(option.faces)}>
+            // `option.indices` — not `facesKey` — because two options can share the same
+            // face values while leaving different dice behind (e.g. a mixed King/Queen
+            // loadout, where both can show a real 1): legalKeeps keeps both as distinct
+            // choices, so the key has to as well, or React sees duplicate keys.
+            <li key={option.indices.join(',')}>
               <button
                 type="button"
                 className={`keep-option${active ? ' keep-option--active' : ''}`}
