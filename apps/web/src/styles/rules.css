@@ -1,0 +1,180 @@
+/* ---------- rules ---------- */
+
+.rules {
+  width: 100%;
+  max-width: 40rem;
+  padding: 0.5rem 0.25rem 2rem;
+  color: var(--parchment);
+}
+
+.rules__header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.rules__header h1 {
+  margin: 0.5rem 0 0.35rem;
+  font-size: clamp(1.9rem, 7vw, 2.5rem);
+  color: var(--gold-bright);
+  letter-spacing: 0.03em;
+}
+
+.rules__lede {
+  margin: 0 auto;
+  max-width: 32rem;
+  color: var(--parchment-dim);
+  line-height: 1.55;
+}
+
+.rules__section {
+  background: rgb(0 0 0 / 0.2);
+  border-radius: 0.85rem;
+  padding: 1.1rem 1.25rem;
+  margin-bottom: 0.85rem;
+  border-left: 3px solid rgb(230 184 79 / 0.5);
+}
+
+.rules__section--warn {
+  border-left-color: var(--danger);
+  background: rgb(184 80 63 / 0.14);
+}
+
+.rules__section--good {
+  border-left-color: var(--ok);
+  background: rgb(111 191 135 / 0.12);
+}
+
+.rules__section h2 {
+  margin: 0 0 0.6rem;
+  font-size: 1.15rem;
+  color: var(--gold-bright);
+  letter-spacing: 0.02em;
+}
+
+.rules__section--warn h2 {
+  color: #f0b4ab;
+}
+
+.rules__section--good h2 {
+  color: var(--ok);
+}
+
+.rules__section p {
+  margin: 0 0 0.5rem;
+  line-height: 1.6;
+  color: var(--parchment-dim);
+}
+
+.rules__section p:last-child {
+  margin-bottom: 0;
+}
+
+.rules__section strong {
+  color: var(--parchment);
+}
+
+.rules__steps {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  color: var(--parchment-dim);
+  line-height: 1.55;
+}
+
+.rules__steps strong {
+  color: var(--gold-bright);
+}
+
+.rules__tables {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.rules__table-caption {
+  margin: 0 0 0.35rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgb(243 233 210 / 0.55);
+  font-weight: 600;
+}
+
+.rules__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.rules__table th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--parchment-dim);
+  padding: 0.28rem 0;
+}
+
+.rules__table td {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--gold-bright);
+  padding: 0.28rem 0;
+}
+
+.rules__table tr + tr th,
+.rules__table tr + tr td {
+  border-top: 1px solid rgb(243 233 210 / 0.08);
+}
+
+.rules__note {
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+.rules__examples {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.rules__example {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0.7rem;
+  border-radius: 0.5rem;
+  background: rgb(0 0 0 / 0.2);
+}
+
+.rules__example-dice {
+  font-size: 1.4rem;
+  line-height: 1;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+.rules__example-reading {
+  flex: 1;
+  min-width: 12rem;
+  color: var(--parchment-dim);
+  font-size: 0.9rem;
+}
+
+.rules__example-points {
+  font-weight: 700;
+  color: var(--gold-bright);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 640px) {
+  .board__surface {
+    min-height: 9rem;
+  }
+}

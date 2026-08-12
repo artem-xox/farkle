@@ -1,0 +1,209 @@
+/* ---------- dice stats (Rules screen) ---------- */
+
+.dice-page {
+  width: 100%;
+  max-width: 40rem;
+  padding: clamp(1rem, 5vw, 2.5rem) 0.75rem;
+  color: var(--parchment);
+}
+
+.dice-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: 0.75rem;
+}
+
+.dice-stats__card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 1.7rem 0.8rem 0.8rem;
+  border-radius: 0.6rem;
+  background: rgb(0 0 0 / 0.2);
+}
+
+/* A corner tag rather than another row — the card is already heading, ratings and a distribution chart deep, so the tier reads at a glance instead of competing with them for space. */
+.dice-stats__tier-badge {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.7rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.3);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--parchment-dim);
+}
+
+.dice-stats__heading {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.dice-stats__heading .die {
+  flex-shrink: 0;
+  width: 2.4rem;
+  height: 2.4rem;
+  padding: 0.24rem;
+}
+
+.dice-stats__heading-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.dice-stats__name {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.dice-stats__description {
+  font-size: 0.78rem;
+  line-height: 1.3;
+  color: var(--parchment-dim);
+}
+
+.dice-stats__ratings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.dice-stats__rating {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.dice-stats__rating-label {
+  width: 3rem;
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  color: rgb(243 233 210 / 0.55);
+}
+
+.dice-stats__rating-track {
+  flex: 1;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.35);
+  overflow: hidden;
+}
+
+.dice-stats__rating-fill {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  border-radius: inherit;
+}
+
+.dice-stats__rating--risk .dice-stats__rating-fill {
+  background: var(--danger-soft);
+}
+
+.dice-stats__rating--power .dice-stats__rating-fill {
+  background: var(--gold);
+}
+
+.dice-stats__rating-value {
+  width: 2rem;
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  color: rgb(243 233 210 / 0.7);
+}
+
+/*
+ * A fixed six-column grid rather than flexed slots — every bar the same
+ * width regardless of its neighbours' content, so nothing drifts between
+ * cards or between a slot's own track and its percent label underneath.
+ */
+.die-distribution {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 3px;
+  height: 4.5rem;
+}
+
+.die-distribution__slot {
+  display: grid;
+  grid-template-rows: 1fr auto auto;
+  justify-items: center;
+  gap: 0.2rem;
+  min-width: 0;
+  height: 100%;
+}
+
+.die-distribution__track {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  background: rgb(255 255 255 / 0.06);
+  border-radius: 0.15rem;
+  overflow: hidden;
+}
+
+.die-distribution__bar {
+  width: 100%;
+  min-height: 1px;
+  background: var(--gold);
+  border-radius: 0.1rem 0.1rem 0 0;
+}
+
+.die-distribution__bar--wild {
+  background: var(--danger-soft);
+}
+
+.die-distribution__face {
+  font-size: 0.65rem;
+  color: var(--parchment-dim);
+}
+
+.die-distribution__percent {
+  font-size: 0.58rem;
+  color: rgb(243 233 210 / 0.5);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.setup__start {
+  margin-top: 0.5rem;
+  padding: 0.85rem;
+  border: none;
+  border-radius: 0.6rem;
+  background: var(--gold);
+  color: var(--ink);
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.setup__start:hover {
+  background: var(--gold-bright);
+}
+
+.setup__step-actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+
+.setup__step-actions .action {
+  flex: 0 0 auto;
+  max-width: none;
+}
+
+.setup__step-actions .setup__start {
+  flex: 1;
+  margin-top: 0;
+}

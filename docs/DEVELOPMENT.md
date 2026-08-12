@@ -150,7 +150,7 @@ development — see below.
 | `match/describeCombo.ts` | Pure `Combo` → text |
 | `match/TurnLog.tsx` | The match log: turn blocks in a labelled, sunken well. The heading is load-bearing — without it the log read as a continuation of the scoring combinations above it |
 | `match/MatchOverOverlay.tsx` | The win card |
-| `styles.css` | One stylesheet, no CSS-in-JS or modules — small enough not to need either |
+| `styles/` | Plain CSS, no CSS-in-JS or modules — split by screen/component, imported in cascade order via `styles/index.css` |
 
 The UI never scores a selection itself: `MatchScreen` reads `view.keeps`
 (computed by the engine inside `viewOf`) and `matchingKeepOption` only compares
