@@ -15,11 +15,16 @@ export function iconicFace(die: DieSpec): Face {
 export const DIE_DESCRIPTIONS: Record<string, string> = {
   balanced: 'A fair cube — every face equally likely.',
   weighted: 'Loaded toward 1, the priciest single. Fewer farkles, more points.',
-  devil: "A rare wildcard 1 that only scores in combos — this die keeps no plain 1s.",
+  devil: "A wildcard 1 that only scores in combos — this die keeps no plain 1s.",
+  king: "Black and gold, loaded toward 5 and 6 — the roster's two best faces.",
   imp: 'A wildcard on the dead 6 — often lands on nothing at all.',
   odd: 'Slightly favours 1, 3 and 5 over the even faces.',
+  even: "A faint lean toward 2, 4 and 6 — the odd die's pale opposite.",
   cheat: 'A 6 turns up twice as often. Big triples, dead singles.',
   trader: 'A heavy 5, the cheapest single there is — safety over points.',
   trinity: 'A heavy 3, worthless alone — bets everything on three of a kind.',
+  twins: 'A heavy 2, worthless alone — the same bet as Trinity, one face over.',
+  unbalanced: 'Ordinary with a thumb on the scale — a bit more 1/2/3, a bit less 4/5/6.',
   worn: 'Its 2 is rubbed smooth and never comes up — one dead face, gone.',
+  unlucky: 'Pale and chipped — 1 and 5 turn up just a little less than they should.',
 };

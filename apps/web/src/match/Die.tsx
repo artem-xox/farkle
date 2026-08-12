@@ -10,19 +10,38 @@ import { TUMBLE_MS } from './pacing';
  * parchment-and-black look below as the "nothing special" baseline, and it
  * is the one die that has to stay visually distinct from every other.
  */
-const IDENTITY_DICE = new Set(['weighted', 'devil', 'imp', 'odd', 'cheat', 'trader', 'trinity', 'worn']);
+const IDENTITY_DICE = new Set([
+  'weighted',
+  'devil',
+  'king',
+  'imp',
+  'odd',
+  'even',
+  'cheat',
+  'trader',
+  'trinity',
+  'twins',
+  'unbalanced',
+  'worn',
+  'unlucky',
+]);
 
 /** One-word hover label per die type, keyed by `DieSpec.id`. */
 const DIE_TYPE_LABEL: Record<string, string> = {
   balanced: 'Ordinary',
   weighted: 'Weighted',
   devil: 'Devil',
+  king: 'King',
   imp: 'Imp',
   odd: 'Odd',
+  even: 'Even',
   cheat: 'Cheat',
   trader: 'Trader',
   trinity: 'Trinity',
+  twins: 'Twins',
+  unbalanced: 'Unbalanced',
   worn: 'Worn',
+  unlucky: 'Unlucky',
 };
 
 /** Classic six-sided pip layout on a 3×3 grid, indices 0–8 row-major. */

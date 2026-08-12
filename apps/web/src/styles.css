@@ -730,6 +730,57 @@ button:disabled {
   color: var(--parchment-dim);
 }
 
+.dice-stats__ratings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.dice-stats__rating {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.dice-stats__rating-label {
+  width: 3rem;
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  color: rgb(243 233 210 / 0.55);
+}
+
+.dice-stats__rating-track {
+  flex: 1;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.35);
+  overflow: hidden;
+}
+
+.dice-stats__rating-fill {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  border-radius: inherit;
+}
+
+.dice-stats__rating--risk .dice-stats__rating-fill {
+  background: var(--danger-soft);
+}
+
+.dice-stats__rating--power .dice-stats__rating-fill {
+  background: var(--gold);
+}
+
+.dice-stats__rating-value {
+  width: 2rem;
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  color: rgb(243 233 210 / 0.7);
+}
+
 /*
  * A fixed six-column grid rather than flexed slots — every bar the same
  * width regardless of its neighbours' content, so nothing drifts between
@@ -1074,6 +1125,14 @@ button:disabled {
     0 0 0 1px rgb(184 80 63 / 0.4);
 }
 
+/* Black and gold, the diamond league's plain powerhouse. */
+.die--id-king {
+  background: linear-gradient(160deg, #3d3117, #17130a);
+  box-shadow:
+    0 3px 0 rgb(0 0 0 / 0.3),
+    0 0 0 1px rgb(230 184 79 / 0.55);
+}
+
 .die--id-imp {
   background: linear-gradient(160deg, #55703f, #2a3a1e);
   box-shadow:
@@ -1081,7 +1140,9 @@ button:disabled {
     0 0 0 1px rgb(150 190 110 / 0.32);
 }
 
-.die--id-odd {
+/* `even` is `odd`'s mirror in play, so it wears the same colour rather than a new one. */
+.die--id-odd,
+.die--id-even {
   background: linear-gradient(160deg, #4d6e75, #2b4348);
   box-shadow:
     0 3px 0 rgb(0 0 0 / 0.3),
@@ -1109,6 +1170,21 @@ button:disabled {
     0 0 0 1px rgb(140 152 214 / 0.32);
 }
 
+/* `trinity`'s bet moved one face over, so it keeps the same family of colour, shifted toward violet. */
+.die--id-twins {
+  background: linear-gradient(160deg, #5a4c86, #2a244e);
+  box-shadow:
+    0 3px 0 rgb(0 0 0 / 0.3),
+    0 0 0 1px rgb(170 152 214 / 0.32);
+}
+
+.die--id-unbalanced {
+  background: linear-gradient(160deg, #8a5a3e, #4a2e1c);
+  box-shadow:
+    0 3px 0 rgb(0 0 0 / 0.3),
+    0 0 0 1px rgb(210 150 100 / 0.35);
+}
+
 .die--id-worn {
   background: linear-gradient(160deg, #9a9081, #665e51);
   box-shadow:
@@ -1116,14 +1192,27 @@ button:disabled {
     0 0 0 1px rgb(214 205 186 / 0.35);
 }
 
+/* Pale and chipped, a couple of shades lighter than `worn`'s tan. */
+.die--id-unlucky {
+  background: linear-gradient(160deg, #b2b2ad, #86867f);
+  box-shadow:
+    0 3px 0 rgb(0 0 0 / 0.3),
+    0 0 0 1px rgb(200 200 194 / 0.32);
+}
+
 .die--id-weighted .die__pip--on,
 .die--id-devil .die__pip--on,
+.die--id-king .die__pip--on,
 .die--id-imp .die__pip--on,
 .die--id-odd .die__pip--on,
+.die--id-even .die__pip--on,
 .die--id-cheat .die__pip--on,
 .die--id-trader .die__pip--on,
 .die--id-trinity .die__pip--on,
-.die--id-worn .die__pip--on {
+.die--id-twins .die__pip--on,
+.die--id-unbalanced .die__pip--on,
+.die--id-worn .die__pip--on,
+.die--id-unlucky .die__pip--on {
   background: var(--parchment);
   box-shadow: inset 0 1px 1px rgb(0 0 0 / 0.2);
 }

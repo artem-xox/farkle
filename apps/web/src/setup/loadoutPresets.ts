@@ -32,8 +32,9 @@ export interface LoadoutPreset {
  * pass shipped two more — `worn` and `devil`, as "Steady" and "Devil's luck".
  * They measured well and read nicely, but three cards plus Custom pushed the
  * setup screen past two full phone screens for a decision most players make
- * once. The dice themselves are untouched and all nine remain one tap away in
- * Custom, where the tier catalog explains them better than a card could.
+ * once. The dice themselves are untouched and the full collection remains one
+ * tap away in Custom, where the tier catalog explains them better than a card
+ * could.
  *
  * If named builds come back, the finding that shaped them still holds:
  * docs/researches/2026-08-10-mixed-loadout-strategy.md §6 measured every

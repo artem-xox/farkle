@@ -203,14 +203,25 @@ shape, not in strength, and none of them is the die you simply switch to.
 
 The measure is not face probability but **win rate**: six of one die against six
 ordinary dice, both sides played by the same `balanced` bot, 40 000 matches
-(95% CI ≈ ±0.5pp). A die belongs in the roster if that number lands in
-**57–63%**. Anything above is a win button; anything at 50% is flavour text.
-The tooling that produces these numbers lives in
-[`scripts/dice-balance`](../scripts/dice-balance/README.md) — `roster-report.mjs`
-regenerates the table below from whatever is currently in `DICE`,
-`sweep-candidates.mjs` is the template used to tune a new die into the band,
-and `wildcard-audit.mjs` checks a wild face's safety claims against the whole
-roster rather than a few hand-picked companies.
+(95% CI ≈ ±0.5pp). M1–M5's roster targeted a single **57–63%** band — a die
+outside it was a bug, not a feature. M6 opened that up into four **leagues**,
+each its own win6 band a player can read as a difficulty rung rather than a
+single flat plateau:
+
+| league | win6 band | shape |
+|---|---|---|
+| 🥉 Bronze | ~48–57% | flavour and jokes — a couple of dice are deliberately *worse* than ordinary |
+| 🥈 Silver | ~59–60% | the old band's floor — set bets and mild noise |
+| 🥇 Gold | ~61–62% | the old band's ceiling — plain upgrades and safety plays |
+| 💎 Diamond | ~65–70% | genuinely stronger, reserved for a small number of showcase dice |
+
+Within a league, dice are still sidegrades to each other — the league is what
+stops being flat. `sweep-candidates.mjs` is the template used to tune a new or
+rebalanced die into whichever band its league targets; `roster-report.mjs`
+regenerates the table below from whatever is currently in `DICE`;
+`wildcard-audit.mjs` checks a wild face's safety claims against the whole
+roster rather than a few hand-picked companies. All three live in
+[`scripts/dice-balance`](../scripts/dice-balance/README.md).
 
 Shape is then read off two further numbers, which is what actually
 distinguishes the dice from one another:
@@ -226,51 +237,69 @@ an ordinary die's 27.8% and won 97.7% of matches; the pre-calibration `devil`
 
 ### The roster
 
-As of M5, nine dice ship. Measured columns are the numbers above; `win6` is the
-balance metric, so the roster is sorted by it.
+As of M6, fourteen dice ship across the four leagues above. Measured columns
+are the numbers from the balance band section; `win6` is the balance metric,
+so the roster is sorted by it, and the blank rows mark the league boundaries.
 
-| id | name | weights | distribution | farkle 6 / 3 | EV 6 | win6 |
-|---|---|---|---|---|---|---|
-| `balanced` | Ordinary die | `[1,1,1,1,1,1]` | 16.7% per face | 3.1 / 27.8 | 399 | 49.8 |
-| `odd` | Odd die | `[4,3,4,3,4,3]` | 19.0% each on `1/3/5`, 14.3% each on `2/4/6` | 1.9 / 22.2 | 431 | 56.7 |
-| `trinity` | Holy Trinity die | `[1,1,4,1,1,1]` | 44.4% on `3`, 11.1% each on the rest | 2.9 / 37.9 | 470 | 58.8 |
-| `imp` | Imp's die | `[2,7,7,7,2,2]`, `wild: 6` | 25.9% each on `2/3/4`, 7.4% each on `1`, `5` and wild | 2.7 / 50.8 | 505 | 59.9 |
-| `trader` | Trader's die | `[1,1,1,1,2,1]` | 28.6% on `5`, 14.3% each on the rest | 1.2 / 17.5 | 448 | 60.6 |
-| `devil` | Devil's Head die | `[1,3,3,3,3,3]`, `wild: 1` | 6.3% wild, 18.8% each on `2-6`, no `1` at all | 6.3 / 47.5 | 515 | 61.2 |
-| `weighted` | Weighted die | `[3,2,2,2,2,2]` | 23.1% on `1`, 15.4% each on `2-6` | 1.9 / 21.9 | 473 | 61.3 |
-| `worn` | Worn die | `[1,0,1,1,1,1]` | 20% each on `1/3/4/5/6`, never a `2` | 0.6 / 19.2 | 467 | 61.8 |
-| `cheat` | Cheat's die | `[2,2,2,2,2,5]` | 13.3% each on `1-5`, 33.3% on `6` | 3.7 / 35.0 | 514 | 62.4 |
+| id | name | league | weights | distribution | farkle 6 / 3 | EV 6 | win6 |
+|---|---|---|---|---|---|---|---|
+| `unlucky` | Unlucky die | 🥉 Bronze | `[12,13,13,13,12,13]` | 15.8% each on `1/5`, 17.1% each on `2/3/4/6` | 3.6 / 30.0 | 389 | 48.1 |
+| `balanced` | Ordinary die | 🥉 Bronze | `[1,1,1,1,1,1]` | 16.7% per face | 3.1 / 27.8 | 399 | 49.8 |
+| `even` | Even die | 🥉 Bronze | `[29,30,29,30,29,30]` | 16.4% each on `1/3/5`, 16.9% each on `2/4/6` | 3.3 / 28.5 | 396 | 49.9 |
+| `odd` | Odd die | 🥉 Bronze | `[4,3,4,3,4,3]` | 19.0% each on `1/3/5`, 14.3% each on `2/4/6` | 1.9 / 22.2 | 431 | 56.7 |
+| `trinity` | Holy Trinity die | 🥈 Silver | `[1,1,4,1,1,1]` | 44.4% on `3`, 11.1% each on the rest | 2.9 / 37.9 | 470 | 58.8 |
+| `twins` | Twins die | 🥈 Silver | `[3,19,3,3,3,3]` | 55.9% on `2`, 8.8% each on the rest | 1.7 / 38.2 | 461 | 59.3 |
+| `unbalanced` | Unbalanced die | 🥈 Silver | `[5,4,5,3,2,2]` | 23.8% each on `1/3`, 19.0% on `2`, 14.3% on `4`, 9.5% each on `5/6` | 2.5 / 27.2 | 466 | 59.6 |
+| `imp` | Imp's die | 🥈 Silver | `[2,7,7,7,2,2]`, `wild: 6` | 25.9% each on `2/3/4`, 7.4% each on `1`, `5` and wild | 2.7 / 50.8 | 505 | 59.9 |
+| `trader` | Trader's die | 🥇 Gold | `[1,1,1,1,2,1]` | 28.6% on `5`, 14.3% each on the rest | 1.2 / 17.5 | 448 | 60.6 |
+| `weighted` | Weighted die | 🥇 Gold | `[3,2,2,2,2,2]` | 23.1% on `1`, 15.4% each on `2-6` | 1.9 / 21.9 | 473 | 61.3 |
+| `worn` | Worn die | 🥇 Gold | `[1,0,1,1,1,1]` | 20% each on `1/3/4/5/6`, never a `2` | 0.6 / 19.2 | 467 | 61.8 |
+| `cheat` | Cheat's die | 🥇 Gold | `[2,2,2,2,2,5]` | 13.3% each on `1-5`, 33.3% on `6` | 3.7 / 35.0 | 514 | 62.4 |
+| `king` | King's die | 💎 Diamond | `[1,1,1,1,2,3]` | 11.1% each on `1-4`, 22.2% on `5`, 33.3% on `6` | 1.7 / 25.5 | 543 | 66.9 |
+| `devil` | Devil's Head die | 💎 Diamond | `[1,2,2,2,2,2]`, `wild: 1` | 9.1% wild, 18.2% each on `2-6`, no `1` at all | 5.2 / 46.9 | 584 | 68.2 |
 
-Read down the farkle and EV columns rather than the win column: the win rates
-are deliberately nearly equal, and everything interesting is in how each die
-gets there. The one die outside the band is `odd`, at 56.7% (CI
-[56.2, 57.2]) — left where it is rather than nudged up, because the shape it
-occupies, "mildly safer, mildly better", is already `weighted`'s, and the
-roster is better served by the range's floor than by a duplicate.
+Read down the farkle and EV columns rather than the win column within a
+league: win rates are deliberately close together *inside* a league, and
+everything interesting is in how each die gets there. `odd`, at 56.7% (CI
+[56.2, 57.2]), is Bronze's outlier on the high side for the same reason it was
+already the M5 band's outlier on the low side — the shape it occupies,
+"mildly safer, mildly better", is already `weighted`'s, so it is left at
+Bronze's ceiling rather than nudged up into a Silver-shaped duplicate.
 
-- **`worn` and `trader` buy safety.** `worn` deletes a dead face outright and is
-  the safest die in the game on a full throw (0.6%); `trader` is the safest one
-  to still have in play when two or three dice are left (17.5% on three), which
-  is the moment that actually decides turns. Neither has much of a ceiling.
-- **`devil` and `imp` buy a ceiling.** Both farkle on roughly half of all
-  three-die throws — worse than an ordinary die by a wide margin — and pay it
-  back in combinations that a wildcard completes. `devil` and `cheat` are also
-  the only two dice in the roster that farkle *more* than an ordinary die on a
-  full six-die throw, `devil` by twice the margin.
-- **`cheat` and `trinity` bet on one face.** A `6` and a `3` are both worthless
-  alone, so these are pure three-of-a-kind plays. `trinity`'s triple is the
-  cheaper of the two (300 against 600), which is what allows its bias to run as
-  high as 4-in-9 while staying in band.
+- **`unlucky` and `even` buy nothing, on purpose.** They exist to be a
+  slightly worse `balanced` and a slightly worse `odd` — the two dice a
+  player picks to make a match harder for themselves, or to hand to a bot
+  they want to look beatable.
+- **`worn` and `trader` buy safety.** `worn` deletes a dead face outright and
+  is the safest die in the game on a full throw (0.6%); `trader` is the
+  safest one to still have in play when two or three dice are left (17.5% on
+  three), which is the moment that actually decides turns. Neither has much
+  of a ceiling.
+- **`king` and `devil` buy a ceiling, and Diamond is where that trade finally
+  pays out in full.** `devil` farkles on a full throw *nine times* what
+  `worn` does (5.2% against 0.6%, the roster's widest safety gap) and turns
+  that risk into the highest EV shipped (584); `king` gets there without any
+  risk at all — no wildcard, no missing face, just the roster's two best
+  faces (`5` and `6`) stacked into one die.
+- **`cheat`, `trinity` and `twins` bet on one face.** A `6`, a `3` and a `2`
+  are all worthless alone, so these are pure three-of-a-kind (or better)
+  plays. The cheaper the triple, the higher the bias has to run to compensate
+  in the same league: `trinity`'s `300`-point triple affords 4-in-9 on its
+  face, `twins`'s cheaper `200`-point one needs 19-in-34.
 - **`weighted` and `odd` are the plain upgrades**, and are deliberately the
   least interesting: more of the faces that already scored, nothing given up.
+- **`unbalanced` is noise with a direction.** Every face carries a different
+  weight rather than a clean two-block split, but `1`/`2`/`3` average heavier
+  than `4`/`5`/`6` — the `1` bias buys real points, the `5`/`6` losses give
+  some safety back, and the two roughly net out into Silver.
 
 Two properties are worth knowing because they are not visible in the table:
 
-**`trinity` is a set die.** Six of them beat six ordinary dice (58.8%), but one
-among five ordinary dice is a *downgrade* (47.0%) — a lone heavy `3` mostly
-produces a dead face, and only a loadout full of them produces triples often
-enough to pay. It is the only die in the roster where the mixed loadout is
-worse than the pure one.
+**`trinity` and `twins` are set dice.** Six of them beat six ordinary dice
+(58.8% and 59.3%), but one among five ordinary dice is a *downgrade* (47.0%
+and 44.5%) — a lone heavy `3` or `2` mostly produces a dead face, and only a
+loadout full of them produces triples often enough to pay. They are the only
+dice in the roster where the mixed loadout is worse than the pure one.
 
 **`imp` is safer in its own company.** A single imp farkles more often than an
 ordinary die in any company; five of them farkle *less*, because wildcards start
@@ -300,10 +329,14 @@ ruling is what makes a wildcard a trade rather than a gift, and it is what the
 
 Only the *weights* came out of the M5 calibration pass; every die's identity —
 which face, which rule it leans on — was chosen first and tuned afterwards.
-Dice that could not be brought into the band without losing their identity were
-dropped rather than shipped weak: an "even die" (`[1,2,1,2,1,2]`) measures 42%
-and a die biased toward the middle faces 43%, because in this rule set the
-even faces and the middle faces are simply where points aren't.
+Dice that could not be brought into the M5 band without losing their identity
+were dropped rather than shipped weak: an "even die" (`[1,2,1,2,1,2]`) measured
+42% and a die biased toward the middle faces measured 43%, because in this rule
+set the even faces and the middle faces are simply where points aren't. Once
+Bronze existed as a league with room for a die *below* `balanced`, that
+objection stopped applying — M6's `even` ships the same idea at a much fainter
+bias (`[29,30,29,30,29,30]`, each even face 0.57pp likelier), landing at 49.9%
+by design rather than being nudged toward the old band.
 
 ### Directions for later dice
 

@@ -6,13 +6,18 @@ import {
   CHEAT_DIE,
   DEVIL_DIE,
   DICE,
+  EVEN_DIE,
   faceProbabilities,
   IMP_DIE,
+  KING_DIE,
   ODD_DIE,
   rollDice,
   rollDie,
   TRADER_DIE,
   TRINITY_DIE,
+  TWINS_DIE,
+  UNBALANCED_DIE,
+  UNLUCKY_DIE,
   WEIGHTED_DIE,
   wildProbability,
   WORN_DIE,
@@ -49,15 +54,20 @@ function chiSquare(observed: readonly number[], die: DieSpec, samples: number): 
 }
 
 describe('die specs', () => {
-  it('exposes the nine dice M1–M6 ship with', () => {
+  it('exposes the fourteen dice M1–M6 ship with', () => {
     expect(Object.keys(DICE).sort()).toEqual([
       'balanced',
       'cheat',
       'devil',
+      'even',
       'imp',
+      'king',
       'odd',
       'trader',
       'trinity',
+      'twins',
+      'unbalanced',
+      'unlucky',
       'weighted',
       'worn',
     ]);
@@ -89,12 +99,53 @@ describe('die specs', () => {
 
   it('the devil die has its 1 face marked wild, and rare', () => {
     expect(DEVIL_DIE.wild).toBe(1);
-    expect(wildProbability(DEVIL_DIE)).toBeCloseTo(1 / 16, 12);
+    expect(wildProbability(DEVIL_DIE)).toBeCloseTo(1 / 11, 12);
   });
 
   it('the imp die puts its wild on the 6 instead', () => {
     expect(IMP_DIE.wild).toBe(6);
     expect(wildProbability(IMP_DIE)).toBeCloseTo(2 / 27, 12);
+  });
+
+  it('the king die favours 5 and 6 over the other four faces', () => {
+    const probabilities = faceProbabilities(KING_DIE);
+    expect(probabilities[4]).toBeCloseTo(2 / 9, 12);
+    expect(probabilities[5]).toBeCloseTo(3 / 9, 12);
+    for (const face of [1, 2, 3, 4]) {
+      expect(probabilities[face - 1]).toBeCloseTo(1 / 9, 12);
+    }
+    expect(probabilities[5]).toBeGreaterThan(probabilities[4]!);
+  });
+
+  it('the unlucky die rolls 1 and 5 a little less often than a balanced die', () => {
+    const probabilities = faceProbabilities(UNLUCKY_DIE);
+    expect(probabilities[0]).toBeLessThan(1 / 6);
+    expect(probabilities[4]).toBeLessThan(1 / 6);
+    for (const face of [2, 3, 4, 6]) {
+      expect(probabilities[face - 1]).toBeGreaterThan(1 / 6);
+    }
+  });
+
+  it('the even die favours 2, 4 and 6 over 1, 3 and 5 — the odd die\'s mirror', () => {
+    const probabilities = faceProbabilities(EVEN_DIE);
+    for (const evenIndex of [1, 3, 5]) {
+      for (const oddIndex of [0, 2, 4]) {
+        expect(probabilities[evenIndex]).toBeGreaterThan(probabilities[oddIndex]!);
+      }
+    }
+  });
+
+  it('the twins die rolls a 2 more often than the trinity die rolls its 3', () => {
+    const twins = faceProbabilities(TWINS_DIE);
+    const trinity = faceProbabilities(TRINITY_DIE);
+    expect(twins[1]).toBeGreaterThan(trinity[2]!);
+  });
+
+  it('the unbalanced die averages heavier on 1/2/3 than on 4/5/6', () => {
+    const probabilities = faceProbabilities(UNBALANCED_DIE);
+    const low = (probabilities[0]! + probabilities[1]! + probabilities[2]!) / 3;
+    const high = (probabilities[3]! + probabilities[4]! + probabilities[5]!) / 3;
+    expect(low).toBeGreaterThan(high);
   });
 
   it('reports the weighted die as three thirteenths ones', () => {

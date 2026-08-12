@@ -101,7 +101,7 @@ export function LoadoutChoice({
           )}
           <span className="loadout-choice__name">Custom</span>
           <span className="loadout-choice__blurb">
-            Mix your own six from the full collection of nine.
+            Mix your own six from the full collection of fourteen.
           </span>
           <span className="loadout-choice__stat">
             {selected === CUSTOM_PRESET_ID ? 'Tap to edit' : 'Opens the picker'}
