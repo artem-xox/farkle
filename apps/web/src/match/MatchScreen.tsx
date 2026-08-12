@@ -45,6 +45,9 @@ interface FarkleHold {
   readonly player: number;
   readonly faces: readonly Face[];
   readonly lost: number;
+  /** The turn's own kept dice, snapshotted at the moment of the bust — see the refs below. */
+  readonly keptFaces: readonly Face[];
+  readonly keptDice: readonly DieSpec[];
 }
 
 export function MatchScreen({
@@ -82,6 +85,18 @@ export function MatchScreen({
    * to the host and never touches the player's selection.
    */
   const [keptIndices, setKeptIndices] = useState<readonly number[]>([]);
+  /**
+   * Refs mirroring `keptDiceThisTurn` (plus the faces the engine doesn't hand
+   * back to us once a turn ends). The `host.subscribe` callback below is a
+   * stable closure — recreated only when `host`/`botSeat`/`botPreset`/`youSeat`
+   * change, not on every render — so any `keptDiceThisTurn` it read directly
+   * would be frozen at mount time. These refs are mutated in place at the same
+   * two call sites the state is, so the Farkled branch of that callback can
+   * read this turn's actual kept dice synchronously, before the `TurnStarted`
+   * event later in the same batch resets them for the next turn.
+   */
+  const keptDiceRef = useRef<readonly DieSpec[]>([]);
+  const keptFacesRef = useRef<readonly Face[]>([]);
 
   /**
    * The human's seat. Every match the setup screen builds puts the player
@@ -109,14 +124,17 @@ export function MatchScreen({
       if (newEvents.some((event) => event.type === 'Thrown')) {
         setSpinToken((token) => token + 1);
       }
-      if (newEvents.some((event) => event.type === 'TurnStarted')) {
-        setKeptDiceThisTurn([]);
-      }
 
       // A farkle arrives in the same batch as the throw that caused it and the
       // handover to the next player, so by the time we see it the board has
       // already moved on. Capture the dice that busted, and hold them on
       // screen until the player acknowledges — see pacing.ts.
+      //
+      // The engine always orders a bust as Thrown, Farkled, TurnEnded,
+      // TurnStarted (see applyThrow/endTurn in match.ts) — so processing
+      // events in order, rather than a `TurnStarted` reset hoisted ahead of
+      // this loop, means the Farkled branch below always reads the refs
+      // before TurnStarted's branch clears them for the next turn.
       let lastThrow: readonly Face[] = [];
       for (const event of newEvents) {
         if (event.type === 'Thrown') {
@@ -124,9 +142,19 @@ export function MatchScreen({
         } else if (event.type === 'Kept') {
           setKeptIndices(event.indices);
         } else if (event.type === 'Farkled') {
-          setFarkleHold({ player: event.player, faces: lastThrow, lost: event.lost });
+          setFarkleHold({
+            player: event.player,
+            faces: lastThrow,
+            lost: event.lost,
+            keptFaces: keptFacesRef.current,
+            keptDice: keptDiceRef.current,
+          });
         } else if (event.type === 'Banked' && event.player === youSeat) {
           bestTurn.current = Math.max(bestTurn.current, event.points);
+        } else if (event.type === 'TurnStarted') {
+          keptDiceRef.current = [];
+          keptFacesRef.current = [];
+          setKeptDiceThisTurn([]);
         }
       }
 
@@ -265,9 +293,12 @@ export function MatchScreen({
     // Snapshot which dice are being kept before dispatching — `view` (and so
     // `view.inPlayDice`) is stale the instant the engine state moves on.
     const keptSpecs = selection.map((index) => view.inPlayDice[index]!);
+    const keptFacesNow = selection.map((index) => view.thrown[index]!);
     try {
       await dispatch({ type: 'Keep', indices: selection });
-      setKeptDiceThisTurn((prev) => [...prev, ...keptSpecs]);
+      keptDiceRef.current = [...keptDiceRef.current, ...keptSpecs];
+      keptFacesRef.current = [...keptFacesRef.current, ...keptFacesNow];
+      setKeptDiceThisTurn(keptDiceRef.current);
       if (next === 'Throw') {
         // Otherwise the kept dice's flight into the rail and the next throw's
         // tumble-in start on the very same tick and animate on top of each
@@ -282,8 +313,8 @@ export function MatchScreen({
 
   const boardFaces = farkleHold !== null ? farkleHold.faces : view.thrown;
   const boardDice = farkleHold !== null ? undefined : view.inPlayDice;
-  const boardKept = farkleHold !== null ? [] : view.keptThisTurn;
-  const boardKeptDice = farkleHold !== null ? undefined : keptDiceThisTurn;
+  const boardKept = farkleHold !== null ? farkleHold.keptFaces : view.keptThisTurn;
+  const boardKeptDice = farkleHold !== null ? farkleHold.keptDice : keptDiceThisTurn;
   const selectable = canAct && view.phase === 'AwaitingKeep' && farkleHold === null;
 
   // Dice back in play after this keep — a keep that clears the board earns all
