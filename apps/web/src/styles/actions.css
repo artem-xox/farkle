@@ -40,9 +40,17 @@
   gap: 0.4rem;
 }
 
-/* The Throw button spans the full row on its own; only Keep and Bank, sharing `.match__actions-row`, split the width evenly. */
+/*
+ * The Throw button spans the full row on its own; only Keep and Bank, sharing
+ * `.match__actions-row`, split the width evenly. `flex: 0 0 auto` overrides
+ * `.action`'s `flex: 1 1 10rem` — that flex-basis applies to whichever axis
+ * is the container's main one, and `.match__actions` is a *column* flex
+ * container, so left as inherited it set the Throw button's *height* to grow
+ * and fill the available space instead of its width.
+ */
 .action--throw {
   width: 100%;
+  flex: 0 0 auto;
 }
 
 .action--primary {
