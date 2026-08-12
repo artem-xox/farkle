@@ -3,6 +3,7 @@ import { useState, type CSSProperties } from 'react';
 import type { PresetName } from '@farkle/bots';
 import { createMatch, LocalHost, type GameState } from '@farkle/engine';
 
+import { AboutAuthor } from './AboutAuthor';
 import { DiceScreen } from './dice/DiceScreen';
 import { MatchScreen } from './match/MatchScreen';
 import { RulesScreen } from './rules/RulesScreen';
@@ -177,6 +178,8 @@ export function App() {
           <RulesScreen />
         </main>
       )}
+
+      <AboutAuthor />
     </div>
   );
 }

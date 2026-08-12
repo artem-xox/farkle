@@ -1,0 +1,166 @@
+/* ---------- about the author ---------- */
+
+.about-author__trigger {
+  margin-top: 1.5rem;
+  background: none;
+  border: none;
+  color: rgb(243 233 210 / 0.4);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  padding: 0.35rem 0.6rem;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  transition:
+    color 200ms ease,
+    text-decoration-color 200ms ease;
+}
+
+.about-author__trigger:hover {
+  color: var(--gold-bright);
+  text-decoration-color: rgb(230 184 79 / 0.5);
+}
+
+.about-author {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgb(0 0 0 / 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+/*
+ * Double border in wood + gold, like a page bound between covers, rather than
+ * the plain single-rule card `.confirm__card` uses — this one is a keepsake,
+ * not a "are you sure" prompt, so it earns the extra ornament.
+ */
+.about-author__card {
+  position: relative;
+  width: 100%;
+  max-width: 34rem;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  background: linear-gradient(180deg, var(--parchment) 0%, var(--parchment-dim) 100%);
+  color: var(--ink);
+  border-radius: 0.85rem;
+  padding: 1.75rem 1.6rem 1.5rem;
+  box-shadow:
+    0 16px 50px rgb(0 0 0 / 0.5),
+    inset 0 0 0 2px var(--wood),
+    inset 0 0 0 6px var(--parchment);
+  border: 3px solid var(--gold);
+}
+
+.about-author__close {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.6rem;
+  width: 1.9rem;
+  height: 1.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgb(107 68 35 / 0.35);
+  background: rgb(107 68 35 / 0.08);
+  color: var(--wood-dark);
+  border-radius: 50%;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.about-author__close:hover {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--ink);
+}
+
+.about-author__title {
+  margin: 0 0 0.9rem;
+  font-size: 1.3rem;
+  color: var(--felt-dark);
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid rgb(107 68 35 / 0.25);
+}
+
+.about-author__story {
+  margin: 0 0 1.15rem;
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.about-author__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.about-author__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: 0.6rem;
+  background: var(--wood);
+  color: var(--parchment);
+  font-weight: 600;
+  font-size: 0.88rem;
+  text-decoration: none;
+  border: 1px solid var(--wood-rim);
+}
+
+.about-author__link:hover {
+  background: var(--wood-light);
+}
+
+.about-author__btc {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px dashed rgb(107 68 35 / 0.35);
+}
+
+.about-author__btc-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+
+.about-author__btc-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgb(107 68 35 / 0.08);
+  border: 1px solid rgb(107 68 35 / 0.25);
+  border-radius: 0.6rem;
+  padding: 0.5rem 0.5rem 0.5rem 0.75rem;
+}
+
+.about-author__btc-address {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  letter-spacing: -0.01em;
+  color: var(--wood-dark);
+  font-family: 'SFMono-Regular', Consolas, Menlo, monospace;
+}
+
+.about-author__copy {
+  flex: 0 0 auto;
+  padding: 0.4rem 0.7rem;
+  border-radius: 0.45rem;
+  border: none;
+  background: var(--gold);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.about-author__copy:hover {
+  background: var(--gold-bright);
+}
