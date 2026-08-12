@@ -106,21 +106,20 @@ export const KING_DIE: DieSpec = {
 };
 
 /**
- * `6` is painted as a Queen instead of its printed pip. Unlike King, Queen
- * carries no heavy real face at all — flat across `1`–`5` (2 each) with the
- * crown itself the only outlier, and a *rarer* wildcard face than King's own
- * (weight 1 of 11, 9.1%, against King's 8.7%) is still enough to run well
- * past King's win6 alone (no heavy real face to give up also means no
- * safety net to lose): a flat, otherwise-ordinary die pays for its crown far
- * more cheaply than King's shape does. Left deliberately hot rather than
- * retuned down — see the M7 crown-tuning research for the exact number and
- * why it's still an open question. Same Crown Bonus as King when both
+ * `6` is painted as a Queen instead of its printed pip. An early cut of this
+ * die was flat across `1`–`5` (2 each) — with no heavy face to give up, it
+ * had no safety net to lose either, and ran to 82% win6 alone, well past
+ * the Diamond band. Both scoring singles are suppressed here instead (`1`
+ * and `5` cut to 1 each, `2`/`3`/`4` left at 2), which pushes the die to
+ * lean on its crown and on triples rather than on cheap singles, landing
+ * at 72.4% win6 — close to `king`'s and `devil`'s own ~71%. Rare crown
+ * (1 in 9, 11.1%, against King's 8.7%). Same Crown Bonus as King when both
  * crowns land in the same keep.
  */
 export const QUEEN_DIE: DieSpec = {
   id: 'queen',
   name: "Queen's die",
-  weights: [2, 2, 2, 2, 2, 1],
+  weights: [1, 2, 2, 2, 1, 1],
   wild: 6,
   wildFace: WILD_QUEEN,
 };
