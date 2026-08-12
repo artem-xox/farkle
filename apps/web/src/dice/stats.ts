@@ -37,7 +37,7 @@ export const DIE_STATS: Record<string, DieStats> = {
   cheat: { farkle6: 0.0365, win6: 0.624, ev6: 514, tier: 'gold' },
   devil: { farkle6: 0.0455, win6: 0.711, ev6: 633, tier: 'diamond' },
   king: { farkle6: 0.0562, win6: 0.717, ev6: 655, tier: 'diamond' },
-  queen: { farkle6: 0.0033, win6: 0.821, ev6: 691, tier: 'diamond' },
+  queen: { farkle6: 0.0108, win6: 0.724, ev6: 622, tier: 'diamond' },
 };
 
 /** Weakest to strongest — the order the loadout picker's catalog is grouped in. */
@@ -62,27 +62,25 @@ export const TIER_ICON: Record<DieTier, string> = {
  * directly (not `win6`), shared by both the Dice screen's numeric readout
  * and the loadout picker's stat bars, rather than each computing its own.
  * Zero-anchored against one reference die each, so today's extremes don't
- * have to sit at the scale's ends: `queen`, the highest-EV die shipped,
- * rates Power exactly 9 — one point short of the scale's ceiling, left open
- * for whatever ships next. Risk is deliberately the same shape, not
- * `farkle6` read straight: **higher is safer**, matching "how much risk you
- * can afford to take with this die" rather than "how dangerous it is", so
- * `worn` rates Risk 9 the same way `queen` rates Power 9 — every other die
- * is cheaper by however great a multiple its own farkle6 is of `worn`'s.
+ * have to sit at the scale's ends: `king`, the highest-EV die shipped, rates
+ * Power exactly 9 — one point short of the scale's ceiling, left open for
+ * whatever ships next. Risk is deliberately the same shape, not `farkle6`
+ * read straight: **higher is safer**, matching "how much risk you can
+ * afford to take with this die" rather than "how dangerous it is", so
+ * `worn` rates Risk 9 the same way `king` rates Power 9 — every other die is
+ * cheaper by however great a multiple its own farkle6 is of `worn`'s.
  *
- * `queen` is also the safest die shipped now (0.33% farkle6 against
- * `worn`'s 0.58%), but the Risk anchor deliberately did *not* move to her:
- * `worn` to `queen` is a 1.8x gap, big enough that re-anchoring on so much
- * smaller a farkle6 would push several other dice to or below 0 — the
- * ceiling headroom exists precisely to absorb an outlier like this (`queen`
- * lands at 9.4 instead) rather than redrawing the whole scale around it.
- * Contrast
- * `POWER_ANCHOR_ID`, which *did* move (`king`'s 655 ev6 to `queen`'s 691):
- * that gap is only 1.05x, small enough that moving it barely perturbs
- * anyone else's number the way the Risk move would have.
+ * `queen`'s weights went through two cuts before this settled (M7's
+ * crown-tuning research): a flat-across-1–5 first pass ran to 82% win6 and
+ * briefly made her both the safest die shipped (0.33% farkle6) *and* the
+ * highest-EV one (691), which would have meant re-anchoring both constants
+ * around a single outlier. Suppressing her `1` and `5` singles brought her
+ * back in line with `king`/`devil` (72.4% win6) and took both anchors off
+ * the table again — worth recording so a future retune doesn't have to
+ * rediscover why the anchors nearly moved.
  */
 export const RISK_ANCHOR_ID = 'worn';
-export const POWER_ANCHOR_ID = 'queen';
+export const POWER_ANCHOR_ID = 'king';
 const RATING_ANCHOR = 9;
 
 export function riskRating(dieId: string): number {
