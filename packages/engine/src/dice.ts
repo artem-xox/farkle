@@ -27,6 +27,19 @@ export const BALANCED_DIE: DieSpec = {
 };
 
 /**
+ * A pale, chipped cousin of the ordinary die: `1` and `5`, the only two faces
+ * that ever score alone, are each shaved from 1/6 down to 12/76 (15.8%) while
+ * the other four faces pick up the difference. The bias is deliberately
+ * subtle — this is a joke at the balanced die's expense, not a trap, so it
+ * loses by a couple of points rather than by a mile.
+ */
+export const UNLUCKY_DIE: DieSpec = {
+  id: 'unlucky',
+  name: 'Unlucky die',
+  weights: [12, 13, 13, 13, 12, 13],
+};
+
+/**
  * A `1` comes up a little under a quarter of the time (3/13) instead of 1/6.
  * Every point of that bias is spent on the most valuable single in the game,
  * which makes this the roster's plainest upgrade: fewer farkles *and* more
@@ -39,24 +52,39 @@ export const WEIGHTED_DIE: DieSpec = {
 };
 
 /**
- * Its `1` face is painted as a Devil's Head — see docs/RULES.md §4a — and is
- * rare, 1 throw in 16. A Devil's Head is *not* simply a free `1`: it can never
- * complete a `Single` by itself (`scoreKeep` in scoring.ts refuses to resolve
- * a wildcard that way), only a bigger combination — three or more of a kind,
- * or a straight. A lone Devil's Head, or one thrown alongside dice it can't
- * join into such a combination, scores nothing at all.
+ * Its `1` face is painted as a Devil's Head — see docs/RULES.md §4a — and
+ * comes up 1 throw in 11. A Devil's Head is *not* simply a free `1`: it can
+ * never complete a `Single` by itself (`scoreKeep` in scoring.ts refuses to
+ * resolve a wildcard that way), only a bigger combination — three or more of
+ * a kind, or a straight. A lone Devil's Head, or one thrown alongside dice it
+ * can't join into such a combination, scores nothing at all.
  *
  * So the wildcard is not this die's only departure from ordinary: painting the
- * `1` over *removes* the 100-point single entirely, and the low weight is what
- * keeps a face this strong inside the band. The result farkles more often than
- * an ordinary die on a full throw (6.3% against 3.1%) while scoring more when
- * it does connect — the roster's clearest high-variance die.
+ * `1` over *removes* the 100-point single entirely. Retuned for the diamond
+ * league at a heavier wild than the original gold-tier printing — it now
+ * farkles more than an ordinary die on a full throw (5.2% against 3.1%) and
+ * wins often enough (68.2% win6) to earn the promotion.
  */
 export const DEVIL_DIE: DieSpec = {
   id: 'devil',
   name: "Devil's head die",
-  weights: [1, 3, 3, 3, 3, 3],
+  weights: [1, 2, 2, 2, 2, 2],
   wild: 1,
+};
+
+/**
+ * The diamond league's plain powerhouse: a heavy `6` (1/3 of throws) backed by
+ * a heavy `5` (2/9), so the die that never scores alone sits next to the one
+ * that always does. The `5` is what keeps a throw safe on the way down to one
+ * or two dice left; the `6` is what turns a full throw into cheap triples and
+ * straights once several are still in play. No wildcard, no missing face —
+ * just the roster's two best faces stacked on top of each other, painted
+ * black and gold.
+ */
+export const KING_DIE: DieSpec = {
+  id: 'king',
+  name: "King's die",
+  weights: [1, 1, 1, 1, 2, 3],
 };
 
 /**
@@ -101,6 +129,33 @@ export const TRINITY_DIE: DieSpec = {
 };
 
 /**
+ * `trinity`'s bet, moved one face over and raised: the `2` comes up 19/34
+ * (55.9%), a heavier lean than `trinity` carries on its `3` (4/9, 44.4%). It
+ * has to be heavier to stay in the same band — a `2`-of-a-kind pays 200
+ * against `trinity`'s 300, so the cheaper combination needs the extra bias
+ * just to land in the same silver company.
+ */
+export const TWINS_DIE: DieSpec = {
+  id: 'twins',
+  name: 'Twins die',
+  weights: [3, 19, 3, 3, 3, 3],
+};
+
+/**
+ * `balanced` with the thumb very lightly on the scale: `1`, `2` and `3`
+ * average heavier than `4`, `5` and `6` (weights `[5,4,5,3,2,2]`), but neither
+ * half is flat — this is noise with a direction, not a clean split. The `1`
+ * bias buys real points; the `5` and `6` losses cost some safety back, and
+ * the two roughly net out into the silver band alongside `trinity` and
+ * `imp`.
+ */
+export const UNBALANCED_DIE: DieSpec = {
+  id: 'unbalanced',
+  name: 'Unbalanced die',
+  weights: [5, 4, 5, 3, 2, 2],
+};
+
+/**
  * The `2` face is worn so smooth the die never settles on it; the remaining
  * five faces are equally likely. Nothing is added — a dead face is simply
  * taken away, which is enough to make it the roster's safest die on a full
@@ -124,6 +179,21 @@ export const ODD_DIE: DieSpec = {
 };
 
 /**
+ * `odd`'s mirror, and a much fainter one. A straight `[1,2,1,2,1,2]`-style
+ * lean toward `2`/`4`/`6` was tried and dropped during M5 calibration
+ * (docs/DESIGN.md §5) — it pulls both scoring singles at once and sinks to
+ * 42% win6. This ships the faintest bias that still reads as "the opposite
+ * of odd" (`[29,30,29,30,29,30]`, each even face 0.57pp likelier) rather than
+ * the strong one, which is what keeps it a bronze-league joke instead of a
+ * trap.
+ */
+export const EVEN_DIE: DieSpec = {
+  id: 'even',
+  name: 'Even die',
+  weights: [29, 30, 29, 30, 29, 30],
+};
+
+/**
  * A `6` comes up twice as often as it would on a balanced die (1/3 instead of
  * 1/6); the other five faces share what is left, in the same proportion as a
  * balanced die. A 6 alone never scores, so this is a higher-variance die more
@@ -137,13 +207,18 @@ export const CHEAT_DIE: DieSpec = {
 
 export const DICE: Readonly<Record<string, DieSpec>> = {
   [BALANCED_DIE.id]: BALANCED_DIE,
+  [UNLUCKY_DIE.id]: UNLUCKY_DIE,
   [WEIGHTED_DIE.id]: WEIGHTED_DIE,
   [DEVIL_DIE.id]: DEVIL_DIE,
+  [KING_DIE.id]: KING_DIE,
   [IMP_DIE.id]: IMP_DIE,
   [ODD_DIE.id]: ODD_DIE,
+  [EVEN_DIE.id]: EVEN_DIE,
   [CHEAT_DIE.id]: CHEAT_DIE,
   [TRADER_DIE.id]: TRADER_DIE,
   [TRINITY_DIE.id]: TRINITY_DIE,
+  [TWINS_DIE.id]: TWINS_DIE,
+  [UNBALANCED_DIE.id]: UNBALANCED_DIE,
   [WORN_DIE.id]: WORN_DIE,
 };
 

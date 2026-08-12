@@ -36,10 +36,10 @@ describe('farkleProbability', () => {
   });
 
   it('a lone Devil\'s Head die farkles more often than a lone balanced die', () => {
-    // The devil die's only scoring single is its 5 (3 weights in 16); the
+    // The devil die's only scoring single is its 5 (2 weights in 11); the
     // wildcard on its 1 face can't complete a Single alone, so on one die
     // the wildcard is worth exactly nothing.
-    expect(farkleProbability([DEVIL_DIE])).toBeCloseTo(13 / 16, 12);
+    expect(farkleProbability([DEVIL_DIE])).toBeCloseTo(9 / 11, 12);
     expect(farkleProbability([DEVIL_DIE])).toBeGreaterThan(farkleProbability([BALANCED_DIE]));
   });
 
