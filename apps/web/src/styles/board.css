@@ -177,7 +177,11 @@
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  min-height: 3rem;
+  /* Padding (0.9rem) plus a kept die's tallest size (2.5rem, see .die--kept)
+     — sized to the die that will eventually land in it, not the empty state,
+     so the first keep of a turn doesn't grow the rail and shove every panel
+     below it down the page. */
+  min-height: 3.4rem;
   margin-top: 0.6rem;
   padding: 0.45rem 0.7rem;
   border-radius: 0.6rem;

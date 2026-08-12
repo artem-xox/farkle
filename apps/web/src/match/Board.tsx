@@ -156,7 +156,17 @@ export function Board({
   // King and a Queen are both showing their crown at once — true regardless
   // of whether the player ends up keeping them together, so the pulse marks
   // the throw's potential, not (yet) a committed keep.
-  const crownsPaired = onBoard.some((die) => die.face === WILD_KING) && onBoard.some((die) => die.face === WILD_QUEEN);
+  //
+  // Gated on `settled` as well: the pulse is a CSS `animation`, which resets
+  // every animation property it doesn't name, including `animation-name` —
+  // so applying it the instant the pair appears cut the tumble-in short and
+  // left both dice glowing before they'd finished landing. Waiting for the
+  // tumble to finish first means the pulse always starts on a die that's
+  // already at rest.
+  const crownsPaired =
+    settled &&
+    onBoard.some((die) => die.face === WILD_KING) &&
+    onBoard.some((die) => die.face === WILD_QUEEN);
 
   const asideEmpty = keptThisTurn.length === 0;
 

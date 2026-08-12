@@ -192,17 +192,20 @@
     0 0 14px rgb(230 184 79 / 0.65);
 }
 
+/*
+ * Only shrinks and dims — it deliberately leaves `background` and
+ * `box-shadow` alone. Both used to be hardcoded to a flat tan here, which
+ * always won over a die's `.die--id-*` identity colour (same specificity,
+ * declared later in this file) the moment it landed in the set-aside rail:
+ * every kept die but the ones with two-class wild-identity overrides
+ * (Imp/King/Queen showing their crown) went tan. Leaving the resting
+ * declarations in place lets whatever colour the die already had — plain
+ * parchment, an identity colour, or a wild glow — carry over unchanged.
+ */
 .die--kept {
   width: clamp(2rem, 8.5vw, 2.5rem);
   height: clamp(2rem, 8.5vw, 2.5rem);
-  background: linear-gradient(160deg, #d9cdb0, #c3b795);
-  box-shadow: 0 2px 0 rgb(0 0 0 / 0.25);
   opacity: 0.85;
-}
-
-.die--kept .die__pip--on {
-  background: var(--ink);
-  box-shadow: inset 0 1px 1px rgb(255 255 255 / 0.25);
 }
 
 .die--dead {
