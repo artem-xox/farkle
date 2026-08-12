@@ -71,7 +71,7 @@ export interface DieProps {
   tumbling?: boolean;
   tone?: DieTone;
   disabled?: boolean;
-  /** True for a King/Queen die showing its crown *while the other is also showing theirs in the same throw* — RULES.md §12's Crown Bonus. Drives the paired pulse in styles.css rather than the plain wild glow. */
+  /** True for a King/Queen die showing its crown *while the other is also showing theirs in the same throw* — RULES.md §12's Crown Bonus. Drives the paired pulse in styles/die.css rather than the plain wild glow. */
   crownPaired?: boolean;
   onClick?: () => void;
 }

@@ -18,7 +18,7 @@ import { ConfirmDialog } from './ConfirmDialog';
 import { FarkleNotice } from './FarkleNotice';
 import { KeepOptions } from './KeepOptions';
 import { MatchOverOverlay } from './MatchOverOverlay';
-import { botThinkTime, farklePauseMs } from './pacing';
+import { botThinkTime, farklePauseMs, THROW_AFTER_KEEP_MS } from './pacing';
 import { Scoreboard } from './Scoreboard';
 import { matchingKeepOption } from './selection';
 import { TurnLog } from './TurnLog';
@@ -38,6 +38,8 @@ export interface MatchScreenProps {
  * rolls (if any) are reproducible alongside the dice without needing a
  * separate seed input in the UI. */
 const botSeedFrom = (matchSeed: number): number => (matchSeed ^ 0x9e3779b9) >>> 0;
+
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 interface FarkleHold {
   readonly player: number;
@@ -261,6 +263,12 @@ export function MatchScreen({
     try {
       await dispatch({ type: 'Keep', indices: selection });
       setKeptDiceThisTurn((prev) => [...prev, ...keptSpecs]);
+      if (next === 'Throw') {
+        // Otherwise the kept dice's flight into the rail and the next throw's
+        // tumble-in start on the very same tick and animate on top of each
+        // other — see THROW_AFTER_KEEP_MS in pacing.ts.
+        await sleep(THROW_AFTER_KEEP_MS);
+      }
       await dispatch({ type: next });
     } finally {
       setBusy(false);

@@ -32,6 +32,18 @@ export const FLY_MS = 380;
 export const FLY_STAGGER_MS = 55;
 
 /**
+ * How long "Keep & throw" waits after dispatching the keep before dispatching
+ * the throw that follows it. The two used to fire back to back — same tick,
+ * no gap — which meant the kept dice's flight into the rail and the next
+ * throw's tumble-in animated on top of each other instead of in sequence.
+ * Only `keepThen` in MatchScreen.tsx needs this: the bot already paces Keep
+ * and Throw as two separate phases via `botThinkTime`, well past this on its
+ * own, and a bare "Throw 6 dice" at the start of a turn has no prior flight
+ * to wait out.
+ */
+export const THROW_AFTER_KEEP_MS = 500;
+
+/**
  * How long a farkle stays on screen before play moves on by itself.
  *
  * The engine resolves a farkle inside a single `reduce()` — the throw, the

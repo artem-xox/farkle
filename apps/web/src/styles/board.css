@@ -1,0 +1,204 @@
+/* ---------- match ---------- */
+
+.match {
+  width: 100%;
+  max-width: 34rem;
+  padding: 0.5rem 0 1rem;
+  color: var(--parchment);
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.scoreboard {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: stretch;
+  gap: 0.5rem;
+  padding: 0.7rem 0.85rem;
+  background: rgb(0 0 0 / 0.2);
+  border-radius: 0.75rem;
+}
+
+.scoreboard__side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+  padding: 0.35rem 0.55rem;
+  border-radius: 0.55rem;
+  border: 1px solid transparent;
+}
+
+.scoreboard__side--right {
+  text-align: right;
+  align-items: flex-end;
+}
+
+/* Whose turn it is has to survive being read at arm's length, so it is a filled
+   panel rather than the hairline outline the two sides otherwise share. */
+.scoreboard__side--active {
+  background: rgb(230 184 79 / 0.18);
+  border-color: var(--gold);
+}
+
+.scoreboard__name {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+  font-weight: 600;
+  font-size: 0.88rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scoreboard__tag {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink);
+  background: var(--parchment-dim);
+  border-radius: 0.3rem;
+  padding: 0.05rem 0.3rem;
+}
+
+.scoreboard__total {
+  font-variant-numeric: tabular-nums;
+  color: var(--gold-bright);
+  font-weight: 700;
+  font-size: 1.5rem;
+  line-height: 1.1;
+}
+
+.scoreboard__togo {
+  font-size: 0.7rem;
+  color: var(--parchment-dim);
+  opacity: 0.8;
+  white-space: nowrap;
+}
+
+/* The shared thing both scores are measured against, so it sits between them
+   rather than trailing after the pair. */
+.scoreboard__goal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.05rem;
+  padding: 0.35rem 0.7rem;
+  border-left: 1px solid rgb(243 233 210 / 0.15);
+  border-right: 1px solid rgb(243 233 210 / 0.15);
+}
+
+.scoreboard__goal-label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgb(243 233 210 / 0.55);
+}
+
+.scoreboard__goal-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--parchment);
+}
+
+.match__table {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  align-items: center;
+}
+
+.thinking {
+  margin: 0;
+  padding: 0.6rem;
+  font-style: italic;
+  color: var(--parchment-dim);
+}
+
+/* ---------- the board ---------- */
+
+.board {
+  width: 100%;
+  border-radius: 1rem;
+  padding: 0.6rem;
+  background: linear-gradient(160deg, var(--wood-light), var(--wood) 45%, var(--wood-dark));
+  box-shadow:
+    0 0 0 2px var(--wood-rim),
+    0 8px 20px rgb(0 0 0 / 0.35),
+    inset 0 1px 0 rgb(255 255 255 / 0.12);
+}
+
+.board__surface {
+  min-height: 7.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 0.75rem;
+  border-radius: 0.7rem;
+  background:
+    repeating-linear-gradient(
+      92deg,
+      rgb(0 0 0 / 0.06) 0 6px,
+      rgb(255 255 255 / 0.02) 6px 13px
+    ),
+    linear-gradient(180deg, #7a4e27, #5d3b1d);
+  box-shadow:
+    inset 0 3px 10px rgb(0 0 0 / 0.45),
+    inset 0 -1px 0 rgb(255 255 255 / 0.08);
+  transition: box-shadow 200ms ease;
+}
+
+.board__surface--farkled {
+  box-shadow:
+    inset 0 3px 10px rgb(0 0 0 / 0.45),
+    inset 0 0 0 2px var(--danger);
+}
+
+.board__dice {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.55rem;
+}
+
+.board__hint {
+  margin: 0;
+  color: rgb(243 233 210 / 0.65);
+  font-style: italic;
+  text-align: center;
+}
+
+.board__aside {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 3rem;
+  margin-top: 0.6rem;
+  padding: 0.45rem 0.7rem;
+  border-radius: 0.6rem;
+  background: rgb(0 0 0 / 0.22);
+  box-shadow: inset 0 1px 4px rgb(0 0 0 / 0.3);
+}
+
+.board__aside-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgb(243 233 210 / 0.6);
+  flex-shrink: 0;
+}
+
+.board__aside-empty {
+  color: rgb(243 233 210 / 0.35);
+}
+
+.board__aside-dice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}

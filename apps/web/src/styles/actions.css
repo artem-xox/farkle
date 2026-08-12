@@ -1,0 +1,173 @@
+/* ---------- turn status, selection, actions ---------- */
+
+.turn-status {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 0.9rem;
+  color: var(--parchment-dim);
+}
+
+.turn-status strong {
+  color: var(--gold-bright);
+  font-variant-numeric: tabular-nums;
+}
+
+.selection-status {
+  margin: 0;
+  min-height: 1.4rem;
+  text-align: center;
+  font-size: 0.95rem;
+}
+
+
+.selection-status--ok {
+  color: var(--gold-bright);
+  font-weight: 600;
+}
+
+.selection-status--bad {
+  color: var(--danger-soft);
+}
+
+.match__actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+}
+
+.action {
+  flex: 1 1 10rem;
+  max-width: 15rem;
+  padding: 0.75rem 1.1rem;
+  border-radius: 0.6rem;
+  border: 1px solid var(--gold);
+  background: transparent;
+  color: var(--parchment);
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.action--primary {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--ink);
+}
+
+.action:not(:disabled):hover {
+  background: var(--gold-bright);
+  border-color: var(--gold-bright);
+  color: var(--ink);
+}
+
+.action:disabled {
+  opacity: 0.45;
+}
+
+.action__note {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: rgb(0 0 0 / 0.25);
+  color: var(--parchment);
+  border-radius: 0.3rem;
+  padding: 0.1rem 0.35rem;
+}
+
+.action--primary .action__note {
+  background: rgb(0 0 0 / 0.2);
+  color: var(--ink);
+}
+
+/* ---------- keep options ---------- */
+
+/*
+ * The choices and the history below them were two stacks of dice-glyph rows
+ * with almost the same weight, which is why they merged on a phone. They now
+ * pull apart on every axis available: this panel is raised, gold-labelled and
+ * interactive; `.log-panel` is sunken, dim-labelled and inert.
+ */
+.keep-options {
+  width: 100%;
+  padding: 0.6rem 0.7rem 0.7rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(230 184 79 / 0.35);
+  background: rgb(230 184 79 / 0.06);
+}
+
+.keep-options__label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gold-bright);
+  margin-bottom: 0.5rem;
+}
+
+.keep-options__nudge {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.7rem;
+  color: rgb(243 233 210 / 0.5);
+}
+
+.keep-options__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.keep-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(243 233 210 / 0.22);
+  background: linear-gradient(180deg, rgb(243 233 210 / 0.08), rgb(0 0 0 / 0.12));
+  box-shadow: 0 1px 0 rgb(0 0 0 / 0.25);
+  color: var(--parchment);
+  text-align: left;
+}
+
+.keep-option:not(:disabled):hover {
+  border-color: var(--gold);
+  background: rgb(0 0 0 / 0.3);
+}
+
+.keep-option--active {
+  border-color: var(--gold);
+  background: rgb(230 184 79 / 0.16);
+}
+
+.keep-option__dice {
+  font-size: 1.35rem;
+  line-height: 1;
+  color: var(--parchment);
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+.keep-option__detail {
+  color: var(--parchment-dim);
+  font-size: 0.9rem;
+  flex: 1;
+}
+
+.keep-option__points {
+  font-weight: 700;
+  color: var(--gold-bright);
+  font-variant-numeric: tabular-nums;
+}

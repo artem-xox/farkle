@@ -1,0 +1,17 @@
+/*
+ * Split out of a single styles.css for navigability — one file per screen or
+ * component family. Import order here IS the cascade order the old single
+ * file had, and several rules below rely on equal-specificity "later wins"
+ * behaviour (see the comments in die.css), so this order must not change
+ * without checking what depends on it.
+ */
+@import './base.css';
+@import './setup.css';
+@import './dice-catalog.css';
+@import './board.css';
+@import './die.css';
+@import './actions.css';
+@import './log.css';
+@import './match-over.css';
+@import './rules.css';
+@import './crash.css';
