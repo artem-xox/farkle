@@ -11,6 +11,7 @@ import {
   IMP_DIE,
   KING_DIE,
   ODD_DIE,
+  QUEEN_DIE,
   rollDice,
   rollDie,
   TRADER_DIE,
@@ -24,7 +25,7 @@ import {
   type DieSpec,
 } from '../src/dice.js';
 import { seedRng, type RngState } from '../src/rng.js';
-import { DICE_PER_TURN, isWild, PIPS, WILD, type Face } from '../src/types.js';
+import { DICE_PER_TURN, isWild, PIPS, WILD_KING, WILD_QUEEN, type Face } from '../src/types.js';
 
 function rollMany(die: DieSpec, samples: number, seed: number): number[] {
   const observed = new Array<number>(6).fill(0);
@@ -54,7 +55,7 @@ function chiSquare(observed: readonly number[], die: DieSpec, samples: number): 
 }
 
 describe('die specs', () => {
-  it('exposes the fourteen dice M1–M6 ship with', () => {
+  it('exposes the fifteen dice the roster ships with', () => {
     expect(Object.keys(DICE).sort()).toEqual([
       'balanced',
       'cheat',
@@ -63,6 +64,7 @@ describe('die specs', () => {
       'imp',
       'king',
       'odd',
+      'queen',
       'trader',
       'trinity',
       'twins',
@@ -99,7 +101,8 @@ describe('die specs', () => {
 
   it('the devil die has its 1 face marked wild, and rare', () => {
     expect(DEVIL_DIE.wild).toBe(1);
-    expect(wildProbability(DEVIL_DIE)).toBeCloseTo(1 / 11, 12);
+    expect(DEVIL_DIE.wildFace).toBeUndefined();
+    expect(wildProbability(DEVIL_DIE)).toBeCloseTo(1 / 9, 12);
   });
 
   it('the imp die puts its wild on the 6 instead', () => {
@@ -107,14 +110,29 @@ describe('die specs', () => {
     expect(wildProbability(IMP_DIE)).toBeCloseTo(2 / 27, 12);
   });
 
-  it('the king die favours 5 and 6 over the other four faces', () => {
+  it("the king die's 5 is a rare King, backed by a heavy real 6", () => {
+    expect(KING_DIE.wild).toBe(5);
+    expect(KING_DIE.wildFace).toBe(WILD_KING);
+    expect(wildProbability(KING_DIE)).toBeCloseTo(2 / 23, 12);
     const probabilities = faceProbabilities(KING_DIE);
-    expect(probabilities[4]).toBeCloseTo(2 / 9, 12);
-    expect(probabilities[5]).toBeCloseTo(3 / 9, 12);
+    expect(probabilities[5]).toBeCloseTo(5 / 23, 12);
     for (const face of [1, 2, 3, 4]) {
-      expect(probabilities[face - 1]).toBeCloseTo(1 / 9, 12);
+      expect(probabilities[face - 1]).toBeCloseTo(4 / 23, 12);
     }
-    expect(probabilities[5]).toBeGreaterThan(probabilities[4]!);
+    expect(probabilities[5]).toBeGreaterThan(probabilities[0]!);
+  });
+
+  it("the queen die's 6 is a Queen, otherwise flat across the other five faces", () => {
+    expect(QUEEN_DIE.wild).toBe(6);
+    expect(QUEEN_DIE.wildFace).toBe(WILD_QUEEN);
+    expect(wildProbability(QUEEN_DIE)).toBeCloseTo(1 / 11, 12);
+    const probabilities = faceProbabilities(QUEEN_DIE);
+    expect(probabilities[4]).toBeCloseTo(2 / 11, 12);
+    for (const face of [1, 2, 3, 4]) {
+      expect(probabilities[face - 1]).toBeCloseTo(2 / 11, 12);
+    }
+    expect(probabilities[4]).toBeCloseTo(probabilities[0]!, 12);
+    expect(wildProbability(QUEEN_DIE)).toBeGreaterThan(wildProbability(KING_DIE));
   });
 
   it('the unlucky die rolls 1 and 5 a little less often than a balanced die', () => {
@@ -253,7 +271,7 @@ describe('wild faces', () => {
     const result = rollDice(loadout, seedRng(9001));
     expect(result.faces).toHaveLength(3);
     for (const face of result.faces) {
-      expect(face === WILD || PIPS.includes(face)).toBe(true);
+      expect(isWild(face) || PIPS.includes(face)).toBe(true);
     }
   });
 });

@@ -1,8 +1,8 @@
 import {
   BALANCED_DIE,
   bestKeep,
+  faceFor,
   hasScoringDice,
-  WILD,
   type DieSpec,
   type Face,
   type Pip,
@@ -74,7 +74,7 @@ export function farkleProbability(dice: readonly DieSpec[]): number {
         continue;
       }
       const pip = (pipIndex + 1) as Pip;
-      faces[index] = die.wild === pip ? WILD : pip;
+      faces[index] = faceFor(die, pip);
       recurse(index + 1, countSoFar * weight);
     }
   }
@@ -152,7 +152,7 @@ export function expectedKeepValue(dice: readonly DieSpec[]): number {
         continue;
       }
       const pip = (pipIndex + 1) as Pip;
-      faces[index] = die.wild === pip ? WILD : pip;
+      faces[index] = faceFor(die, pip);
       recurse(index + 1, countSoFar * weight);
     }
   }

@@ -3,6 +3,8 @@ import {
   DICE_PER_TURN,
   isWild,
   PIPS,
+  WILD_KING,
+  WILD_QUEEN,
   type Combo,
   type Counts,
   type Face,
@@ -12,6 +14,19 @@ import {
 
 /** Value of three of a kind, indexed by `face - 1`. */
 const TRIPLE_POINTS: readonly number[] = [1000, 200, 300, 400, 500, 600];
+
+/**
+ * RULES.md §12. A keep that draws on *both* a King and a Queen (their crowns
+ * resolved into some combination, per the ordinary wildcard rules — see
+ * `candidateCombos`) has its total multiplied by this. Checked purely off
+ * which sentinels appear in the kept faces — `scoreKeep` already refuses a
+ * keep where some die doesn't participate in a combination, so a King and a
+ * Queen both present in a *legal* keep are, by construction, both spent on
+ * one. Two Devil's Heads, or a Devil's Head paired with either crown, never
+ * qualify: the bonus is keyed on the sentinel identity, not on wildcard
+ * count.
+ */
+export const CROWN_MULTIPLIER = 2;
 
 const SINGLE_POINTS: Readonly<Partial<Record<Pip, number>>> = { 1: 100, 5: 50 };
 
@@ -314,7 +329,14 @@ export function scoreKeep(faces: readonly Face[]): ScoredKeep | null {
     resolved.push(isWild(face) ? best.assignment[nextAssigned++]! : face);
   }
 
-  return { points: best.points, combos: best.combos, resolved };
+  const crowned = faces.includes(WILD_KING) && faces.includes(WILD_QUEEN);
+  if (!crowned) {
+    return { points: best.points, combos: best.combos, resolved };
+  }
+
+  const bonus = Math.round(best.points * (CROWN_MULTIPLIER - 1));
+  const crownCombo: Combo = { kind: 'CrownBonus', faces: [], points: bonus, wilds: 0 };
+  return { points: best.points + bonus, combos: [...best.combos, crownCombo], resolved };
 }
 
 export function isLegalKeep(faces: readonly Face[]): boolean {

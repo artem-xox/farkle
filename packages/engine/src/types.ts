@@ -12,13 +12,25 @@ export const PIPS: readonly Pip[] = [1, 2, 3, 4, 5, 6];
  * `NaN`, which forces every call site that needs to to handle it explicitly.
  */
 export const WILD = 'W' as const;
-export type Wild = typeof WILD;
 
-/** A die face: one of the six pips, or the Devil's Head wildcard. */
+/**
+ * The Crown faces — King's die and Queen's die (RULES.md §12). Mechanically
+ * identical to `WILD` everywhere a wildcard resolves a combination (neither
+ * can complete a `Single` alone, same as `WILD`), but a *distinguishable*
+ * sentinel rather than plain `WILD` is what lets `scoreKeep` tell a keep
+ * that drew on both a King and a Queen apart from one that just drew on two
+ * Devil's Heads — which is what the Crown Bonus is keyed on.
+ */
+export const WILD_KING = 'WK' as const;
+export const WILD_QUEEN = 'WQ' as const;
+
+export type Wild = typeof WILD | typeof WILD_KING | typeof WILD_QUEEN;
+
+/** A die face: one of the six pips, or a wildcard (Devil's Head, King, or Queen). */
 export type Face = Pip | Wild;
 
 export function isWild(face: Face): face is Wild {
-  return face === WILD;
+  return face === WILD || face === WILD_KING || face === WILD_QUEEN;
 }
 
 /** Number of dice a player throws at the start of a turn. */
@@ -29,13 +41,20 @@ export type ComboKind =
   | 'OfAKind'
   | 'StraightLow'
   | 'StraightHigh'
-  | 'StraightFull';
+  | 'StraightFull'
+  | 'CrownBonus';
 
 /**
  * One scoring combination and the dice it consumes. `faces` is always the
  * physical pips the combination reads as — a Devil's Head resolved into that
  * value, never `WILD` itself. `wilds` says how many of those pips came from a
  * wildcard rather than a die that actually showed that face.
+ *
+ * `CrownBonus` is the one exception to all of that: it consumes no dice of
+ * its own (`faces` is empty, `wilds` is 0) and exists only to carry the
+ * extra points the Crown Bonus adds on top of the keep's other combos, so
+ * that `points` always equals the sum of `combos[].points` — see
+ * `scoreKeep` in scoring.ts.
  */
 export interface Combo {
   readonly kind: ComboKind;

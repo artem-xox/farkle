@@ -29,6 +29,8 @@ export function describeCombo(combo: Combo): string {
       return 'a 2-6 straight';
     case 'StraightFull':
       return 'a full straight';
+    case 'CrownBonus':
+      return 'the Crown Bonus';
   }
 }
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { bestKeep, scoreKeep, hasScoringDice, legalKeeps } from '../src/scoring.js';
-import { WILD, type Face, type Pip } from '../src/types.js';
+import { bestKeep, CROWN_MULTIPLIER, scoreKeep, hasScoringDice, legalKeeps } from '../src/scoring.js';
+import { WILD, WILD_KING, WILD_QUEEN, type Face, type Pip } from '../src/types.js';
 import { allMultisets, referenceScoreWithWilds } from './helpers/reference.js';
 
 const dice = (text: string): Face[] =>
@@ -158,5 +158,52 @@ describe('against an independent brute-force oracle', () => {
       const expected = referenceScoreWithWilds(faces);
       expect(actual === null ? null : actual.points, `keep ${faces.join('')}`).toBe(expected);
     }
+  });
+});
+
+describe('the Crown Bonus (RULES.md §12)', () => {
+  it('a King alone resolves exactly like a plain Devil\'s Head — no bonus without a Queen', () => {
+    const withKing = scoreKeep([6, 6, WILD_KING]);
+    const withDevil = scoreKeep([6, 6, WILD]);
+    expect(withKing?.points).toBe(600);
+    expect(withKing?.points).toBe(withDevil?.points);
+    expect(withKing?.combos.some((combo) => combo.kind === 'CrownBonus')).toBe(false);
+  });
+
+  it('a King and a Devil together still do not qualify — the bonus is keyed on the Queen specifically', () => {
+    const scored = scoreKeep([6, 6, WILD_KING, WILD]);
+    expect(scored?.points).toBe(1200); // 600 * 2^1, four-of-a-kind sixes, no bonus
+    expect(scored?.combos.some((combo) => combo.kind === 'CrownBonus')).toBe(false);
+  });
+
+  it('a King and a Queen resolved into the same combination pay the Crown Bonus', () => {
+    const base = scoreKeep([6, 6, 6, WILD]); // reference: four-of-a-kind sixes, no crown
+    expect(base?.points).toBe(1200);
+
+    const crowned = scoreKeep([6, 6, 6, WILD_KING, WILD_QUEEN]);
+    const expectedBase = 2400; // five-of-a-kind sixes: 600 * 2^2
+    const expectedBonus = Math.round(expectedBase * (CROWN_MULTIPLIER - 1));
+    expect(crowned?.points).toBe(expectedBase + expectedBonus);
+
+    const bonusCombo = crowned?.combos.find((combo) => combo.kind === 'CrownBonus');
+    expect(bonusCombo).toMatchObject({ faces: [], points: expectedBonus, wilds: 0 });
+  });
+
+  it('the Crown Bonus combo keeps points equal to the sum of all combos, same invariant as any other keep', () => {
+    const crowned = scoreKeep([6, 6, 6, WILD_KING, WILD_QUEEN]);
+    const summed = crowned!.combos.reduce((total, combo) => total + combo.points, 0);
+    expect(summed).toBe(crowned!.points);
+  });
+
+  it('a lone King (or Queen) still cannot rescue a throw with nothing to combine with', () => {
+    expect(scoreKeep([WILD_KING])).toBeNull();
+    expect(hasScoringDice([WILD_KING, 2, 3, 4])).toBe(false);
+    expect(scoreKeep([WILD_KING, WILD_QUEEN])).toBeNull(); // a pair still isn't a combination
+  });
+
+  it('two Queens (no King) never trigger the bonus either — it takes one of each', () => {
+    const scored = scoreKeep([6, 6, 6, WILD_QUEEN, WILD_QUEEN]);
+    expect(scored?.points).toBe(2400); // five-of-a-kind, plain
+    expect(scored?.combos.some((combo) => combo.kind === 'CrownBonus')).toBe(false);
   });
 });
