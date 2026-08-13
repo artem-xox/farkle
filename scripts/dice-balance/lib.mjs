@@ -52,14 +52,18 @@ export function analyticalMetrics(die, n) {
 
 /**
  * Direct head-to-head win rate between two arbitrary loadouts, both played by
- * the same bot preset (`balanced` by default). Matches a fixed seed so
- * repeat runs at the same `matches` count are reproducible; bump `matches`
- * for a tighter confidence interval rather than changing the seed.
+ * the same bot preset (`balanced` by default), racing to `target` points
+ * (2000, `DEFAULT_TARGET` from `@farkle/engine`, unless overridden — every
+ * dice-balance number in this repo prior to 2026-08-14 was measured at that
+ * default). Matches a fixed seed so repeat runs at the same `matches` count
+ * are reproducible; bump `matches` for a tighter confidence interval rather
+ * than changing the seed.
  */
-export function winRateHeadToHead(loadoutA, loadoutB, matches, { preset = 'balanced', seed = 987654 } = {}) {
+export function winRateHeadToHead(loadoutA, loadoutB, matches, { preset = 'balanced', seed = 987654, target } = {}) {
   return runSimulation({
     matches,
     seed,
+    target,
     loadoutA,
     loadoutB,
     makeA: (s) => createPreset(preset, s),
@@ -72,8 +76,8 @@ export function winRateHeadToHead(loadoutA, loadoutB, matches, { preset = 'balan
  * ordinary dice — the balance metric from docs/DESIGN.md §5. A thin wrapper
  * over `winRateHeadToHead` with the opponent fixed to six `balancedDie`.
  */
-export function winRateVsOrdinary(loadout, matches, { balancedDie, seed = 987654, preset = 'balanced' } = {}) {
-  return winRateHeadToHead(loadout, new Array(6).fill(balancedDie), matches, { seed, preset });
+export function winRateVsOrdinary(loadout, matches, { balancedDie, seed = 987654, preset = 'balanced', target } = {}) {
+  return winRateHeadToHead(loadout, new Array(6).fill(balancedDie), matches, { seed, preset, target });
 }
 
 export function formatPercent(fraction, digits = 2) {

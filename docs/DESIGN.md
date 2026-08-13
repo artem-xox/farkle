@@ -215,17 +215,22 @@ single flat plateau:
 | 🥇 Gold | ~61–62% | the old band's ceiling — plain upgrades and safety plays |
 | 💎 Diamond | ~65–70% (M6, `balanced` bot) | genuinely stronger, reserved for a small number of showcase dice |
 
-**Diamond has since moved past this table twice, and now uses a different
-bot preset.** M7 added `king`/`queen` and their Crown Bonus (RULES.md §12)
-and pushed Diamond to 70–75% win6; M8
-([docs/researches/2026-08-13](researches/2026-08-13-diamond-rebalance-and-king-wild-move.md))
+**Diamond has since moved past this table three times, and now uses a
+different bot preset.** M7 added `king`/`queen` and their Crown Bonus
+(RULES.md §12) and pushed Diamond to 70–75% win6; M8
+([docs/researches/2026-08-13-diamond-rebalance-and-king-wild-move](researches/2026-08-13-diamond-rebalance-and-king-wild-move.md))
 switched Diamond's own measurements from the `balanced` bot every league
-below still uses to `smart` instead, and retuned all three Diamond dice
-(`devil`, `king`, `queen`) to 80–90% win6 against it. Bronze/Silver/Gold
-below are still exactly what M1–M6 measured them as; only Diamond's row and
-the `king`/`devil` lines in the roster table just below are stale — current
-Diamond weights and numbers live in `packages/engine/src/dice.ts`'s own
-comments and the dated research file above, not here.
+below still uses to `smart` instead, retuned all three Diamond dice
+(`devil`, `king`, `queen`) to 80–90% win6 against it, and deliberately gave
+`king` a different risk/reward shape from `queen`'s; M9
+([docs/researches/2026-08-13-king-queen-crown-twins](researches/2026-08-13-king-queen-crown-twins.md))
+found that differentiation was quietly killing the Crown Bonus's synergy —
+a mixed King/Queen loadout lost to *both* pure ends — and made `king` copy
+`queen`'s weights exactly to get a large, real synergy back. Bronze/Silver/
+Gold below are still exactly what M1–M6 measured them as; only Diamond's row
+and the `king`/`devil` lines in the roster table just below are stale —
+current Diamond weights and numbers live in `packages/engine/src/dice.ts`'s
+own comments and the two dated research files above, not here.
 
 Within a league, dice are still sidegrades to each other — the league is what
 stops being flat. `sweep-candidates.mjs` is the template used to tune a new or

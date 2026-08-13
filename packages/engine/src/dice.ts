@@ -106,28 +106,52 @@ export const DEVIL_DIE: DieSpec = {
 };
 
 /**
- * RULES.md §12. M8 moved the crown from the `5` to the `2` and rebuilt the
- * die around it: previously the crown sat on a rare, lightly-weighted face
- * backed by a heavy real `6`, which bought a ceiling with barely any risk —
- * measurably the *safest* way Diamond had of winning big. `2` never scored
- * on its own to begin with, so painting the crown there costs nothing by
- * itself; what raises the risk is that `1` and `5` — the die's only two
- * possible real singles — are both cut to the bare minimum weight (no face
- * is zeroed: every physical pip still has a chance to show), so almost
- * nothing about this die scores except through a three-or-more-of-a-kind or
- * a straight. `3` and `4` are moderately heavy and `6` is the heaviest face
- * by far, so those combinations do come — 81.5% win6 (`smart` preset, vs six
- * `balanced` dice) — but farkle6 (3.6%) is clearly the highest of the three
- * Diamond dice (`devil` 3.09%, `queen` 0.6%), which is the point: King buys
- * the same Diamond-league ceiling as its siblings, but pays more up front for
- * it. Kept alongside a Queen's die (below) in the same keep, the two crowns'
- * combination pays the Crown Bonus — see `scoreKeep` in scoring.ts.
+ * RULES.md §12. M9: King is Queen's exact statistical twin — same six
+ * weights as `QUEEN_DIE` below, *and* the crown on the same physical slot
+ * (`6`), not just an equal-weight one. M8 gave King a deliberately
+ * *different* profile from Queen's (a differentiated risk/reward split,
+ * crown on the `2`, thin real singles, heavy `6`), on the theory that two
+ * distinct-but-comparable dice would make a more interesting pair. Measured,
+ * that theory was backwards: a 0–6 King:Queen mix sweep found no synergy at
+ * all under M8's weights — win6 was a *valley*, every mixed ratio losing to
+ * whichever pure end it was closer to, because the two dice's different
+ * farkle/EV shapes made mixing a tradeoff the occasional Crown Bonus
+ * couldn't repay. Re-running the same sweep with King simply copying
+ * Queen's weights instead produces a large, clean, symmetric peak dead on
+ * 3:3 — ~89.6% win6 (smart preset, six vs six balanced dice, target 2000)
+ * against ~84.9% for either now-identical pure end, i.e. losing under half
+ * as often — and the gap widens further at longer match targets, since a
+ * real per-turn edge compounds with more turns played. Full numbers:
+ * docs/researches/2026-08-13-king-queen-crown-twins.md.
+ *
+ * **The crown's physical slot matters, not just its weight — this was
+ * gotten wrong once already in this same change.** An earlier cut of this
+ * fix left the crown on King's existing `2` on the reasoning that `2` and
+ * `6` carry equal weight (`2` each) in this array, so which one is wild
+ * "shouldn't matter." That reasoning covers `farkle6` and the marginal
+ * wild-probability correctly (both unaffected by *which* equal-weight slot
+ * is wild) but is simply wrong for `ev6`/win6: a wildcard is picked to
+ * resolve to whichever pip helps most, which is strictly more flexible than
+ * a fixed real face of the same weight, so a die's EV depends on *which*
+ * slot gets that flexibility, not just how much weight sits there. Leaving
+ * the crown on `2` measured at 991 ev6 against Queen's 856 — visibly not a
+ * twin. Moving it to `6` closes the gap to the 5th decimal place
+ * (855.5852 exactly, `analyticalMetrics` is exact brute force). Every
+ * number cited above and in the research doc is from *this* corrected
+ * version, not the `2`-crown one a first pass of this change briefly
+ * shipped.
+ *
+ * This retires King as a standalone differentiated die — its own farkle6,
+ * ev6 and Risk/Power ratings are now Queen's, exactly — in favour of the
+ * *pair* being the interesting thing. A future rebalance could reintroduce
+ * some difference between them, but only after confirming it doesn't
+ * reopen the M8 gap; see the research doc for the tradeoff this revealed.
  */
 export const KING_DIE: DieSpec = {
   id: 'king',
   name: "King's die",
-  weights: [1, 4, 9, 9, 1, 17],
-  wild: 2,
+  weights: [1, 2, 2, 2, 1, 2],
+  wild: 6,
   wildFace: WILD_KING,
 };
 
@@ -144,8 +168,9 @@ export const KING_DIE: DieSpec = {
  * exactly — not a rounding coincidence, `analyticalMetrics` is exact brute
  * force) while still landing at 84.8% win6 (`smart` preset, vs six
  * `balanced` dice) — the safety, not raw aggression, is what carries the win
- * rate. Rare-ish crown (1 in 5, 20%, against King's roughly 1 in 10). Same
- * Crown Bonus as King when both crowns land in the same keep.
+ * rate. Rare-ish crown (1 in 5, 20%). M9 made `KING_DIE` above copy these
+ * exact weights — see its comment for why — so this is now also King's
+ * profile, not just Queen's.
  */
 export const QUEEN_DIE: DieSpec = {
   id: 'queen',
