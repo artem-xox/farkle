@@ -35,9 +35,9 @@ export const DIE_STATS: Record<string, DieStats> = {
   weighted: { farkle6: 0.0191, win6: 0.613, ev6: 473, tier: 'gold' },
   worn: { farkle6: 0.0058, win6: 0.618, ev6: 467, tier: 'gold' },
   cheat: { farkle6: 0.0365, win6: 0.624, ev6: 514, tier: 'gold' },
-  devil: { farkle6: 0.0455, win6: 0.711, ev6: 633, tier: 'diamond' },
-  king: { farkle6: 0.0562, win6: 0.717, ev6: 655, tier: 'diamond' },
-  queen: { farkle6: 0.0108, win6: 0.724, ev6: 622, tier: 'diamond' },
+  devil: { farkle6: 0.0309, win6: 0.798, ev6: 771, tier: 'diamond' },
+  king: { farkle6: 0.0359, win6: 0.815, ev6: 1008, tier: 'diamond' },
+  queen: { farkle6: 0.0058, win6: 0.848, ev6: 856, tier: 'diamond' },
 };
 
 /** Weakest to strongest — the order the loadout picker's catalog is grouped in. */
@@ -70,14 +70,24 @@ export const TIER_ICON: Record<DieTier, string> = {
  * `worn` rates Risk 9 the same way `king` rates Power 9 — every other die is
  * cheaper by however great a multiple its own farkle6 is of `worn`'s.
  *
- * `queen`'s weights went through two cuts before this settled (M7's
- * crown-tuning research): a flat-across-1–5 first pass ran to 82% win6 and
- * briefly made her both the safest die shipped (0.33% farkle6) *and* the
- * highest-EV one (691), which would have meant re-anchoring both constants
- * around a single outlier. Suppressing her `1` and `5` singles brought her
- * back in line with `king`/`devil` (72.4% win6) and took both anchors off
- * the table again — worth recording so a future retune doesn't have to
- * rediscover why the anchors nearly moved.
+ * `queen`'s weights went through two cuts before M7 settled (crown-tuning
+ * research): a flat-across-1–5 first pass ran to 82% win6 and briefly made
+ * her both the safest die shipped *and* the highest-EV one, which would have
+ * meant re-anchoring both constants around a single outlier. Suppressing her
+ * `1` and `5` singles took both anchors off the table again — worth
+ * recording so a future retune doesn't have to rediscover why they nearly
+ * moved.
+ *
+ * M8 pushed the whole Diamond league to 80–90% win6 against the `smart` bot
+ * (docs/researches, dated) and moved `king`'s crown from `5` to `2` to buy
+ * its ceiling with real risk this time. Coincidentally exact, not rounded:
+ * `queen`'s farkle6 lands on precisely the same value as `worn`'s
+ * (0.00576269..., `analyticalMetrics` is exact brute force, not simulated),
+ * so the two now tie at Risk 9 rather than `queen` edging past the anchor —
+ * the near-miss M7 nearly caused finally happened anyway, just as an exact
+ * tie instead of a new outlier, and needed no anchor change either way.
+ * `king` still holds `POWER_ANCHOR_ID`: its ev6 (1008) remains comfortably
+ * the roster's highest even after the M8 increases to `devil` and `queen`.
  */
 export const RISK_ANCHOR_ID = 'worn';
 export const POWER_ANCHOR_ID = 'king';

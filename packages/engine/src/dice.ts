@@ -68,58 +68,89 @@ export const WEIGHTED_DIE: DieSpec = {
 
 /**
  * Its `1` face is painted as a Devil's Head — see docs/RULES.md §4a — and
- * comes up 1 throw in 11. A Devil's Head is *not* simply a free `1`: it can
- * never complete a `Single` by itself (`scoreKeep` in scoring.ts refuses to
+ * comes up 1 throw in 6 (16.7%, same odds a real `1` would have on a
+ * balanced die). A Devil's Head is *not* simply a free `1`: it can never
+ * complete a `Single` by itself (`scoreKeep` in scoring.ts refuses to
  * resolve a wildcard that way), only a bigger combination — three or more of
  * a kind, or a straight. A lone Devil's Head, or one thrown alongside dice it
  * can't join into such a combination, scores nothing at all.
  *
- * So the wildcard is not this die's only departure from ordinary: painting the
- * `1` over *removes* the 100-point single entirely. Retuned twice now: M6
- * promoted it to Diamond at a heavier wild than the original Gold-tier
- * printing (68.2% win6); M7 raised the whole league's band to 70–75%, so this
- * went from 1-in-11 to 1-in-9 (11.1%) — it now farkles more than an ordinary
- * die on a full throw (4.6% against 3.1%) and wins 71.1%.
+ * So the wildcard is not this die's only departure from ordinary: painting
+ * the `1` over *removes* the 100-point single entirely. Retuned three times
+ * now: M6 promoted it to Diamond at a heavier wild than the original
+ * Gold-tier printing; M7 raised the whole league's band to 70–75% against a
+ * `balanced` bot; M8 re-measured every Diamond die against the `smart` bot
+ * instead (docs/researches, dated) and pushed the whole league to 80–90%
+ * against it — 79.5% win6.
+ *
+ * Every face carries the same weight, which makes this die's *distribution*
+ * identical to a balanced one's — farkle6 (3.09%) doesn't move a single
+ * point off `balanced`'s own. The win6 jump comes entirely from what the
+ * wildcard is worth once it *does* show up: unlike a fixed `1`, it resolves
+ * to whichever pip the rest of the throw can make the most of, so it upgrades
+ * plenty of throws a real `1` would have left at a flat 100 points. A
+ * heavier wild than this was tried and dropped: `packages/bots/test/
+ * odds.test.ts` asserts a Devil's Head never farkles *less* than a balanced
+ * die in the same company, and this exact weight is the ceiling of that
+ * guarantee against the current roster — past it, a wild common enough to
+ * complete its own triples starts occasionally out-safetying a real `1` in
+ * specific heavy-wildcard companies (`king`'s in particular, post-M8),
+ * making the die sometimes *safer* than ordinary rather than strictly
+ * riskier.
  */
 export const DEVIL_DIE: DieSpec = {
   id: 'devil',
   name: "Devil's head die",
-  weights: [5, 8, 8, 8, 8, 8],
+  weights: [8, 8, 8, 8, 8, 8],
   wild: 1,
 };
 
 /**
- * RULES.md §12. `5` is painted as a King instead of its printed pip — a
- * wildcard exactly like a Devil's Head (can't complete a `Single` alone,
- * free to resolve into any `OfAKind` or straight), rare (8.7%) and backed by
- * a heavy real `6` so the die that never scores alone sits next to the one
- * that always builds the biggest triples. Kept alongside a Queen's die
- * (below) in the same keep, the two crowns' combination pays the Crown
- * Bonus — see `scoreKeep` in scoring.ts. 71.7% win6 alone.
+ * RULES.md §12. M8 moved the crown from the `5` to the `2` and rebuilt the
+ * die around it: previously the crown sat on a rare, lightly-weighted face
+ * backed by a heavy real `6`, which bought a ceiling with barely any risk —
+ * measurably the *safest* way Diamond had of winning big. `2` never scored
+ * on its own to begin with, so painting the crown there costs nothing by
+ * itself; what raises the risk is that `1` and `5` — the die's only two
+ * possible real singles — are both cut to the bare minimum weight (no face
+ * is zeroed: every physical pip still has a chance to show), so almost
+ * nothing about this die scores except through a three-or-more-of-a-kind or
+ * a straight. `3` and `4` are moderately heavy and `6` is the heaviest face
+ * by far, so those combinations do come — 81.5% win6 (`smart` preset, vs six
+ * `balanced` dice) — but farkle6 (3.6%) is clearly the highest of the three
+ * Diamond dice (`devil` 3.09%, `queen` 0.6%), which is the point: King buys
+ * the same Diamond-league ceiling as its siblings, but pays more up front for
+ * it. Kept alongside a Queen's die (below) in the same keep, the two crowns'
+ * combination pays the Crown Bonus — see `scoreKeep` in scoring.ts.
  */
 export const KING_DIE: DieSpec = {
   id: 'king',
   name: "King's die",
-  weights: [4, 4, 4, 4, 2, 5],
-  wild: 5,
+  weights: [1, 4, 9, 9, 1, 17],
+  wild: 2,
   wildFace: WILD_KING,
 };
 
 /**
  * `6` is painted as a Queen instead of its printed pip. An early cut of this
  * die was flat across `1`–`5` (2 each) — with no heavy face to give up, it
- * had no safety net to lose either, and ran to 82% win6 alone, well past
- * the Diamond band. Both scoring singles are suppressed here instead (`1`
- * and `5` cut to 1 each, `2`/`3`/`4` left at 2), which pushes the die to
- * lean on its crown and on triples rather than on cheap singles, landing
- * at 72.4% win6 — close to `king`'s and `devil`'s own ~71%. Rare crown
- * (1 in 9, 11.1%, against King's 8.7%). Same Crown Bonus as King when both
- * crowns land in the same keep.
+ * had no safety net to lose either, and ran well past the M7 Diamond band.
+ * Both scoring singles were suppressed instead (`1` and `5` cut to 1 each),
+ * which pushed the die to lean on its crown and on triples rather than on
+ * cheap singles. M8 re-measured the whole league against the `smart` bot and
+ * moved the target band to 80–90%: with `1`/`5` still suppressed but `2`,
+ * `3`, `4` and the crown itself all raised to the same weight, this die is
+ * now tied with `worn` for the roster's safest die (0.58% farkle6 each,
+ * exactly — not a rounding coincidence, `analyticalMetrics` is exact brute
+ * force) while still landing at 84.8% win6 (`smart` preset, vs six
+ * `balanced` dice) — the safety, not raw aggression, is what carries the win
+ * rate. Rare-ish crown (1 in 5, 20%, against King's roughly 1 in 10). Same
+ * Crown Bonus as King when both crowns land in the same keep.
  */
 export const QUEEN_DIE: DieSpec = {
   id: 'queen',
   name: "Queen's die",
-  weights: [1, 2, 2, 2, 1, 1],
+  weights: [1, 2, 2, 2, 1, 2],
   wild: 6,
   wildFace: WILD_QUEEN,
 };
