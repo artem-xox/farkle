@@ -1,38 +1,18 @@
-import { CROWN_MULTIPLIER, DICE, faceProbabilities, type DieSpec } from '@farkle/engine';
+import { DICE, faceProbabilities, type DieSpec } from '@farkle/engine';
 
 import { Die } from '../match/Die';
 import { DIE_DESCRIPTIONS, iconicFace } from './descriptions';
 import { DIE_STATS, powerRating, riskRating, TIER_ICON, TIER_LABEL } from './stats';
 
 const DICE_LIST: readonly DieSpec[] = Object.values(DICE);
-const WILDCARD_DICE: readonly DieSpec[] = DICE_LIST.filter((die) => die.wild !== undefined);
-
-interface Synergy {
-  readonly id: string;
-  readonly title: string;
-  readonly diceIds: readonly string[];
-  readonly description: string;
-}
-
-/**
- * Interactions between two or more specific dice, as opposed to a single
- * die's own stats above. One entry today (the Crown Bonus) — a list rather
- * than a hardcoded section so the next synergy is another array entry, not
- * a new block of markup.
- */
-const SYNERGIES: readonly Synergy[] = [
-  {
-    id: 'crown-bonus',
-    title: "King & Queen — the Crown Bonus",
-    diceIds: ['king', 'queen'],
-    description: `A kept combination that resolves both a King's crown and a Queen's crown at once has its points multiplied ${CROWN_MULTIPLIER}×. Two crowns alone are not a combination by themselves — the bonus multiplies a keep's value, it does not create one — and it never fires for two Devil's Heads or a King paired with a Devil's Head; it takes one of each crown specifically.`,
-  },
-];
 
 /**
  * The full die collection with exact, honest per-face odds — split out from
  * Rules onto its own page so it reads as reference material you look up
- * while building a loadout, not another rule to read top to bottom.
+ * while building a loadout, not another rule to read top to bottom. General
+ * wildcard behaviour and cross-die synergies (the Crown Bonus) are rules,
+ * not a per-die stat, so they live on the Rules screen instead — see its
+ * "Wildcard dice" and "Synergies" sections.
  */
 export function DiceScreen() {
   return (
@@ -50,47 +30,6 @@ export function DiceScreen() {
           <DieCard key={die.id} die={die} />
         ))}
       </div>
-
-      <section className="rules__section">
-        <h2>Wildcard dice</h2>
-        <p>
-          Some dice paint one physical face as a <strong>wildcard</strong> — a Devil's Head 😈, or a
-          crown 👑 for King and Queen — instead of a printed pip. Rolling it doesn't produce a fixed
-          value: scoring resolves it to whichever face makes the keep worth the most.
-        </p>
-        <p>
-          A wildcard can never complete a lone <strong>1</strong> or <strong>5</strong> by itself —
-          only a three-or-more-of-a-kind or a straight. A throw where the only wildcard has nothing to
-          combine with farkles exactly as if it had rolled a dead face, and several wildcards together
-          can complete a combination entirely among themselves.
-        </p>
-        <div className="dice-synergy__dice" aria-hidden="true">
-          {WILDCARD_DICE.map((die) => (
-            <Die key={die.id} face={iconicFace(die)} dieId={die.id} />
-          ))}
-        </div>
-      </section>
-
-      <section className="rules__section">
-        <h2>Synergies</h2>
-        <p>Some dice do more together than the sum of their own stats. Currently shipped:</p>
-        <ul className="dice-synergy__list">
-          {SYNERGIES.map((synergy) => (
-            <li key={synergy.id} className="dice-synergy__item">
-              <div className="dice-synergy__dice" aria-hidden="true">
-                {synergy.diceIds.map((id) => {
-                  const die = DICE[id]!;
-                  return <Die key={id} face={iconicFace(die)} dieId={die.id} />;
-                })}
-              </div>
-              <div className="dice-synergy__text">
-                <h3 className="dice-synergy__title">{synergy.title}</h3>
-                <p>{synergy.description}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
     </article>
   );
 }

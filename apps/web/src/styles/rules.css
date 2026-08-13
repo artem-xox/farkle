@@ -173,6 +173,61 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* A plain row of representative dice — used both under the general wildcard
+   explanation and beside each synergy entry, so both read as "here are the
+   dice this text is about" without repeating names in prose. */
+.dice-synergy__dice {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+}
+
+.dice-synergy__dice .die {
+  flex-shrink: 0;
+  width: 2.4rem;
+  height: 2.4rem;
+  padding: 0.24rem;
+}
+
+.dice-synergy__list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dice-synergy__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 0.6rem;
+  background: rgb(0 0 0 / 0.2);
+}
+
+.dice-synergy__item .dice-synergy__dice {
+  margin-top: 0;
+  flex-shrink: 0;
+}
+
+.dice-synergy__text {
+  min-width: 0;
+}
+
+.dice-synergy__title {
+  margin: 0 0 0.3rem;
+  font-size: 0.95rem;
+  color: var(--gold-bright);
+}
+
+.dice-synergy__text p {
+  margin: 0;
+  line-height: 1.5;
+  color: var(--parchment-dim);
+}
+
 @media (min-width: 640px) {
   .board__surface {
     min-height: 9rem;
