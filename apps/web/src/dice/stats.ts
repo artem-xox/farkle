@@ -36,7 +36,7 @@ export const DIE_STATS: Record<string, DieStats> = {
   worn: { farkle6: 0.0058, win6: 0.618, ev6: 467, tier: 'gold' },
   cheat: { farkle6: 0.0365, win6: 0.624, ev6: 514, tier: 'gold' },
   devil: { farkle6: 0.0309, win6: 0.798, ev6: 771, tier: 'diamond' },
-  king: { farkle6: 0.0359, win6: 0.815, ev6: 1008, tier: 'diamond' },
+  king: { farkle6: 0.0058, win6: 0.848, ev6: 856, tier: 'diamond' },
   queen: { farkle6: 0.0058, win6: 0.848, ev6: 856, tier: 'diamond' },
 };
 
@@ -79,15 +79,21 @@ export const TIER_ICON: Record<DieTier, string> = {
  * moved.
  *
  * M8 pushed the whole Diamond league to 80–90% win6 against the `smart` bot
- * (docs/researches, dated) and moved `king`'s crown from `5` to `2` to buy
- * its ceiling with real risk this time. Coincidentally exact, not rounded:
- * `queen`'s farkle6 lands on precisely the same value as `worn`'s
- * (0.00576269..., `analyticalMetrics` is exact brute force, not simulated),
- * so the two now tie at Risk 9 rather than `queen` edging past the anchor —
- * the near-miss M7 nearly caused finally happened anyway, just as an exact
- * tie instead of a new outlier, and needed no anchor change either way.
- * `king` still holds `POWER_ANCHOR_ID`: its ev6 (1008) remains comfortably
- * the roster's highest even after the M8 increases to `devil` and `queen`.
+ * and moved `king`'s crown from `5` to `2` to buy its ceiling with real risk
+ * this time — briefly making `king` the roster's highest-farkle6 die at a
+ * matching win rate. M9 then found that differentiated risk profile was
+ * exactly what was killing the King/Queen Crown Bonus's synergy (a mixed
+ * loadout lost to both pure ends rather than beating them), and made `king`
+ * copy `queen`'s weights outright to get the synergy back — see
+ * docs/researches/2026-08-13-king-queen-crown-twins.md. `king` and `queen`
+ * are now the same die under two names, so `RISK_ANCHOR_ID`/
+ * `POWER_ANCHOR_ID` below both land on an *exact* three-way tie: `king` and
+ * `queen` share `worn`'s farkle6 to the 5th decimal place
+ * (0.00576269..., `analyticalMetrics` is exact brute force, not simulated —
+ * this isn't a rounding coincidence), so all three rate Risk 9.0, and
+ * `king`/`queen` share the roster's highest ev6 (856) for Power 9.0. Which
+ * of the two names holds `POWER_ANCHOR_ID` doesn't matter any more; `king`
+ * just keeps the role it already had.
  */
 export const RISK_ANCHOR_ID = 'worn';
 export const POWER_ANCHOR_ID = 'king';

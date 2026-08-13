@@ -113,22 +113,17 @@ describe('die specs', () => {
     expect(wildProbability(IMP_DIE)).toBeCloseTo(2 / 27, 12);
   });
 
-  it("the king die's 2 is a King, with both real singles (1 and 5) cut to the bare minimum", () => {
+  it("the king die's 2 is a King, and both scoring singles (1 and 5) are suppressed — same shape as Queen", () => {
     expect(KING_DIE.wild).toBe(2);
     expect(KING_DIE.wildFace).toBe(WILD_KING);
-    expect(wildProbability(KING_DIE)).toBeCloseTo(4 / 41, 12);
+    expect(wildProbability(KING_DIE)).toBeCloseTo(1 / 5, 12);
     const probabilities = faceProbabilities(KING_DIE);
-    expect(probabilities[0]).toBeCloseTo(1 / 41, 12); // 1
-    expect(probabilities[4]).toBeCloseTo(1 / 41, 12); // 5
-    expect(probabilities[2]).toBeCloseTo(9 / 41, 12); // 3
-    expect(probabilities[3]).toBeCloseTo(9 / 41, 12); // 4
-    expect(probabilities[5]).toBeCloseTo(17 / 41, 12); // 6, the heaviest face by far
-    // Every face still has some weight — the risk comes from how thin 1/5
-    // are, not from a face being impossible to roll.
-    for (const p of probabilities) {
-      expect(p).toBeGreaterThan(0);
+    expect(probabilities[0]).toBeCloseTo(1 / 10, 12); // 1
+    expect(probabilities[4]).toBeCloseTo(1 / 10, 12); // 5
+    for (const face of [3, 4, 6]) {
+      expect(probabilities[face - 1]).toBeCloseTo(2 / 10, 12);
     }
-    expect(probabilities[5]).toBeGreaterThan(probabilities[0]!);
+    expect(probabilities[2]).toBeGreaterThan(probabilities[0]!);
   });
 
   it("the queen die's 6 is a Queen, and both scoring singles (1 and 5) are suppressed", () => {
@@ -142,7 +137,11 @@ describe('die specs', () => {
       expect(probabilities[face - 1]).toBeCloseTo(2 / 10, 12);
     }
     expect(probabilities[1]).toBeGreaterThan(probabilities[0]!);
-    expect(wildProbability(QUEEN_DIE)).toBeGreaterThan(wildProbability(KING_DIE));
+  });
+
+  it('King and Queen are exact statistical twins (M9) — same face probabilities under their own wild face', () => {
+    expect(faceProbabilities(KING_DIE)).toEqual(faceProbabilities(QUEEN_DIE));
+    expect(wildProbability(KING_DIE)).toBe(wildProbability(QUEEN_DIE));
   });
 
   it('the unlucky die rolls 1 and 5 a little less often than a balanced die', () => {
