@@ -1,4 +1,4 @@
-# Research: King and Queen as exact statistical twins (M9)
+# Research: King and Queen, from valley to twins to a stronger King (M9)
 
 **Date:** 2026-08-13
 **Engine commit:** `eb4820e` (dice.ts changes ship in the same change as this file)
@@ -65,23 +65,66 @@ Not "vs six `balanced`" but a genuine head-to-head, smart preset both sides, tar
 
 The mixed loadout doesn't just edge out its own now-identical pure end in a three-way comparison against `balanced` — it beats pure Queen head-to-head about 3 times out of 4, and beats pure Devil (a perfectly respectable 80%-band Diamond die in its own right) close to 6 times out of 7. This is the practical case for actually building a 3:3 King/Queen loadout rather than either pure one, stated as directly as the balance metric can state it.
 
-## 5. Decision and what shipped
+## 5. Twins were a real synergy, but not the final answer
 
-`KING_DIE` now has `queen`'s exact weights (`packages/engine/src/dice.ts`). Consequences, all mechanical, none requiring new anchors:
+Shipping the exact-twin version (§2–§4) was a genuine improvement over M8's valley, and briefly shipped as such. But making `king` a literal copy of `queen` also fully retired King's own identity — the two dice became interchangeable, differing only in name, colour and crown glyph. That raised the obvious next question: is an exact copy actually the *best* use of Queen's weight shape, or just the easiest one?
 
-- `king` and `queen` are now identical in every measured stat: farkle6 0.58% (exactly `worn`'s value too, to the 5th decimal — see the M8 doc), win6 84.84% (vs six `balanced`), ev6 856.
-- `apps/web/src/dice/stats.ts`'s `RISK_ANCHOR_ID` (`worn`) and `POWER_ANCHOR_ID` (`king`) both still hold — `king` and `queen` now tie `worn` for Risk 9.0, and tie each other for the roster's highest Power (9.0, by construction of the anchor).
-- King's own distinct standalone identity from M8 (thin real singles, heavy `6`, deliberately elevated risk) is retired. Its interest now lives entirely in the pair, not in either die alone — see `KING_DIE`'s doc comment for the full reasoning.
+## 6. A third option: same weights, crown on the other slot
 
-**This is explicitly not the final word on King's identity.** The next open question — noted here rather than in code, since it's a direction, not a decision yet — is whether some *smaller* difference between the two (not M8's full split, not zero) could keep a distinguishable King while still preserving most of this synergy. That would need its own sweep across the difference-vs-synergy-strength tradeoff, which this file doesn't attempt.
+`queen`'s weights (`[1,2,2,2,1,2]`) have two slots tied at weight `2`: `2` and `6`. Queen paints `6` as her crown, leaving `2` real (worth nothing on its own either way — `2` never scores alone). Nothing said King's crown had to go on the *same* slot: putting it on `2` instead, leaving `6` real, is an equally valid reading of "copy Queen's weights."
 
-## 6. Reproduction
+It is not an equally valid reading of "copy Queen's die," though — §0's finding (the wild slot changes ev6/win6 even at equal weight) means this is a **different, stronger** die: a wildcard is picked to resolve to whichever pip helps the current throw most, which is strictly more flexible than a fixed real face of the same weight. Leaving `6` — the best face for triples after `1` — real rather than wild is worth more than the flexibility of making it wild, at least in this weight shape:
+
+| | farkle6 | ev6 | win6 (vs six `balanced`, target 2000) |
+|---|---|---|---|
+| `king`, crown on `2` (this option) | 0.58% | **991** | **88.2%** [87.87,88.50] (40k, `tier-report.mjs`) |
+| `queen` / twin-`king`, crown on `6` | 0.58% | 856 | 84.8% [84.49,85.19] |
+| `devil` (Diamond's third die, for scale) | 3.09% | 771 | 79.8% [79.40,80.19] |
+
+farkle6 is identical to Queen's regardless (unaffected by which equal-weight slot is wild — only ev6/win6 move), and King is now clearly the roster's highest-EV die, ahead of both `queen` and `devil`.
+
+**The mix is no longer free, but the peak survives the cost.** Since King and Queen are no longer identical, mixing them again has a real tradeoff (Queen dilutes King's higher EV; King dilutes Queen's lower farkle6) — but the Crown Bonus more than pays for it. Full 0–6 sweep, `CROWN_MULTIPLIER = 2` (shipped), smart preset:
+
+| king : queen | win6 @ target 2000 | farkle6 | ev6 | win6 @ target 8000 |
+|---|---|---|---|---|
+| 0:6 (pure Queen) | 84.88% | 0.58% | 855.6 | 98.07% [97.80,98.30] |
+| 1:5 | 88.17% | 0.96% | 1079.5 | 99.23% [99.06,99.37] |
+| 2:4 | 89.51% | 1.34% | 1220.7 | 99.55% [99.41,99.65] |
+| **3:3** | **90.45%** [90.04,90.85] | 1.50% | 1288.9 | **99.65%** [99.53,99.74] |
+| 4:2 | 90.26% | 1.34% | 1282.9 | 99.65% [99.53,99.74] |
+| 5:1 | 89.59% | 0.96% | 1192.3 | 99.51% [99.37,99.62] |
+| 6:0 (pure King) | 87.93% | 0.58% | 991.1 | 99.17% [98.99,99.31] |
+
+3:3 beats *both* pure ends at every point measured — this is a real peak with a real cost (farkle6 more than doubles from either pure end to 3:3), not the twins' free lunch, and it survives at both match lengths.
+
+Direct head-to-head, target 8000, smart preset both sides, 15 000 matches each — now including pure King specifically, since it's no longer the same die as pure Queen:
+
+| A | B | A win rate |
+|---|---|---|
+| 3 King : 3 Queen | 6× Queen (pure) | **79.19%** [78.54,79.84] |
+| 3 King : 3 Queen | 6× King (pure) | **70.99%** [70.26,71.71] |
+| 3 King : 3 Queen | 6× Devil (pure) | **88.21%** [87.69,88.72] |
+
+The mix beats pure King head-to-head 71% of the time — adding Queen to an already-stronger King is still a clear upgrade, not just a hedge against picking the weaker pure end.
+
+## 7. Decision and what shipped
+
+`KING_DIE` keeps `queen`'s exact six weights but with `wild: 2` (not `6`) — `packages/engine/src/dice.ts`. This is what actually shipped, superseding both the M8 differentiated version and the exact-twin version tried in between.
+
+- King is now the roster's highest-EV die (991), ahead of `queen` (856) and `devil` (771) — a real, distinct identity, unlike the twin version.
+- `apps/web/src/dice/stats.ts`: `RISK_ANCHOR_ID` (`worn`) still ties `king` and `queen` at Risk 9.0 (farkle6 is unaffected by which equal-weight slot is wild). `POWER_ANCHOR_ID` (`king`) is now unambiguous — `king`'s own ev6 is clearly highest, not tied with `queen`'s.
+- The King/Queen Crown Bonus synergy survives with a real, non-trivial peak at 3:3 (§6), rather than the twins' zero-cost one — mixing now costs some farkle6, and the bonus pays for it and then some.
+
+This closes the open question §5 (of the version once at this heading) raised: a smaller, deliberate difference between King and Queen — same weights, different wild slot, rather than either M8's large weight split or an exact copy — keeps King distinguishable *and* strong *and* synergistic, all three at once.
+
+## 8. Reproduction
 
 ```bash
 npm run build
-node scripts/dice-balance/tier-report.mjs --matches 40000 --preset smart   # king/queen now report identical numbers
+node scripts/dice-balance/tier-report.mjs --matches 40000 --preset smart   # §6's king/queen/devil row
 npm run dice:audit                                                          # invariants still hold
-# §2-§4 have no committed script (ad hoc sweeps, deleted after use). Rebuild
-# with lib.mjs's winRateHeadToHead/winRateVsOrdinary({ preset: 'smart',
-# target: 8000 }) over the loadouts and CROWN_MULTIPLIER values described above.
+# §2-§4 (twins) and §6 (final shape) have no committed script (ad hoc
+# sweeps, deleted after use). Rebuild with lib.mjs's winRateHeadToHead/
+# winRateVsOrdinary({ preset: 'smart', target: 8000 }) over the loadouts
+# and CROWN_MULTIPLIER values described in each section.
 ```
