@@ -1,8 +1,11 @@
-import type { Face } from '@farkle/engine';
+import { CROWN_MULTIPLIER, DICE, WILD, WILD_KING, WILD_QUEEN, type DieSpec, type Face } from '@farkle/engine';
 
+import { iconicFace } from '../dice/descriptions';
 import { diceGlyphs } from '../match/logEntry';
+import { Die } from '../match/Die';
 
-const dice = (text: string): Face[] => [...text].map((char) => Number(char) as Face);
+const DICE_LIST: readonly DieSpec[] = Object.values(DICE);
+const WILDCARD_DICE: readonly DieSpec[] = DICE_LIST.filter((die) => die.wild !== undefined);
 
 interface ScoreRow {
   readonly combination: string;
@@ -35,32 +38,77 @@ const STRAIGHTS: ScoreRow[] = [
   { combination: '1-2-3-4-5-6', value: '1500' },
 ];
 
+interface Synergy {
+  readonly id: string;
+  readonly title: string;
+  readonly diceIds: readonly string[];
+  readonly description: string;
+}
+
+/**
+ * Interactions between two or more specific dice, as opposed to a single
+ * die's own stats. One entry today (the Crown Bonus) — a list rather than a
+ * hardcoded section so the next synergy is another array entry, not a new
+ * block of markup.
+ */
+const SYNERGIES: readonly Synergy[] = [
+  {
+    id: 'crown-bonus',
+    title: "King & Queen — the Crown Bonus",
+    diceIds: ['king', 'queen'],
+    description: `A kept combination that resolves both a King's crown and a Queen's crown at once has its points multiplied ${CROWN_MULTIPLIER}×. Two crowns alone are not a combination by themselves — the bonus multiplies a keep's value, it does not create one — and it never fires for two Devil's Heads or a King paired with a Devil's Head; it takes one of each crown specifically.`,
+  },
+];
+
 interface Example {
-  readonly throwText: string;
+  readonly id: string;
+  readonly faces: readonly Face[];
   readonly reading: string;
   readonly points: string;
 }
 
-const EXAMPLES: Example[] = [
+/**
+ * Ordinary combinations first, then a wildcard and a synergy example last —
+ * this list is what "Reading a throw" closes the page on, so by the time a
+ * reader hits it they've already met wildcards and the Crown Bonus above and
+ * can see the same reading-the-highest-score logic apply to all three.
+ */
+const EXAMPLES: readonly Example[] = [
   {
-    throwText: '123455',
+    id: 'straight-plus-single',
+    faces: [1, 2, 3, 4, 5, 5],
     reading: 'A 1–5 straight, plus the spare 5 on its own',
     points: '550',
   },
   {
-    throwText: '111555',
+    id: 'two-triples',
+    faces: [1, 1, 1, 5, 5, 5],
     reading: 'Three 1s and three 5s — two separate triples, simply added',
     points: '1500',
   },
   {
-    throwText: '555 5',
+    id: 'four-of-a-kind',
+    faces: [5, 5, 5, 5],
     reading: 'Four 5s is one combination, worth double the triple — not 500 + 50',
     points: '1000',
   },
   {
-    throwText: '223344',
+    id: 'three-pairs-farkle',
+    faces: [2, 2, 3, 3, 4, 4],
     reading: 'Nothing at all. Three pairs do not score in this variant',
     points: 'Farkle',
+  },
+  {
+    id: 'wildcard-triple',
+    faces: [6, 6, WILD],
+    reading: "A Devil's Head resolves to whichever face helps most — here, a third 6, not a lone wildcard",
+    points: '600',
+  },
+  {
+    id: 'crown-bonus',
+    faces: [6, 6, 6, WILD_KING, WILD_QUEEN],
+    reading: "Five 6s (two crowns filling in), and a King's crown plus a Queen's crown both drawn into it — the Crown Bonus doubles the whole keep, not just the crowns' share",
+    points: '4800',
   },
 ];
 
@@ -163,17 +211,57 @@ export function RulesScreen() {
       </section>
 
       <section className="rules__section">
+        <h2>Wildcard dice</h2>
+        <p>
+          Some dice paint one physical face as a <strong>wildcard</strong> — a Devil's Head 😈, or a
+          crown 👑 for King and Queen — instead of a printed pip. Rolling it doesn't produce a fixed
+          value: scoring resolves it to whichever face makes the keep worth the most.
+        </p>
+        <p>
+          A wildcard can never complete a lone <strong>1</strong> or <strong>5</strong> by itself —
+          only a three-or-more-of-a-kind or a straight. A throw where the only wildcard has nothing to
+          combine with farkles exactly as if it had rolled a dead face, and several wildcards together
+          can complete a combination entirely among themselves.
+        </p>
+        <div className="dice-synergy__dice" aria-hidden="true">
+          {WILDCARD_DICE.map((die) => (
+            <Die key={die.id} face={iconicFace(die)} dieId={die.id} />
+          ))}
+        </div>
+      </section>
+
+      <section className="rules__section">
+        <h2>Synergies</h2>
+        <p>Some dice do more together than the sum of their own stats. Currently shipped:</p>
+        <ul className="dice-synergy__list">
+          {SYNERGIES.map((synergy) => (
+            <li key={synergy.id} className="dice-synergy__item">
+              <div className="dice-synergy__dice" aria-hidden="true">
+                {synergy.diceIds.map((id) => {
+                  const die = DICE[id]!;
+                  return <Die key={id} face={iconicFace(die)} dieId={die.id} />;
+                })}
+              </div>
+              <div className="dice-synergy__text">
+                <h3 className="dice-synergy__title">{synergy.title}</h3>
+                <p>{synergy.description}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="rules__section">
         <h2>Reading a throw</h2>
         <p>
           A set of dice is always read the way that scores highest, which is not always the obvious
-          split.
+          split — the same rule applies whether every die is ordinary, a wildcard is involved, or a
+          synergy like the Crown Bonus is in play.
         </p>
         <ul className="rules__examples">
           {EXAMPLES.map((example) => (
-            <li key={example.throwText} className="rules__example">
-              <span className="rules__example-dice">
-                {diceGlyphs(dice(example.throwText.replace(/\s/g, '')))}
-              </span>
+            <li key={example.id} className="rules__example">
+              <span className="rules__example-dice">{diceGlyphs(example.faces)}</span>
               <span className="rules__example-reading">{example.reading}</span>
               <span className="rules__example-points">{example.points}</span>
             </li>
