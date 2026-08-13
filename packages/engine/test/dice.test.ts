@@ -99,10 +99,13 @@ describe('die specs', () => {
     }
   });
 
-  it('the devil die has its 1 face marked wild, and rare', () => {
+  it('the devil die has its 1 face marked wild, at the same odds as every other face', () => {
     expect(DEVIL_DIE.wild).toBe(1);
     expect(DEVIL_DIE.wildFace).toBeUndefined();
-    expect(wildProbability(DEVIL_DIE)).toBeCloseTo(1 / 9, 12);
+    expect(wildProbability(DEVIL_DIE)).toBeCloseTo(1 / 6, 12);
+    for (const p of faceProbabilities(DEVIL_DIE)) {
+      expect(p).toBeCloseTo(1 / 6, 12);
+    }
   });
 
   it('the imp die puts its wild on the 6 instead', () => {
@@ -110,14 +113,20 @@ describe('die specs', () => {
     expect(wildProbability(IMP_DIE)).toBeCloseTo(2 / 27, 12);
   });
 
-  it("the king die's 5 is a rare King, backed by a heavy real 6", () => {
-    expect(KING_DIE.wild).toBe(5);
+  it("the king die's 2 is a King, with both real singles (1 and 5) cut to the bare minimum", () => {
+    expect(KING_DIE.wild).toBe(2);
     expect(KING_DIE.wildFace).toBe(WILD_KING);
-    expect(wildProbability(KING_DIE)).toBeCloseTo(2 / 23, 12);
+    expect(wildProbability(KING_DIE)).toBeCloseTo(4 / 41, 12);
     const probabilities = faceProbabilities(KING_DIE);
-    expect(probabilities[5]).toBeCloseTo(5 / 23, 12);
-    for (const face of [1, 2, 3, 4]) {
-      expect(probabilities[face - 1]).toBeCloseTo(4 / 23, 12);
+    expect(probabilities[0]).toBeCloseTo(1 / 41, 12); // 1
+    expect(probabilities[4]).toBeCloseTo(1 / 41, 12); // 5
+    expect(probabilities[2]).toBeCloseTo(9 / 41, 12); // 3
+    expect(probabilities[3]).toBeCloseTo(9 / 41, 12); // 4
+    expect(probabilities[5]).toBeCloseTo(17 / 41, 12); // 6, the heaviest face by far
+    // Every face still has some weight — the risk comes from how thin 1/5
+    // are, not from a face being impossible to roll.
+    for (const p of probabilities) {
+      expect(p).toBeGreaterThan(0);
     }
     expect(probabilities[5]).toBeGreaterThan(probabilities[0]!);
   });
@@ -125,12 +134,12 @@ describe('die specs', () => {
   it("the queen die's 6 is a Queen, and both scoring singles (1 and 5) are suppressed", () => {
     expect(QUEEN_DIE.wild).toBe(6);
     expect(QUEEN_DIE.wildFace).toBe(WILD_QUEEN);
-    expect(wildProbability(QUEEN_DIE)).toBeCloseTo(1 / 9, 12);
+    expect(wildProbability(QUEEN_DIE)).toBeCloseTo(1 / 5, 12);
     const probabilities = faceProbabilities(QUEEN_DIE);
-    expect(probabilities[0]).toBeCloseTo(1 / 9, 12); // 1
-    expect(probabilities[4]).toBeCloseTo(1 / 9, 12); // 5
+    expect(probabilities[0]).toBeCloseTo(1 / 10, 12); // 1
+    expect(probabilities[4]).toBeCloseTo(1 / 10, 12); // 5
     for (const face of [2, 3, 4]) {
-      expect(probabilities[face - 1]).toBeCloseTo(2 / 9, 12);
+      expect(probabilities[face - 1]).toBeCloseTo(2 / 10, 12);
     }
     expect(probabilities[1]).toBeGreaterThan(probabilities[0]!);
     expect(wildProbability(QUEEN_DIE)).toBeGreaterThan(wildProbability(KING_DIE));

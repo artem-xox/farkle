@@ -14,7 +14,7 @@
 //
 // Usage:
 //   npm run build
-//   node scripts/dice-balance/tier-report.mjs [--matches 40000]
+//   node scripts/dice-balance/tier-report.mjs [--matches 40000] [--preset balanced]
 import { BALANCED_DIE, DICE } from '@farkle/engine';
 
 import { analyticalMetricsMixed, winRateVsOrdinary } from './lib.mjs';
@@ -25,10 +25,19 @@ function readFlag(name, fallback) {
   return Number(process.argv[index + 1]);
 }
 
+function readStringFlag(name, fallback) {
+  const index = process.argv.indexOf(`--${name}`);
+  if (index === -1) return fallback;
+  return process.argv[index + 1];
+}
+
 const matches = readFlag('matches', 40_000);
+// Diamond-league numbers since M8 are measured against `smart` — pass
+// `--preset smart` when re-checking those specifically.
+const preset = readStringFlag('preset', 'balanced');
 const specials = Object.values(DICE).filter((die) => die.id !== 'balanced');
 
-console.log(`win6 for every special die, ${matches} matches each, vs 6x balanced.\n`);
+console.log(`win6 for every special die, ${matches} matches each, vs 6x balanced (${preset} preset).\n`);
 
 const columns = [
   ['die', 10],
@@ -42,7 +51,7 @@ console.log(columns.map(([label, width]) => label.padStart(width)).join(' '));
 const rows = [];
 for (const die of specials) {
   const pure = new Array(6).fill(die);
-  const r = winRateVsOrdinary(pure, matches, { balancedDie: BALANCED_DIE });
+  const r = winRateVsOrdinary(pure, matches, { balancedDie: BALANCED_DIE, preset });
   const m = analyticalMetricsMixed(pure);
   rows.push({
     id: die.id,

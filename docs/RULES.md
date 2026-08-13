@@ -239,3 +239,35 @@ question above.
 
 **Match target.** In the source game the target varies by opponent and wager.
 Modelled here as match configuration with a default of 2000.
+
+## 12. Crown Bonus (King and Queen)
+
+`king` and `queen` ([DESIGN.md §5](DESIGN.md#5-dice)) each paint a **crown**
+on one physical face instead of a Devil's Head — mechanically an ordinary
+wildcard, governed by every rule in [§4a](#4a-wildcards-devils-head)
+unchanged: a King's or Queen's crown resolves to whichever pip maximises the
+keep, can never complete a single `1` or `5` alone, and can complete a
+combination entirely among crowns of its own kind, exactly as a Devil's Head
+can among itself. A King's crown and a Queen's crown are otherwise
+indistinguishable from a Devil's Head to the scoring engine — the identity is
+a display distinction (`WILD_KING` / `WILD_QUEEN` vs. `WILD`), not a separate
+rule, right up until the check below.
+
+**The bonus.** If a kept combination's resolved faces include *both* a King's
+crown and a Queen's crown, the keep's points are multiplied by
+`CROWN_MULTIPLIER` (`packages/engine/src/scoring.ts`, currently **2×**). The
+multiplier applies to the whole keep's value, not per crown, and is added as
+a synthetic zero-dice `CrownBonus` entry in the keep's combo breakdown so
+`points` always still equals the sum of `combos[].points`. Two Devil's Heads,
+or a King and a Devil's Head, never qualify — the bonus is keyed on the King
+*and* Queen identities specifically, not on "two or more wildcards."
+
+**Two crowns alone are not a keep.** Same rule as any pair of wildcards under
+§4a: `{King, Queen}` with nothing else to combine into a three-of-a-kind or
+straight is not a legal keep by itself, crown or no crown — the bonus
+multiplies a combination's value, it does not manufacture one.
+
+This is an engine ruling, in the same sense §4a is: not a transcription of
+source-game behaviour (the source game has no King or Queen die), but a
+deliberate design addition layered on top of the wildcard rules it already
+defines.

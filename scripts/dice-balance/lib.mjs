@@ -72,8 +72,8 @@ export function winRateHeadToHead(loadoutA, loadoutB, matches, { preset = 'balan
  * ordinary dice — the balance metric from docs/DESIGN.md §5. A thin wrapper
  * over `winRateHeadToHead` with the opponent fixed to six `balancedDie`.
  */
-export function winRateVsOrdinary(loadout, matches, { balancedDie, seed = 987654 } = {}) {
-  return winRateHeadToHead(loadout, new Array(6).fill(balancedDie), matches, { seed });
+export function winRateVsOrdinary(loadout, matches, { balancedDie, seed = 987654, preset = 'balanced' } = {}) {
+  return winRateHeadToHead(loadout, new Array(6).fill(balancedDie), matches, { seed, preset });
 }
 
 export function formatPercent(fraction, digits = 2) {

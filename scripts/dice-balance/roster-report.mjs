@@ -7,7 +7,7 @@
 //
 // Usage:
 //   npm run build            # this script reads the built packages
-//   node scripts/dice-balance/roster-report.mjs [--matches 40000] [--matches-single 20000]
+//   node scripts/dice-balance/roster-report.mjs [--matches 40000] [--matches-single 20000] [--preset balanced]
 import { BALANCED_DIE, DICE } from '@farkle/engine';
 
 import { analyticalMetrics, formatPercent, winRateVsOrdinary } from './lib.mjs';
@@ -18,8 +18,18 @@ function readFlag(name, fallback) {
   return Number(process.argv[index + 1]);
 }
 
+function readStringFlag(name, fallback) {
+  const index = process.argv.indexOf(`--${name}`);
+  if (index === -1) return fallback;
+  return process.argv[index + 1];
+}
+
 const matchesSix = readFlag('matches', 40_000);
 const matchesOne = readFlag('matches-single', 20_000);
+// Diamond-league numbers since M8 are measured against `smart`, not the
+// `balanced` default every other league's numbers still use — pass
+// `--preset smart` when re-checking those specifically.
+const preset = readStringFlag('preset', 'balanced');
 
 console.log(
   `Balance band is 57-63% win6 (docs/DESIGN.md §5). ${matchesSix} matches for win6, ` +
@@ -47,8 +57,8 @@ for (const die of Object.values(DICE)) {
   const m2 = analyticalMetrics(die, 2);
   const pure = new Array(6).fill(die);
   const mixed = [die, ...new Array(5).fill(BALANCED_DIE)];
-  const r6 = winRateVsOrdinary(pure, matchesSix, { balancedDie: BALANCED_DIE });
-  const r1 = winRateVsOrdinary(mixed, matchesOne, { balancedDie: BALANCED_DIE });
+  const r6 = winRateVsOrdinary(pure, matchesSix, { balancedDie: BALANCED_DIE, preset });
+  const r1 = winRateVsOrdinary(mixed, matchesOne, { balancedDie: BALANCED_DIE, preset });
   const win6 = r6.a.winRate * 100;
   rows.push({ die, m6, m3, m2, r6, r1, win6 });
 }
