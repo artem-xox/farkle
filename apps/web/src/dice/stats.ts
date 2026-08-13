@@ -36,7 +36,7 @@ export const DIE_STATS: Record<string, DieStats> = {
   worn: { farkle6: 0.0058, win6: 0.618, ev6: 467, tier: 'gold' },
   cheat: { farkle6: 0.0365, win6: 0.624, ev6: 514, tier: 'gold' },
   devil: { farkle6: 0.0309, win6: 0.798, ev6: 771, tier: 'diamond' },
-  king: { farkle6: 0.0058, win6: 0.848, ev6: 856, tier: 'diamond' },
+  king: { farkle6: 0.0058, win6: 0.882, ev6: 991, tier: 'diamond' },
   queen: { farkle6: 0.0058, win6: 0.848, ev6: 856, tier: 'diamond' },
 };
 
@@ -81,19 +81,23 @@ export const TIER_ICON: Record<DieTier, string> = {
  * M8 pushed the whole Diamond league to 80–90% win6 against the `smart` bot
  * and moved `king`'s crown from `5` to `2` to buy its ceiling with real risk
  * this time — briefly making `king` the roster's highest-farkle6 die at a
- * matching win rate. M9 then found that differentiated risk profile was
- * exactly what was killing the King/Queen Crown Bonus's synergy (a mixed
- * loadout lost to both pure ends rather than beating them), and made `king`
- * copy `queen`'s weights outright to get the synergy back — see
- * docs/researches/2026-08-13-king-queen-crown-twins.md. `king` and `queen`
- * are now the same die under two names, so `RISK_ANCHOR_ID`/
- * `POWER_ANCHOR_ID` below both land on an *exact* three-way tie: `king` and
- * `queen` share `worn`'s farkle6 to the 5th decimal place
- * (0.00576269..., `analyticalMetrics` is exact brute force, not simulated —
- * this isn't a rounding coincidence), so all three rate Risk 9.0, and
- * `king`/`queen` share the roster's highest ev6 (856) for Power 9.0. Which
- * of the two names holds `POWER_ANCHOR_ID` doesn't matter any more; `king`
- * just keeps the role it already had.
+ * matching win rate. M9 first tried making `king` copy `queen`'s weights
+ * *and* wild slot outright (an exact statistical twin) to restore the
+ * synergy M8's differentiation had killed, then found a better third option:
+ * `king` keeps `queen`'s exact six weights but puts the crown back on the
+ * `2` — leaving `6` a real face rather than wildcard — which turns out to be
+ * a meaningfully *stronger* die (991 ev6 against `queen`'s 856) while still
+ * keeping most of the Crown Bonus synergy, since mixing the two now costs a
+ * small amount of farkle6 rather than nothing at all. See
+ * docs/researches/2026-08-13-king-queen-crown-twins.md for the full
+ * three-step history and numbers.
+ *
+ * `king` and `queen` still share `RISK_ANCHOR_ID` (`worn`)'s farkle6 to the
+ * 5th decimal place (0.00576269..., `analyticalMetrics` is exact brute
+ * force, not simulated — this isn't a rounding coincidence, and isn't
+ * affected by which slot carries the crown either), so all three rate Risk
+ * 9.0. `king` now clearly holds `POWER_ANCHOR_ID` on its own ev6 (991) —
+ * `queen` (856) and `devil` (771) are no longer close.
  */
 export const RISK_ANCHOR_ID = 'worn';
 export const POWER_ANCHOR_ID = 'king';

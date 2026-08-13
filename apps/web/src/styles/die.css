@@ -52,8 +52,10 @@
 }
 
 /*
- * Crimson and gold — King's crown sits on the 6, same as Queen's (M9: King
- * is now Queen's exact statistical twin). The ring is `--gold`
+ * Crimson and gold — King's crown sits on the 2 (M9: Queen's exact weights,
+ * crown on the other equal-weight slot — see packages/engine/src/dice.ts's
+ * `KING_DIE` comment for why that one slot makes King the stronger die).
+ * The ring is `--gold`
  * (muted amber), not `--gold-bright`: that's the same colour `.die--selected`
  * uses for its own ring below, so resting and selected King/Queen dice used
  * to be nearly indistinguishable on a board with several of them out at
@@ -77,7 +79,7 @@
     0 0 0 0 rgb(230 184 79 / 0);
 }
 
-/* King's mirror in green — Queen's crown, same slot (the 6) as King's own. Same muted amber ring, same reason. */
+/* King's mirror in green — Queen's crown sits on the 6 instead. Same muted amber ring as King, same reason. */
 .die--id-queen {
   background: linear-gradient(160deg, #157a45, #0a4526);
   box-shadow:

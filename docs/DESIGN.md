@@ -225,8 +225,12 @@ below still uses to `smart` instead, retuned all three Diamond dice
 `king` a different risk/reward shape from `queen`'s; M9
 ([docs/researches/2026-08-13-king-queen-crown-twins](researches/2026-08-13-king-queen-crown-twins.md))
 found that differentiation was quietly killing the Crown Bonus's synergy —
-a mixed King/Queen loadout lost to *both* pure ends — and made `king` copy
-`queen`'s weights exactly to get a large, real synergy back. Bronze/Silver/
+a mixed King/Queen loadout lost to *both* pure ends — tried making `king` an
+exact copy of `queen` to get the synergy back, then landed on a third option:
+`king` keeps `queen`'s exact six weights but with the crown on the other
+equal-weight slot (`2` instead of `6`), which turns out to make it a
+meaningfully stronger die (highest ev6 in the roster) while still keeping
+most of the synergy, since the two are no longer identical. Bronze/Silver/
 Gold below are still exactly what M1–M6 measured them as; only Diamond's row
 and the `king`/`devil` lines in the roster table just below are stale —
 current Diamond weights and numbers live in `packages/engine/src/dice.ts`'s
