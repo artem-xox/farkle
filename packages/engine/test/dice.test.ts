@@ -25,7 +25,7 @@ import {
   type DieSpec,
 } from '../src/dice.js';
 import { seedRng, type RngState } from '../src/rng.js';
-import { DICE_PER_TURN, isWild, PIPS, WILD_KING, WILD_QUEEN, type Face } from '../src/types.js';
+import { DICE_PER_TURN, isWild, PIPS, WILD_QUEEN, type Face } from '../src/types.js';
 
 function rollMany(die: DieSpec, samples: number, seed: number): number[] {
   const observed = new Array<number>(6).fill(0);
@@ -113,19 +113,6 @@ describe('die specs', () => {
     expect(wildProbability(IMP_DIE)).toBeCloseTo(2 / 27, 12);
   });
 
-  it("the king die's 2 is a King, and both scoring singles (1 and 5) are suppressed — same shape as Queen", () => {
-    expect(KING_DIE.wild).toBe(2);
-    expect(KING_DIE.wildFace).toBe(WILD_KING);
-    expect(wildProbability(KING_DIE)).toBeCloseTo(1 / 5, 12);
-    const probabilities = faceProbabilities(KING_DIE);
-    expect(probabilities[0]).toBeCloseTo(1 / 10, 12); // 1
-    expect(probabilities[4]).toBeCloseTo(1 / 10, 12); // 5
-    for (const face of [3, 4, 6]) {
-      expect(probabilities[face - 1]).toBeCloseTo(2 / 10, 12);
-    }
-    expect(probabilities[2]).toBeGreaterThan(probabilities[0]!);
-  });
-
   it("the queen die's 6 is a Queen, and both scoring singles (1 and 5) are suppressed", () => {
     expect(QUEEN_DIE.wild).toBe(6);
     expect(QUEEN_DIE.wildFace).toBe(WILD_QUEEN);
@@ -139,7 +126,17 @@ describe('die specs', () => {
     expect(probabilities[1]).toBeGreaterThan(probabilities[0]!);
   });
 
-  it('King and Queen are exact statistical twins (M9) — same face probabilities under their own wild face', () => {
+  it('King and Queen are exact statistical twins (M9) — same weights, same wild slot, not just the same marginal probabilities', () => {
+    // The wild slot has to match too, not just its weight: an earlier draft
+    // of this pairing left King's crown on its own `2` (equal weight to
+    // Queen's `6`, so face *probabilities* matched here too) and still
+    // measured a materially different ev6/win6 from Queen's, because a
+    // wildcard resolves to whichever pip helps most — strictly more
+    // flexible than a fixed real face of the same weight, so *which* slot
+    // carries that flexibility changes the die's actual scoring, not just
+    // its wild odds.
+    expect(KING_DIE.wild).toBe(QUEEN_DIE.wild);
+    expect(KING_DIE.weights).toEqual(QUEEN_DIE.weights);
     expect(faceProbabilities(KING_DIE)).toEqual(faceProbabilities(QUEEN_DIE));
     expect(wildProbability(KING_DIE)).toBe(wildProbability(QUEEN_DIE));
   });

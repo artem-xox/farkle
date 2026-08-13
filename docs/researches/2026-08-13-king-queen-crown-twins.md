@@ -9,6 +9,8 @@
 
 M8 ([docs/researches/2026-08-13-diamond-rebalance-and-king-wild-move.md](2026-08-13-diamond-rebalance-and-king-wild-move.md)) pushed Diamond to 80–90% win6 and deliberately gave `king` a *different* risk/reward shape from `queen`'s — thin real singles, heavy `6`, meaningfully higher farkle6. Re-running the King/Queen mix sweep from the original crown PR under those weights found the Crown Bonus's synergy had disappeared: win6 was a *valley* across the 0–6 mix, every ratio losing to whichever pure end it sat closer to. This asks the obvious follow-up: is the differentiation itself what killed the synergy, and if `king` simply copied `queen`'s weights instead, does it come back?
 
+**Correction, same day:** a first pass at "copy `queen`'s weights" left the crown on King's existing `2` slot rather than moving it to `queen`'s `6`, on the reasoning that `2` and `6` carry equal weight (`2` each) in `[1,2,2,2,1,2]`, so which one is wild "shouldn't matter." That reasoning is correct for farkle6 and the marginal wild-probability, but wrong for ev6/win6: a wildcard resolves to whichever pip helps most, strictly more flexible than a fixed real face of equal weight, so *which* slot gets that flexibility changes a die's actual scoring. The `2`-crown version measured 991 ev6 against `queen`'s 856 — a visibly different die, not a twin — and had already been shipped in an open PR with §2's multiplier table and §4's head-to-head numbers computed against it before the mistake was caught (via `tier-report.mjs`, which is exactly the kind of full-roster check that catches this sort of thing). §2's multiplier sweep turned out to still be correct, because an *earlier*, separate check of the hypothesis (before the PR's own weights were finalised) had already used the correct `wild: 6` — but §4's head-to-head numbers were run against the wrong build and are corrected below. `KING_DIE.wild` is `6` in what actually shipped; see its doc comment in `dice.ts` for the same story closer to the code.
+
 ## 1. Baseline: the M8 valley (for reference)
 
 From the M8 research doc, `smart` preset, target 2000 (the engine default — see [§0](#0-note-target-2000-vs-8000) below):
@@ -27,7 +29,7 @@ Every dice-balance number in this repo, this file's own §1 included, was measur
 
 ## 2. The hypothesis: `king` = `queen`'s weights, exactly
 
-Set `KING_DIE.weights = [1, 2, 2, 2, 1, 2]` (was `[1, 4, 9, 9, 1, 17]`), keeping `wild: 2` — moving it to `6` to fully mirror `queen`'s physical crown face would have changed nothing numerically, since indices `1` and `5` carry the same weight (`2`) in this array, so there was no reason to also relearn where King's crown sits. Re-ran the full 0–6 mix sweep, smart preset, target 2000, at three `CROWN_MULTIPLIER` values (1.5, 2 — the shipped value — and 3, each 20k matches/mix):
+Set `KING_DIE.weights = [1, 2, 2, 2, 1, 2]` (was `[1, 4, 9, 9, 1, 17]`) **and** `wild: 6` (was `2`) — see the correction note above for why the wild slot has to move too, not just the weights. Re-ran the full 0–6 mix sweep, smart preset, target 2000, at three `CROWN_MULTIPLIER` values (1.5, 2 — the shipped value — and 3, each 20k matches/mix):
 
 | CROWN_MULTIPLIER | 0:6 / 6:0 (now identical) | **3:3 (peak)** | peak − pure end |
 |---|---|---|---|
@@ -54,14 +56,14 @@ For context, the M8-shipped Diamond dice's own vs-six-`balanced` win6 also all m
 
 ## 4. Direct matchups at target 8000
 
-Not "vs six `balanced`" but a genuine head-to-head, smart preset both sides, target 8000, 15 000 matches each:
+Not "vs six `balanced`" but a genuine head-to-head, smart preset both sides, target 8000, 15 000 matches each (corrected numbers — see the correction note in [§ Question](#question): this section was originally run against the `wild: 2` build by mistake):
 
-| A | B | A win rate | B win rate | avg turns/match |
-|---|---|---|---|---|
-| 3 King : 3 Queen | 6× Queen (pure) | **79.19%** [78.54,79.84] | 20.81% | 8.7 |
-| 3 King : 3 Queen | 6× Devil (pure) | **88.21%** [87.69,88.72] | 11.79% | 9.1 |
+| A | B | A win rate | B win rate |
+|---|---|---|---|
+| 3 King : 3 Queen | 6× Queen (pure) | **75.49%** [74.80,76.18] | 24.51% |
+| 3 King : 3 Queen | 6× Devil (pure) | **85.57%** [85.00,86.12] | 14.43% |
 
-The mixed loadout doesn't just edge out its own now-identical pure end in a three-way comparison against `balanced` — it beats pure Queen head-to-head about 4 times out of 5, and beats pure Devil (a perfectly respectable 80%-band Diamond die in its own right) close to 9 times out of 10. This is the practical case for actually building a 3:3 King/Queen loadout rather than either pure one, stated as directly as the balance metric can state it.
+The mixed loadout doesn't just edge out its own now-identical pure end in a three-way comparison against `balanced` — it beats pure Queen head-to-head about 3 times out of 4, and beats pure Devil (a perfectly respectable 80%-band Diamond die in its own right) close to 6 times out of 7. This is the practical case for actually building a 3:3 King/Queen loadout rather than either pure one, stated as directly as the balance metric can state it.
 
 ## 5. Decision and what shipped
 

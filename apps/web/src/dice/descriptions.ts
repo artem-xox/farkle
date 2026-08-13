@@ -16,7 +16,7 @@ export const DIE_DESCRIPTIONS: Record<string, string> = {
   balanced: 'A fair cube — every face equally likely.',
   weighted: 'Loaded toward 1, the priciest single. Fewer farkles, more points.',
   devil: "A wildcard 1 that only scores in combos — this die keeps no plain 1s.",
-  king: "A wildcard crown on the 2, otherwise Queen's exact twin. Pair them for a real bonus, not just a chance at one.",
+  king: "A wildcard crown on the 6, Queen's exact twin down to the crown's own slot. Pair them for a real bonus, not just a chance at one.",
   queen: 'A wildcard crown on the 6, and both its 1 and 5 singles are muted. Pairs with a King for a bonus.',
   imp: 'A wildcard on the dead 6 — often lands on nothing at all.',
   odd: 'Slightly favours 1, 3 and 5 over the even faces.',

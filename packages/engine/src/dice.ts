@@ -107,27 +107,39 @@ export const DEVIL_DIE: DieSpec = {
 
 /**
  * RULES.md §12. M9: King is Queen's exact statistical twin — same six
- * weights as `QUEEN_DIE` below, just carrying its own crown and its own
- * colour. M8 gave King a deliberately *different* profile from Queen's (a
- * differentiated risk/reward split, crown on the `2`, thin real singles,
- * heavy `6`), on the theory that two distinct-but-comparable dice would make
- * a more interesting pair. Measured, that theory was backwards: a 0–6
- * King:Queen mix sweep found no synergy at all under M8's weights — win6
- * was a *valley*, every mixed ratio losing to whichever pure end it was
- * closer to, because the two dice's different farkle/EV shapes made mixing
- * a tradeoff the occasional Crown Bonus couldn't repay. Re-running the same
- * sweep with King simply copying Queen's weights instead produces a large,
- * clean, symmetric peak dead on 3:3 — ~89.6% win6 (smart preset, six vs six
- * balanced dice, target 2000) against ~84.9% for either now-identical pure
- * end, i.e. losing under half as often — and the gap widens further at
- * longer match targets, since a real per-turn edge compounds with more
- * turns played. Full numbers: docs/researches/
- * 2026-08-13-king-queen-crown-twins.md.
+ * weights as `QUEEN_DIE` below, *and* the crown on the same physical slot
+ * (`6`), not just an equal-weight one. M8 gave King a deliberately
+ * *different* profile from Queen's (a differentiated risk/reward split,
+ * crown on the `2`, thin real singles, heavy `6`), on the theory that two
+ * distinct-but-comparable dice would make a more interesting pair. Measured,
+ * that theory was backwards: a 0–6 King:Queen mix sweep found no synergy at
+ * all under M8's weights — win6 was a *valley*, every mixed ratio losing to
+ * whichever pure end it was closer to, because the two dice's different
+ * farkle/EV shapes made mixing a tradeoff the occasional Crown Bonus
+ * couldn't repay. Re-running the same sweep with King simply copying
+ * Queen's weights instead produces a large, clean, symmetric peak dead on
+ * 3:3 — ~89.6% win6 (smart preset, six vs six balanced dice, target 2000)
+ * against ~84.9% for either now-identical pure end, i.e. losing under half
+ * as often — and the gap widens further at longer match targets, since a
+ * real per-turn edge compounds with more turns played. Full numbers:
+ * docs/researches/2026-08-13-king-queen-crown-twins.md.
  *
- * The crown stays on the `2` here rather than moving to Queen's `6`: `2` and
- * `6` carry the same weight in this array, so relocating it would change
- * nothing about the distribution, only ask a player to relearn where King's
- * crown sits for no numeric reason.
+ * **The crown's physical slot matters, not just its weight — this was
+ * gotten wrong once already in this same change.** An earlier cut of this
+ * fix left the crown on King's existing `2` on the reasoning that `2` and
+ * `6` carry equal weight (`2` each) in this array, so which one is wild
+ * "shouldn't matter." That reasoning covers `farkle6` and the marginal
+ * wild-probability correctly (both unaffected by *which* equal-weight slot
+ * is wild) but is simply wrong for `ev6`/win6: a wildcard is picked to
+ * resolve to whichever pip helps most, which is strictly more flexible than
+ * a fixed real face of the same weight, so a die's EV depends on *which*
+ * slot gets that flexibility, not just how much weight sits there. Leaving
+ * the crown on `2` measured at 991 ev6 against Queen's 856 — visibly not a
+ * twin. Moving it to `6` closes the gap to the 5th decimal place
+ * (855.5852 exactly, `analyticalMetrics` is exact brute force). Every
+ * number cited above and in the research doc is from *this* corrected
+ * version, not the `2`-crown one a first pass of this change briefly
+ * shipped.
  *
  * This retires King as a standalone differentiated die — its own farkle6,
  * ev6 and Risk/Power ratings are now Queen's, exactly — in favour of the
@@ -139,7 +151,7 @@ export const KING_DIE: DieSpec = {
   id: 'king',
   name: "King's die",
   weights: [1, 2, 2, 2, 1, 2],
-  wild: 2,
+  wild: 6,
   wildFace: WILD_KING,
 };
 
