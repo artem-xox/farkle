@@ -417,6 +417,129 @@ action-granting cases, and bots that know what to do with all of it. Nothing in
 levers 1 and 2 requires touching the `GameHost` seam; everything in lever 3
 does.
 
+### Brainstormed candidates (not yet built)
+
+A design session following an ad hoc round-robin tournament (every roster die
+plus three hand-picked King/Queen mixes, played all-vs-all by the `smart` bot —
+not yet written up as a dated research doc) produced ten concrete die
+candidates and four synergy candidates, grouped below by how much of the
+engine each would touch.
+None of these are scheduled or balanced; weights and point values below are
+starting guesses for a future tuning pass, not shipped numbers. Recorded here so
+the ground isn't re-covered next time — see "Directions for later dice" above for
+the lever framework these sit inside.
+
+#### Low-complexity dice (lever 1/2 — weights and a single `wild` pip only)
+
+No engine change beyond a new `DieSpec` entry; all five fit the exact shape the
+roster already uses.
+
+- **Trickster's die.** `devil`'s twin with the wild pip moved from `1` to `5` —
+  it gives up the cheap 50-point single instead of the expensive 100-point one.
+  Every wild pip currently sits on a face that either scores big (`devil`'s `1`)
+  or nothing at all (`king`, `queen`, `imp`); nobody trades away the *cheap*
+  single yet, which should land as a lower-cost, possibly stronger cousin of
+  `devil`.
+- **Ledger die.** `worn` with a second zeroed face instead of one (two dead
+  slots, four live ones). Nobody has explored "how safe can a die get" past
+  `worn`'s single dead face — this is the next point on that curve, and it's an
+  open question whether cutting the outcome space further helps (fewer distinct
+  farkle-prone throws) or hurts (fewer faces to complete an of-a-kind with).
+- **Merchant's die.** `weighted` biases only `1`; `trader` biases only `5`.
+  Nobody biases both scoring singles in the same die. A plain middle ground
+  that closes the obvious gap between the two.
+- **Loudmouth's die.** Every wild die shipped so far (`devil`, `king`, `queen`,
+  `imp`) keeps the wild pip's own weight equal to or lighter than its
+  neighbours. This one inverts that: the wild pip carries the heaviest weight
+  on the die, so the wildcard shows up on a large minority of throws instead of
+  a small one — flexibility as the norm rather than the exception, paid for by
+  a poorer spread across the other five faces.
+- **Coin die.** A bimodal bet: `1` (the cheap single) and `6` (the most
+  expensive triple) both raised, with `2`–`5` left thin. Every biased-single die
+  so far commits to one payoff shape (a cheap single *or* a triple bet); this
+  straddles both in one die instead of choosing.
+
+#### Low-complexity synergies (extend the Crown Bonus's own mechanism)
+
+`scoreKeep` already checks which wildcard sentinels (`WILD`, `WILD_KING`,
+`WILD_QUEEN`) are present in a keep to award the Crown Bonus
+(`packages/engine/src/scoring.ts`, `CROWN_MULTIPLIER`). Both of these reuse that
+exact check with a different sentinel condition and a flat bonus instead of a
+multiplier, which keeps them a small, local addition next to the existing one.
+
+- **Devil's Pact.** RULES.md §12 currently rules a Devil's Head paired with
+  either crown *out* of the Crown Bonus on purpose (`scoring.ts`'s comment: "two
+  Devil's Heads, or a Devil's Head paired with either crown, never qualify").
+  This flips that exclusion into its own smaller reward — a keep containing a
+  Devil's Head and a King or Queen together pays a flat bonus (not a
+  multiplier) instead of nothing, giving `devil` a reason to sit in a royal
+  loadout beyond its own raw stats.
+- **Paired Devils.** A keep containing two or more Devil's Heads pays a flat
+  bonus per wildcard past the first. Purely a count over the existing `WILD`
+  sentinel — no new identity needed — and it gives devil-heavy loadouts (pure
+  `devil` × 6, or mixes) the same kind of built-in payoff King/Queen loadouts
+  already get from the Crown Bonus.
+
+#### Bold dice (lever 3 — react to match state, not just their own weights)
+
+Every one of these needs the same new plumbing: threading some piece of
+`GameState` (throw count this turn, both players' totals, per-match flags) down
+into `rollDie`, plus a bot policy that knows to react to it. All five are first
+drafts of an idea, not tuned designs.
+
+- **Moon die.** Its weights alternate by throw parity within a turn: "bright"
+  (heavy `1`/`5`) on odd throws, "dark" (heavy `2`–`4`, favouring triples) on
+  even ones. The first die in the roster whose distribution isn't fixed — a
+  player has to think about *when* in the turn they throw it, not just whether
+  to keep it in the loadout. Needs the current throw's index passed into
+  `rollDie`.
+- **Underdog die.** While its owner is behind on total score, its `1` weight
+  is boosted; level or ahead, it rolls as an ordinary die. Rubber-banding does
+  not exist anywhere in the game today — both players' `totals` are already in
+  `GameState`, so the missing piece is only getting that comparison down to the
+  roll.
+- **Phoenix die.** A one-time-per-match insurance: the first farkle in a match
+  where this die was on the table doesn't end the turn empty-handed — the
+  turn's points bank instead of vanishing, and the die is spent for the rest of
+  the match. The die's own weights can afford to be mediocre or worse. The
+  first *consumable* in the roster (a `phoenixSpent` flag in `GameState` and one
+  branch in the farkle handler), and a genuinely new kind of decision: when to
+  spend a one-shot safety net rather than how to read a distribution.
+- **Thief's die.** Its `6` is painted with a new sentinel, the way King and
+  Queen's crowns are. A banked keep that resolves the sentinel into a triple or
+  straight takes a fraction of its value from the *opponent's* total instead of
+  purely adding to the owner's. Farkle has no player interaction at all right
+  now; this is the only lever-3 idea that would add any, which is also what
+  makes it the furthest departure from the current game and the one most worth
+  play-testing before committing to.
+- **Echo die.** A cheap, constrained wildcard: its wild pip can only resolve to
+  a pip value some *real* die in the same keep already shows — it can extend a
+  combination but never originate one on its own (unlike every wild face
+  shipped today, which resolves freely). Strictly weaker than `devil` face for
+  face, which is exactly what should let it ship at a much higher wild
+  frequency (a third of throws or more) without breaking the balance band.
+
+#### Bold synergies (also lever 3 — need die identity, not just sentinel presence)
+
+- **Kinship Bonus.** A three-of-a-kind or better made entirely of dice that are
+  *the same die id* pays a flat percentage bonus on top of its normal value.
+  Every dice-balance research doc so far (loadout-lab, the M9 round robin) has
+  found the same thing: mixed loadouts are almost always worse than pure ones.
+  This turns that finding into a deliberate rule-level trade-off — a pure
+  loadout gets a scoring bonus a mixed one gives up for flexibility — rather
+  than leaving it as an incidental fact about the roster. Needs each rolled
+  face to carry which `DieSpec` produced it through to `scoreKeep`, which
+  ordinary pips don't do today (only the wildcard sentinels carry identity).
+- **Full Court.** A keep that resolves a King, a Queen, *and* a Devil's Head
+  all at once — currently the one three-sentinel combination the Crown Bonus
+  explicitly locks out — pays a large flat jackpot (straight-sized, roughly
+  2000) instead of the ordinary Crown multiplier. Reuses the Crown Bonus's own
+  sentinel-presence check with a third condition and one more constant; the
+  design payoff is turning today's "excluded" combination into a rare, telegraphed
+  event worth deliberately drafting `king` + `queen` + `devil` into one loadout
+  for, which right now is a strictly worse choice than a pure 3:3 King/Queen
+  split.
+
 ## 6. Bots
 
 A bot is a policy over the same information a human sees:
