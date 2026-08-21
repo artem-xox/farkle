@@ -1,5 +1,7 @@
 import { DICE, faceProbabilities, type DieSpec } from '@farkle/engine';
 
+import { CrownFace } from '../match/CrownFace';
+import { DevilFace } from '../match/DevilFace';
 import { Die } from '../match/Die';
 import { DIE_DESCRIPTIONS, iconicFace } from './descriptions';
 import { DIE_STATS, powerRating, riskRating, TIER_ICON, TIER_LABEL } from './stats';
@@ -64,7 +66,6 @@ function DieCard({ die }: { die: DieSpec }) {
           const wild = die.wild === pip;
           const percent = probability * 100;
           const wildLabel = die.id === 'king' ? 'King' : die.id === 'queen' ? 'Queen' : "Devil's Head";
-          const wildGlyph = die.id === 'king' || die.id === 'queen' ? '👑' : '😈';
           return (
             <div
               className="die-distribution__slot"
@@ -77,7 +78,15 @@ function DieCard({ die }: { die: DieSpec }) {
                   style={{ height: `${percent}%` }}
                 />
               </div>
-              <span className="die-distribution__face">{wild ? wildGlyph : pip}</span>
+              <span className="die-distribution__face">
+                {wild ? (
+                  <span className="die-distribution__wild" aria-hidden="true">
+                    <WildGlyph die={die} />
+                  </span>
+                ) : (
+                  pip
+                )}
+              </span>
               <span className="die-distribution__percent">{percent.toFixed(1)}%</span>
             </div>
           );
@@ -110,5 +119,15 @@ function RatingBar({ label, kind, rating }: { label: string; kind: 'risk' | 'pow
       </span>
       <span className="dice-stats__rating-value">{rating.toFixed(1)}/{RATING_SCALE}</span>
     </span>
+  );
+}
+
+/** The wildcard face's own drawing, tiny, for the distribution's face row — the same in-house CrownFace/DevilFace the board uses, rather than an emoji. */
+function WildGlyph({ die }: { die: DieSpec }) {
+  const isCrown = die.id === 'king' || die.id === 'queen';
+  return isCrown ? (
+    <CrownFace variant={die.id === 'king' ? 'king' : 'queen'} />
+  ) : (
+    <DevilFace variant={die.id === 'imp' ? 'imp' : 'devil'} />
   );
 }

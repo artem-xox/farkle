@@ -213,8 +213,8 @@ export function RulesScreen() {
       <section className="rules__section">
         <h2>Wildcard dice</h2>
         <p>
-          Some dice paint one physical face as a <strong>wildcard</strong> — a Devil's Head 😈, or a
-          crown 👑 for King and Queen — instead of a printed pip. Rolling it doesn't produce a fixed
+          Some dice paint one physical face as a <strong>wildcard</strong> — a Devil's Head, or a
+          crown for King and Queen — instead of a printed pip. Rolling it doesn't produce a fixed
           value: scoring resolves it to whichever face makes the keep worth the most.
         </p>
         <p>

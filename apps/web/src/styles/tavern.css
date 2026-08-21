@@ -1,0 +1,144 @@
+/*
+ * Medieval tavern theme.
+ *
+ * Imported last in index.css, so it can lean on the warm palette in base.css
+ * and dress the whole app without touching the original per-screen
+ * stylesheets. It adds the medieval surface: a serif hand for the brand and
+ * headings, a tavern-sign flourish under the title, a carved bevel on the
+ * brass buttons, and a richer oak grain on the table. The dice, panels and
+ * buttons already use the palette variables, so re-theming them was mostly a
+ * matter of the palette change in base.css; this file is the ornament on top.
+ */
+
+/* ---------- the brand & headings ---------- */
+
+/*
+ * Small-caps serif with a candlelit glow, like a sign over the tavern door.
+ * `font-variant: small-caps` turns "Farkle" into a carved-letter title.
+ */
+.setup__title {
+  font-variant: small-caps;
+  letter-spacing: 0.09em;
+  text-shadow:
+    0 2px 10px rgb(0 0 0 / 0.55),
+    0 0 28px rgb(236 185 79 / 0.2);
+}
+
+/* A thin gold rule beneath the title, like the top of a wooden sign. */
+.setup__title::after {
+  content: '';
+  display: block;
+  width: 9rem;
+  height: 2px;
+  margin: 0.55rem auto 0;
+  background: linear-gradient(90deg, transparent, var(--gold) 30%, var(--gold) 70%, transparent);
+}
+
+.rules__header h1,
+.dice-page h1 {
+  font-variant: small-caps;
+  letter-spacing: 0.05em;
+}
+
+.rules__section h2,
+.rules__table-caption,
+.log-panel__heading,
+.board__aside-label,
+.keep-options__label {
+  letter-spacing: 0.1em;
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 700;
+}
+
+/* ---------- the table (board) ---------- */
+
+/* A richer oak grain on the tavern table, on top of the existing wood ramp. */
+.board {
+  background:
+    radial-gradient(140% 120% at 50% 0%, rgb(255 255 255 / 0.09), rgb(0 0 0 / 0) 55%),
+    repeating-linear-gradient(88deg, rgb(0 0 0 / 0.06) 0 3px, rgb(255 255 255 / 0.02) 3px 7px),
+    linear-gradient(160deg, var(--wood-light), var(--wood) 45%, var(--wood-dark));
+}
+
+.board__surface {
+  background:
+    repeating-linear-gradient(
+      92deg,
+      rgb(0 0 0 / 0.07) 0 6px,
+      rgb(255 255 255 / 0.02) 6px 13px
+    ),
+    linear-gradient(180deg, #7d5028, #5d3b1d);
+}
+
+/* ---------- buttons: carved brass & oak ---------- */
+
+/* A single top highlight makes the gold buttons read as polished brass. */
+.action--primary,
+.setup__start,
+.match-over__button,
+.crash__button,
+.farkle-notice__button,
+.confirm__cancel,
+.about-author__copy {
+  box-shadow:
+    0 1px 0 rgb(0 0 0 / 0.35),
+    inset 0 1px 0 rgb(255 255 255 / 0.32);
+  letter-spacing: 0.02em;
+}
+
+.action,
+.match__exit,
+.segmented__option,
+.loadout__quick-action {
+  letter-spacing: 0.02em;
+}
+
+/* The wooden panel buttons (GitHub/LinkedIn) get a soft top light too. */
+.about-author__link {
+  box-shadow:
+    0 1px 0 rgb(0 0 0 / 0.3),
+    inset 0 1px 0 rgb(255 255 255 / 0.12);
+}
+
+/* ---------- panels: a faint top light, like beveled wood ---------- */
+
+.rules__section,
+.scoreboard,
+.dice-stats__card,
+.loadout-card,
+.keep-options,
+.log,
+.loadout-choice__card {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.045);
+}
+
+/*
+ * The parchment modal cards already read as a sheet of paper; a hairline
+ * inner border gives them the "bound page" feel the about-author card already
+ * had, without going further.
+ */
+.confirm__card,
+.match-over__card,
+.crash__card {
+  border: 1px solid rgb(107 69 37 / 0.25);
+}
+
+/* ---------- die glyphs in the log & examples ---------- */
+
+/* The dice-face glyphs inherit the serif hand; nudge the wildcard/crown marks
+   (♚/✠) to sit on the same baseline as the die faces. */
+.log__dice,
+.keep-option__dice,
+.rules__example-dice {
+  font-family:
+    'Iowan Old Style',
+    'Palatino Linotype',
+    Palatino,
+    Georgia,
+    'Times New Roman',
+    serif;
+}

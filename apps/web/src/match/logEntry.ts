@@ -9,8 +9,14 @@ import { describeCombos } from './describeCombo';
  */
 const DIE_GLYPHS = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'] as const;
 
-const WILD_GLYPH = '😈';
-const CROWN_GLYPH = '👑';
+/*
+ * Medieval text glyphs rather than emoji for the log's glyph row: a black
+ * chess king reads as the royal crown, and a cross pattée marks the Devil's
+ * Head — both render as plain characters everywhere, unlike the emoji they
+ * replace. The drawn CrownFace/DevilFace stay for the board and cards.
+ */
+const WILD_GLYPH = '✠';
+const CROWN_GLYPH = '♚';
 
 export function diceGlyphs(faces: readonly Face[]): string {
   return faces

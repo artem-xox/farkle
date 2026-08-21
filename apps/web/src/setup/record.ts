@@ -35,7 +35,7 @@ const tally = (matches: readonly MatchRecord[]): HeadToHead => ({
  * there is not enough of it yet.
  *
  * `preset` is the personality currently selected, so the head-to-head line
- * follows the dropdown — which is most of the point. "Aggressive" is a word;
+ * follows the gallery — which is most of the point. "Aggressive" is a word;
  * "2–3 vs Aggressive" is an opponent.
  */
 export function summarizeHistory(

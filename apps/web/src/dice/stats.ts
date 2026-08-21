@@ -50,11 +50,12 @@ export const TIER_LABEL: Record<DieTier, string> = {
   diamond: 'Diamond',
 };
 
+/* Non-emoji guild-rank marks — plain characters that read at the badge's tiny size. */
 export const TIER_ICON: Record<DieTier, string> = {
-  bronze: '🥉',
-  silver: '🥈',
-  gold: '🥇',
-  diamond: '💎',
+  bronze: '●',
+  silver: '◆',
+  gold: '★',
+  diamond: '✦',
 };
 
 /**

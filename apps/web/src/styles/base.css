@@ -1,21 +1,26 @@
 :root {
+  /*
+   * A medieval tavern: the felt table stays the classic deep green (the
+   * player asked for the green background back), while the rest of the
+   * palette warms toward candlelit parchment, brass and oak.
+   */
   --felt: #0f3d2e;
   --felt-dark: #0a2b20;
-  --parchment: #f3e9d2;
-  --parchment-dim: #e4d6b4;
-  --ink: #2a2118;
-  --ink-soft: #5a4f3f;
-  --gold: #c8952e;
-  --gold-bright: #e6b84f;
-  --danger: #b8503f;
-  --danger-soft: #e69a9a;
-  --ok: #6fbf87;
+  --parchment: #efe1c2;
+  --parchment-dim: #d8c297;
+  --ink: #2a1b0f;
+  --ink-soft: #5c4a33;
+  --gold: #c6952f;
+  --gold-bright: #ecb94f;
+  --danger: #b04a36;
+  --danger-soft: #e69d8b;
+  --ok: #7fae6a;
 
-  /* the board */
-  --wood: #6b4423;
-  --wood-dark: #4a2f18;
-  --wood-rim: #35200f;
-  --wood-light: #83552e;
+  /* the tavern table */
+  --wood: #6b4525;
+  --wood-dark: #4a2d15;
+  --wood-rim: #34200e;
+  --wood-light: #87582c;
 
   color-scheme: light;
 }
@@ -33,11 +38,14 @@ body,
 body {
   margin: 0;
   font-family:
-    'Segoe UI',
-    system-ui,
-    -apple-system,
-    sans-serif;
-  color: var(--ink);
+    'Iowan Old Style',
+    'Palatino Linotype',
+    Palatino,
+    Georgia,
+    'Times New Roman',
+    serif;
+  color: var(--parchment);
+  /* The classic deep-green felt table, kept at the player's request. */
   background: radial-gradient(ellipse at top, var(--felt) 0%, var(--felt-dark) 100%);
   background-attachment: fixed;
 }

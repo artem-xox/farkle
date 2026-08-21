@@ -169,6 +169,15 @@
   color: var(--parchment-dim);
 }
 
+/* The wildcard face's drawing, at the size of the text glyph it replaces. */
+.die-distribution__wild {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
 .die-distribution__percent {
   font-size: 0.58rem;
   color: rgb(243 233 210 / 0.5);

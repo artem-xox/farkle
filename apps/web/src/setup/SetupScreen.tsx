@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 
-import { PRESET_NAMES, type PresetName } from '@farkle/bots';
+import type { PresetName } from '@farkle/bots';
 import { BALANCED_DIE, DICE, DICE_PER_TURN, type DieSpec, type PlayerConfig } from '@farkle/engine';
 
 import { capitalize } from '../presets';
@@ -15,6 +15,7 @@ import {
   presetLoadout,
 } from './loadoutPresets';
 import { LoadoutStep } from './LoadoutStep';
+import { PersonalityGallery } from './PersonalityGallery';
 
 export interface NewMatchOptions {
   readonly players: readonly [PlayerConfig, PlayerConfig];
@@ -127,7 +128,7 @@ export function SetupScreen({ onStart, onShowRules }: SetupScreenProps) {
 
   const friend = friendName.trim() || 'Friend';
 
-  /** Follows the personality dropdown, which is most of the point: "Aggressive" is a word, "2–3 vs Aggressive" is an opponent. */
+  /** Follows the personality gallery, which is most of the point: "Aggressive" is a word, "2–3 vs Aggressive" is an opponent. */
   const record = summarizeHistory(history, mode === 'bot' ? preset : null);
 
   function handleSubmit(event: FormEvent): void {
@@ -275,26 +276,7 @@ export function SetupScreen({ onStart, onShowRules }: SetupScreenProps) {
         </div>
 
         {mode === 'bot' ? (
-          <label className="field">
-            <span className="field__label">Personality</span>
-            {/*
-              One word per option. The descriptions that used to trail each
-              name were the whole reason this control truncated on a phone —
-              a native select has no room for them, and "Balanced — A sensible,
-              well-rounded playe" reads worse than no explanation at all.
-            */}
-            <select
-              className="field__input"
-              value={preset}
-              onChange={(event) => setPreset(event.target.value as PresetName)}
-            >
-              {PRESET_NAMES.map((name) => (
-                <option key={name} value={name}>
-                  {capitalize(name)}
-                </option>
-              ))}
-            </select>
-          </label>
+          <PersonalityGallery value={preset} onChange={setPreset} />
         ) : (
           <label className="field">
             <span className="field__label">Friend&rsquo;s name</span>

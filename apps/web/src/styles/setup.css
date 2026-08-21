@@ -540,3 +540,172 @@
   background: rgb(0 0 0 / 0.25);
   color: var(--gold-bright);
 }
+
+/* ---------- personality gallery (setup screen) ---------- */
+
+.personality {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/*
+ * The floating gallery. Each personality is a circular medallion — its
+ * hand-drawn icon in an accent ring, on a barely-there dark fill so the
+ * parchment drawing reads against the felt — with the name and a one-line
+ * pitch sitting directly on the felt below it. No card panel and no boxy drop
+ * shadow: the row reads as tokens drifting over the table, not boxes on a
+ * shelf. The button itself drifts, floating at its own height and tilt and
+ * bobbing slowly in place.
+ */
+.personality__track {
+  display: flex;
+  gap: 0.9rem;
+  padding: 0.9rem 0.3rem 1.15rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 1rem;
+  /* A horizontal swipe over the gallery must not drag the page with it. */
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.personality__track::-webkit-scrollbar {
+  display: none;
+}
+
+.personality__card {
+  flex: 0 0 7.2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.2rem 0.4rem;
+  border: none;
+  background: none;
+  color: var(--parchment);
+  text-align: center;
+  scroll-snap-align: center;
+  transform: translateY(var(--rise)) rotate(var(--tilt));
+  animation: personality-bob 5.5s ease-in-out infinite;
+  animation-delay: calc(var(--i) * -0.6s);
+  transition: color 200ms ease;
+}
+
+@keyframes personality-bob {
+  0%,
+  100% {
+    transform: translateY(var(--rise)) rotate(var(--tilt));
+  }
+  50% {
+    transform: translateY(calc(var(--rise) - 3px)) rotate(var(--tilt));
+  }
+}
+
+.personality__card:focus-visible {
+  outline: 2px solid var(--gold-bright);
+  outline-offset: 4px;
+  border-radius: 0.75rem;
+}
+
+/*
+ * The medallion. A circle's shadow reads as a hovering token rather than a
+ * box, but the lift is still only a whisper — the accent ring and the bob are
+ * what carry the floating feel.
+ */
+.personality__medal {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4.25rem;
+  height: 4.25rem;
+  padding: 0.55rem;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  background: rgb(0 0 0 / 0.16);
+  box-shadow: 0 2px 6px -2px rgb(0 0 0 / 0.4);
+  transition:
+    transform 200ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease,
+    background 200ms ease;
+}
+
+.personality__card:hover .personality__medal {
+  transform: translateY(-2px);
+}
+
+/* Selected: the medallion lifts and glows in its accent — a halo, not a box. */
+.personality__card--active .personality__medal {
+  transform: scale(1.12);
+  background: rgb(0 0 0 / 0.24);
+  box-shadow:
+    0 0 0 5px var(--glow),
+    0 0 22px 4px var(--glow);
+}
+
+.personality__name {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--parchment);
+}
+
+.personality__card:hover .personality__name {
+  color: var(--gold-bright);
+}
+
+.personality__card--active .personality__name {
+  color: var(--accent);
+}
+
+/* Two lines reserved so a one-line pitch never changes the row's rhythm. */
+.personality__tagline {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  min-height: 1.85em;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  color: var(--parchment-dim);
+  opacity: 0.9;
+}
+
+/* A small check badge pinned to the selected medallion's corner. */
+.personality__check {
+  position: absolute;
+  top: -0.25rem;
+  right: -0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--ink);
+  box-shadow: 0 2px 5px rgb(0 0 0 / 0.4);
+}
+
+.personality__check svg {
+  width: 0.78rem;
+  height: 0.78rem;
+}
+
+.personality__hint {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--parchment-dim);
+  opacity: 0.75;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .personality__card {
+    animation: none;
+    transition: none;
+  }
+}

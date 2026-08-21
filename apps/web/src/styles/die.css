@@ -5,7 +5,8 @@
   height: clamp(2.5rem, 11vw, 3.25rem);
   border-radius: 0.55rem;
   border: none;
-  background: linear-gradient(160deg, #fffaf0, var(--parchment));
+  /* Aged bone rather than bright white — the tavern-ivory an old die has. */
+  background: linear-gradient(160deg, #f8efdb, var(--parchment));
   box-shadow:
     0 3px 0 rgb(0 0 0 / 0.3),
     0 4px 8px rgb(0 0 0 / 0.25);
