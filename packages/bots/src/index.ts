@@ -1,4 +1,4 @@
-export type { BotPolicy } from './policy.js';
+export type { AsyncBotPolicy, BotPolicy } from './policy.js';
 
 export { ThresholdBot, type BotParams } from './threshold-bot.js';
 
@@ -10,7 +10,13 @@ export {
   type PresetName,
 } from './presets.js';
 
-export { chooseBotAction, playBotMatch, type BotMatchResult } from './play.js';
+export {
+  chooseBotAction,
+  chooseBotActionAsync,
+  playBotMatch,
+  playBotMatchAsync,
+  type BotMatchResult,
+} from './play.js';
 
 export { summarizeMatch, type MatchSummary, type PlayerMatchStats } from './analyze.js';
 

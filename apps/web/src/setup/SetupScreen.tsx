@@ -1,8 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
 
-import { PRESET_NAMES, type PresetName } from '@farkle/bots';
 import { BALANCED_DIE, DICE, DICE_PER_TURN, type DieSpec, type PlayerConfig } from '@farkle/engine';
 
+import { OPPONENT_IDS, type OpponentId } from '../opponents';
 import { capitalize } from '../presets';
 import { loadHistory, loadSetupPrefs, NAME_MAX_LENGTH, saveSetupPrefs } from '../storage';
 import { summarizeHistory } from './record';
@@ -21,7 +21,7 @@ export interface NewMatchOptions {
   readonly target: number;
   readonly seed: number;
   readonly botSeat: number | null;
-  readonly botPreset: PresetName | null;
+  readonly botPreset: OpponentId | null;
 }
 
 export interface SetupScreenProps {
@@ -71,7 +71,7 @@ export function SetupScreen({ onStart, onShowRules }: SetupScreenProps) {
   // fields fall back to the placeholder text on submit.
   const [yourName, setYourName] = useState(prefs.yourName ?? '');
   const [friendName, setFriendName] = useState(prefs.friendName ?? '');
-  const [preset, setPreset] = useState<PresetName>(prefs.preset ?? 'balanced');
+  const [preset, setPreset] = useState<OpponentId>(prefs.preset ?? 'balanced');
   const [target, setTarget] = useState(prefs.target ?? DEFAULT_TARGET_CHOICE);
   // A stored id is only trusted as far as it still resolves: a preset that gets
   // renamed or dropped must not leave the row with nothing selected and the
@@ -286,9 +286,9 @@ export function SetupScreen({ onStart, onShowRules }: SetupScreenProps) {
             <select
               className="field__input"
               value={preset}
-              onChange={(event) => setPreset(event.target.value as PresetName)}
+              onChange={(event) => setPreset(event.target.value as OpponentId)}
             >
-              {PRESET_NAMES.map((name) => (
+              {OPPONENT_IDS.map((name) => (
                 <option key={name} value={name}>
                   {capitalize(name)}
                 </option>

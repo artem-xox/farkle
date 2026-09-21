@@ -1,6 +1,8 @@
 node_modules/
 dist/
 coverage/
+# JEV_TRANSCRIPT output — a working file, sometimes large
+jev*.jsonl
 *.tsbuildinfo
 .DS_Store
 .claude/settings.local.json

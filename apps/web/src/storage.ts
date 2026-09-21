@@ -1,5 +1,6 @@
-import { isPresetName, type PresetName } from '@farkle/bots';
 import { DICE, DICE_PER_TURN, type GameState } from '@farkle/engine';
+
+import { isOpponentId, isRecordedOpponent, type OpponentId } from './opponents';
 
 const STORAGE_KEY = 'farkle:match:v1';
 const PREFS_KEY = 'farkle:setup:v1';
@@ -19,7 +20,7 @@ export interface StoredMatch {
   readonly state: GameState;
   /** Player id the bot controls, or null for a hot-seat human-vs-human match. */
   readonly botSeat: number | null;
-  readonly botPreset: PresetName | null;
+  readonly botPreset: OpponentId | null;
   /**
    * The player's best single banked turn so far. Persisted rather than derived
    * because it is accumulated from the event stream, and events are not saved
@@ -73,7 +74,7 @@ export interface SetupPrefs {
   readonly yourName: string;
   readonly friendName: string;
   readonly mode: 'bot' | 'friend';
-  readonly preset: PresetName;
+  readonly preset: OpponentId;
   readonly target: number;
   /** A `LOADOUT_PRESETS` id or `CUSTOM_PRESET_ID`. Validated only as a string here — the setup screen resolves it and falls back on its own if the id no longer exists, which is what happens when a preset is renamed or dropped. */
   readonly loadoutPreset: string;
@@ -130,7 +131,11 @@ export function loadSetupPrefs(allowedTargets: readonly number[]): Partial<Setup
   if (stored['mode'] === 'bot' || stored['mode'] === 'friend') {
     prefs.mode = stored['mode'];
   }
-  if (typeof stored['preset'] === 'string' && isPresetName(stored['preset'])) {
+  // `isOpponentId` rather than `isRecordedOpponent`: this preference starts
+  // the *next* match, and Jev is not startable without the dev proxy. A saved
+  // "jev" then falls back to the screen's own default instead of offering an
+  // opponent that cannot play.
+  if (typeof stored['preset'] === 'string' && isOpponentId(stored['preset'])) {
     prefs.preset = stored['preset'];
   }
   if (typeof stored['target'] === 'number' && allowedTargets.includes(stored['target'])) {
@@ -166,7 +171,7 @@ export interface MatchRecord {
   readonly at: number;
   readonly target: number;
   /** The bot's personality, or null for a pass & play match — which is why the summary can separate "against bots" from the rest. */
-  readonly opponent: PresetName | null;
+  readonly opponent: OpponentId | null;
   readonly youWon: boolean;
   readonly yourTotal: number;
   readonly opponentTotal: number;
@@ -184,7 +189,10 @@ function isMatchRecord(value: unknown): value is MatchRecord {
     numbers.every((key) => typeof record[key] === 'number' && Number.isFinite(record[key])) &&
     typeof record['youWon'] === 'boolean' &&
     (record['opponent'] === null ||
-      (typeof record['opponent'] === 'string' && isPresetName(record['opponent'])))
+      // `isRecordedOpponent`, not `isOpponentId`: a past result against Jev
+      // stays a real result after the dev proxy is gone, even though a new
+      // match against it could not be started.
+      (typeof record['opponent'] === 'string' && isRecordedOpponent(record['opponent'])))
   );
 }
 

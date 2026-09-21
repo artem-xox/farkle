@@ -1,9 +1,17 @@
-import { BALANCED_DIE, createMatch, DICE_PER_TURN, legalKeeps, type ClientView, type KeepOption } from '@farkle/engine';
+import {
+  BALANCED_DIE,
+  createMatch,
+  DICE_PER_TURN,
+  legalKeeps,
+  type ClientView,
+  type GameEvent,
+  type KeepOption,
+} from '@farkle/engine';
 import { describe, expect, it } from 'vitest';
 
 import { summarizeMatch } from '../src/analyze.js';
-import { chooseBotAction, playBotMatch } from '../src/play.js';
-import type { BotPolicy } from '../src/policy.js';
+import { chooseBotAction, chooseBotActionAsync, playBotMatch, playBotMatchAsync } from '../src/play.js';
+import type { AsyncBotPolicy, BotPolicy } from '../src/policy.js';
 import { createPreset } from '../src/presets.js';
 import { fakeView } from './helpers/fake-view.js';
 
@@ -150,5 +158,84 @@ describe('chooseBotAction', () => {
   it('refuses to act once the match is over', () => {
     const view = fakeView({ phase: 'MatchOver' });
     expect(() => chooseBotAction(view, bot)).toThrow(RangeError);
+  });
+});
+
+describe('playBotMatchAsync', () => {
+  /** `bankASAP`, but every decision arrives a tick late — the shape a networked policy has. */
+  const slow: AsyncBotPolicy = {
+    name: 'slow-bank-asap',
+    chooseKeep: async (_view, options) => Promise.resolve(options[0]!),
+    decideAfterKeep: async () => Promise.resolve('Bank'),
+  };
+
+  const twoPlayers = (seed: number, target: number) =>
+    createMatch({
+      players: [
+        { name: 'A', loadout: balancedLoadout() },
+        { name: 'B', loadout: balancedLoadout() },
+      ],
+      seed,
+      target,
+    });
+
+  it('plays a match identically to the synchronous driver, given equivalent policies', async () => {
+    // The two drivers must not diverge: the async one exists for policies that
+    // await, not to play a different game.
+    const sync = playBotMatch(twoPlayers(4242, 1000), [bankASAP, bankASAP]);
+    const async = await playBotMatchAsync(twoPlayers(4242, 1000), [slow, slow]);
+
+    expect(async.state).toEqual(sync.state);
+    expect(async.events).toEqual(sync.events);
+  });
+
+  it('accepts a plain synchronous BotPolicy, which is already an AsyncBotPolicy', async () => {
+    const result = await playBotMatchAsync(twoPlayers(11, 800), [
+      createPreset('smart', 1),
+      createPreset('cautious', 2),
+    ]);
+    expect(result.state.phase).toBe('MatchOver');
+  });
+
+  it('feeds the match log to every policy that wants it, in order', async () => {
+    const seen: GameEvent[] = [];
+    const watcher: AsyncBotPolicy = {
+      ...slow,
+      name: 'watcher',
+      observe: (events) => seen.push(...events),
+    };
+
+    const result = await playBotMatchAsync(twoPlayers(7, 500), [watcher, slow]);
+
+    // Exactly the log the driver returns — a policy that plays on the history
+    // of the match sees the same match the clients render.
+    expect(seen).toEqual(result.events);
+  });
+
+  it('rejects a bot count that does not match the player count', async () => {
+    await expect(playBotMatchAsync(twoPlayers(1, 500), [slow])).rejects.toThrow(RangeError);
+  });
+});
+
+describe('chooseBotActionAsync', () => {
+  const bot = createPreset('balanced', 1);
+
+  it('mirrors chooseBotAction for a synchronous policy, in every phase', async () => {
+    const views = [
+      fakeView({ phase: 'AwaitingThrow', thrown: [], keeps: [] }),
+      fakeView({
+        phase: 'AwaitingKeep',
+        thrown: [1, 1, 1, 5, 6, 6],
+        keeps: legalKeeps([1, 1, 1, 5, 6, 6]),
+      }),
+      fakeView({ phase: 'AwaitingBankOrThrow', turnScore: 100_000, target: 100 }),
+    ];
+    for (const view of views) {
+      await expect(chooseBotActionAsync(view, bot)).resolves.toEqual(chooseBotAction(view, bot));
+    }
+  });
+
+  it('refuses to act once the match is over', async () => {
+    await expect(chooseBotActionAsync(fakeView({ phase: 'MatchOver' }), bot)).rejects.toThrow(RangeError);
   });
 });
