@@ -29,6 +29,7 @@ a CLI app hosts the terminal game and the simulation harness.
 packages/
   engine/      rules, state machine, RNG, dice — zero dependencies
   bots/        policies and personalities, depends only on engine
+  jev/         the one policy that is not pure: it asks a model (§6)
 apps/
   cli/         terminal play + bot tournaments
   web/         React + Vite UI
@@ -621,6 +622,99 @@ perfect play. That is deliberately deferred — see PLAN.md M6.
 The harness does not yet accept a loadout argument, so `devil`/`odd`/`cheat`
 have not been run through it the way the five presets above were — see
 PLAN.md M5.
+
+### A model as the policy
+
+`jev` is a different kind of opponent: not a heuristic over `BotParams` but a
+policy whose every move comes from asking a model. It is
+[Jev](https://docs.typesafe.ai), TypeSafe's System One model, and it lives in
+its own package (`packages/jev`) because it does network I/O — which `engine`
+and `bots` both promise not to (§2).
+
+A System One model does not write text. It takes application state plus
+*typed questions* and returns typed answers: a **Choice** of one named option,
+a **Noul** (a 0–1 probability that a claim holds), or a **Score**. That turns
+out to fit this game exactly, because a Farkle turn is precisely two
+decisions and the engine can already enumerate the legal answers to both.
+`chooseKeep` is one Choice over `view.keeps`; `decideAfterKeep` is one Noul.
+The move is the answer to a typed question, so an illegal move is not
+expressible — the same property that makes `BotPolicy` safe, obtained
+differently.
+
+Three decisions shape the rest of it.
+
+**The engine computes; the model judges.** Jev 1.13 is documented as
+unreliable at counting and weak at arithmetic and numeric comparison, and as
+doing better on "named buckets or English representations than raw numeric
+data" ([model jaggedness](https://docs.typesafe.ai/model-jaggedness/jev-1.13.md)).
+So nothing is ever asked of it that requires a sum. Every keep arrives with
+its points already totalled by `scoreKeep`, its leftover dice named, and its
+farkle probability computed by `farkleProbability` and stated as a bucket —
+"moderate (about 1 in 4)". What remains is the actual judgment: whether to
+trade points for dice, and whether the race justifies the risk. That is the
+part no constant in `BotParams` can express, and the part this bot exists to
+test.
+
+**It plays on the whole game, not a snapshot.** Each request carries a digest
+of the rules, the standings, the dice both sides hold, this turn so far, the
+match's full history, a per-player tally of it (`summariseTurns` — banks,
+farkles, best turn, times pressed), and worked examples of the judgment being
+asked for. `ClientView` holds no log, so `AsyncBotPolicy.observe` feeds it
+one. That is not a hole in the rule that bots see only what a human sees
+(§3): the log is exactly what both clients render beside the board.
+
+The history reports the opponent's *decisions*, not only their results — the
+engine emits no event for "pressed on rather than banked", so `describeHistory`
+reconstructs it from throw order. Knowing what an opponent was willing to risk
+is the part of a log worth adapting to.
+
+The examples are the one part of the prompt that can be actively wrong, so
+none of them is hand-written: each is a real throw on which `smart` declines
+the highest-scoring keep, found by enumeration, and the farkle percentages
+quoted alongside are `balancedFarkleProbability`'s. A test re-derives both
+from the engine so a plausible-looking falsehood cannot survive a refactor.
+
+Whether any of that extra context helps is a separate question from whether
+it is principled, and the answer measured so far is no: it lifts mean
+confidence from 0.386 to 0.499 and halves the fallback rate, while leaving
+the win rate exactly where it was. Confidence, here, is not a proxy for move
+quality.
+
+**It says when it is not itself.** A failed request, an answer below a
+confidence threshold, or a Noul sitting on the fence, and the decision goes to
+the `smart` preset instead — counted in `JevBot.stats`, reported through
+`onFallback`, printed by the CLI, and summarised at the end of a match. A
+missing API key is a startup error rather than a silent downgrade. An opponent
+presented as Jev that was quietly `smart` would invalidate the only thing this
+package is for, which is finding out how a model plays.
+
+The cost is determinism. Every other policy here is a pure function of the
+view and a seed, which is what makes `--seed` replay a match exactly; this one
+is not, and no seed will make it so. `--seed` still reproduces the dice, the
+fallback is still seeded, and `JEV_TRANSCRIPT` records every request and
+answer — that record is the replay.
+
+Measured rather than asserted, same as everything else in this section.
+Over 800 matches against `smart` at the default target it wins **48.3%**
+[44.8%, 51.7%] — a model handed pre-computed odds is about a match for a
+tuned one-ply EV calculation, and no more than that. The number under it is
+the interesting one: it farkles 25.4% of turns against `smart`'s 18.5% and
+banks slightly more when it does bank, so the two arrive at the same place by
+visibly different routes, and that difference survives a change of dice —
+across six ordinary dice, three kings and three queens, six Devil's Heads and
+a mixed crown set, Jev farkles 1.4–1.8× as often as `smart` every time and
+wins the same share of matches every time.
+
+The exception, and the one configuration where it is measurably stronger: the
+roster's best set (`3 king + 3 queen`) played to 8 000, where it takes
+**58.0%** [53.6, 62.2]. Long matches on dice that make a single turn worth
+thousands are exactly where a policy that presses on should profit, and its
+points per bank — 2 428 against 2 101 — is where the edge shows up. That run
+changed the prompt and the configuration at once, so how much of it is the
+dice is not yet separated out.
+
+`scripts/jev/bench.mjs`, written up in
+[docs/researches/2026-09-21-jev-as-a-policy.md](researches/2026-09-21-jev-as-a-policy.md).
 
 ## 7. Requirements
 

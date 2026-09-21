@@ -36,15 +36,24 @@ Merged: #1 (M0), #2 (M1), #3 (M4 plan, filed as M8 before the renumber), #4
 (Node 20 toolchain upgrade), #5 (docs sync), #6 (M2), #7 (M3). The web UI
 polish pass is not yet merged.
 
+M6.1 adds a third kind of opponent: `jev`, a policy whose every move comes
+from TypeSafe's Jev model rather than from a threshold — `packages/jev`,
+reasoning in [DESIGN.md §6](DESIGN.md#a-model-as-the-policy), measured in
+[docs/researches/](researches/). It needs a `TYPESAFE_API_KEY`, and it is a
+dev-only opponent in the browser: a static site has nowhere to keep a key, so
+the dev server proxies and the production bundle contains no Jev code at all.
+See "Playing against Jev" below.
+
 ## Layout
 
 ```
 packages/
   engine/     the rules — pure, dependency-free, the only place scoring logic lives
   bots/       BotPolicy, ThresholdBot, presets, the bot-vs-bot match driver and sim harness
+  jev/        the Jev policy — the only package that does I/O (DESIGN.md §6)
 apps/
-  cli/        terminal client — depends on @farkle/engine and @farkle/bots
-  web/        React + Vite browser client — depends on the same two packages
+  cli/        terminal client — depends on @farkle/engine, @farkle/bots and @farkle/jev
+  web/        React + Vite browser client — depends on the same three
 docs/         RULES / DESIGN / PLAN / this file
 ```
 
@@ -85,10 +94,10 @@ Read them in that order; each one builds on the last.
 
 | File | What's in it |
 |---|---|
-| `policy.ts` | `BotPolicy` — `chooseKeep` and `decideAfterKeep`, both reading only `ClientView` |
+| `policy.ts` | `BotPolicy` — `chooseKeep` and `decideAfterKeep`, both reading only `ClientView` — plus `AsyncBotPolicy`, the same contract with the decisions allowed to be promises, and an optional `observe(events)` for a policy that wants the match log |
 | `threshold-bot.ts` | `BotParams` and `ThresholdBot`, the one policy implementation behind every personality (DESIGN.md §6) |
 | `presets.ts` | The five named personalities as `BotParams` presets, plus `createPreset` |
-| `play.ts` | `chooseBotAction` (one seat, one decision) and `playBotMatch` (drives a whole match with a bot in every seat) — both built on `reduce()`/`viewOf()` from the engine, nothing new |
+| `play.ts` | `chooseBotAction` (one seat, one decision) and `playBotMatch` (drives a whole match with a bot in every seat) — both built on `reduce()`/`viewOf()` from the engine, nothing new. `chooseBotActionAsync`/`playBotMatchAsync` are the same two for a policy whose decision is I/O; the async match driver is also the only one that feeds `observe` |
 | `analyze.ts` | `summarizeMatch` — tallies an event log into per-player banks/farkles/points, pure function of `GameEvent[]` |
 | `stats.ts` | `wilsonInterval` — the confidence interval `runSimulation` reports win rate with |
 | `simulate.ts` | `runSimulation` — runs N headless matches between two policies and aggregates win rate, farkle rate, points per bank, turns per match |
@@ -112,11 +121,45 @@ at a time in the browser — see below.
   deterministic per seed, and actually detect a real gap between a strong and
   a deliberately bad policy (not just structurally valid output).
 
+### `packages/jev/src`
+
+The Jev bot: a policy whose moves come from TypeSafe's System One model rather
+than from a threshold. Why it is a package of its own, and what it does and
+does not ask the model to do, is [DESIGN.md §6](DESIGN.md#a-model-as-the-policy).
+Zero npm dependencies, same as the rest.
+
+| File | What's in it |
+|---|---|
+| `types.ts` | The wire format of `POST /v1/systemone` — Choice and Noul questions and their answers. Hand-written from <https://docs.typesafe.ai/api> rather than pulled from the official SDK |
+| `client.ts` | `JevClient` — the one POST, with a per-attempt timeout, retry and backoff on 429/529/5xx, no retry on 401/422, and typed errors. Never puts the API key in an error or an exchange record |
+| `rules.ts` | `RULES_DIGEST` — the KCD2 rules in English for a reader that cannot do arithmetic. A translation of [RULES.md](RULES.md), which stays normative; keep them in step by hand |
+| `describe.ts` | Pure `ClientView` + `GameEvent[]` → the state object: standings, this turn, the match history as prose, and `riskBucket`, which turns a farkle probability into "moderate (about 1 in 4)" |
+| `questions.ts` | `keepQuestion` (a Choice over every legal keep, with the arithmetic already done per option) and `pressQuestion` (one Noul). `keepQuestion` also returns the map from option name back to `KeepOption` — that map is how an answer becomes a move |
+| `jev-bot.ts` | `JevBot` — `observe`, the two decisions, confidence gating, the fallback to `smart`, and `stats` |
+| `index.ts` | Public API |
+
+### `packages/jev/test`
+
+All offline: `npm test` never touches the network and never needs a key.
+
+- `questions.test.ts` — the load-bearing one. Over every throw the rules can
+  produce (one to six dice, wildcards and both crowns included), every legal
+  keep gets a distinct option name and every answer resolves back to the keep
+  it came from. The 255-option ceiling a Choice imposes is asserted here too;
+  the worst throw in the game produces 53.
+- `client.test.ts` — retry, backoff, `Retry-After`, timeouts, which statuses
+  are not retried, and that the key never reaches an error message.
+- `jev-bot.test.ts` — the model's answer becoming a move, each fallback path,
+  history accumulation, and the stats counters. Driven by a scripted `fetch`.
+- `describe.test.ts` — the state object, the risk buckets at their boundaries,
+  and history trimming.
+
 ### `apps/cli/src`
 
 | File | What's in it |
 |---|---|
-| `main.ts` | Entry point: arg parsing, the game loop, wiring `LocalHost` events to the terminal, and driving a bot's seat via `chooseBotAction` when `--opponent` is set |
+| `main.ts` | Entry point: arg parsing, the game loop, wiring `LocalHost` events to the terminal, and driving a bot's seat via `chooseBotActionAsync` when `--opponent` is set |
+| `opponent.ts` | What `--opponent` accepts and what it builds — the presets plus `jev`, the `TYPESAFE_API_KEY` check that runs before the match rather than mid-turn, the `JEV_TRANSCRIPT` sink, and the end-of-match model summary |
 | `sim.ts` | The `farkle sim` subcommand: its own arg parsing, calls `runSimulation`, prints the report |
 | `prompt.ts` | `Prompt` — a line-reader over `readline`. Not a thin wrapper: see the comment at the top of the file for why it keeps its own line queue rather than calling `readline.question()` (or `readline/promises`) in a loop |
 | `render.ts` | Pure formatting functions (dice as boxes, keep options as a table, sim reports, colour). No I/O, so these are unit-testable without a terminal |
@@ -241,12 +284,42 @@ Playing the CLI directly, once built:
 ```bash
 node apps/cli/dist/main.js --players "Alice,Bob" --target 2000
 node apps/cli/dist/main.js --opponent aggressive         # play against a bot
+node apps/cli/dist/main.js --opponent jev                 # play against the model
 node apps/cli/dist/main.js --seed 20260809                # replay a specific match exactly
 node apps/cli/dist/main.js --help
 
 node apps/cli/dist/main.js sim --a cautious --b aggressive -n 100000 --seed 42
 node apps/cli/dist/main.js sim --help
 ```
+
+### Playing against Jev
+
+`--opponent jev` needs a TypeSafe API key
+(<https://console.typesafe.ai/keys>). Copy `.env.template` to `.env` — which
+is gitignored — and fill it in:
+
+```bash
+set -a; source .env; set +a      # the CLI reads the environment, not the file
+node apps/cli/dist/main.js --opponent jev --target 800
+```
+
+`npm run dev:web` picks the same `.env` up on its own, and offers Jev in the
+opponent list once it finds a key. The key never reaches the browser: the Vite
+dev server proxies `/jev` and attaches the header itself, which is also why
+Jev is a dev-only opponent — the deployed site is static files with nowhere to
+keep a key, and its build contains no Jev code at all. See the comment on
+`jevProxy` in `apps/web/vite.config.ts`.
+
+Two more things worth knowing:
+
+- `JEV_TRANSCRIPT=jev.jsonl` appends every request and answer, which is the
+  way to see what the model was actually told.
+- `--seed` reproduces the dice, not Jev's moves. Nothing will: it is the one
+  policy here that is not a pure function of its inputs.
+
+`npm run jev:bench` measures how well it plays against a preset — see
+[scripts/jev/README.md](../scripts/jev/README.md), results in
+[docs/researches/](researches/).
 
 During a CLI turn: type die positions to keep them (`1 4`), `?` to list every
 legal keep with its point value, `t`/`b` to throw or bank, `q` to quit.

@@ -1,12 +1,12 @@
 import { useState, type CSSProperties } from 'react';
 
-import type { PresetName } from '@farkle/bots';
 import { createMatch, LocalHost, type GameState } from '@farkle/engine';
 
 import { AboutAuthor } from './AboutAuthor';
 import { DiceScreen } from './dice/DiceScreen';
 import { MatchScreen } from './match/MatchScreen';
 import { RulesScreen } from './rules/RulesScreen';
+import type { OpponentId } from './opponents';
 import { SetupScreen, type NewMatchOptions } from './setup/SetupScreen';
 import { clearMatch, loadMatch } from './storage';
 
@@ -14,7 +14,7 @@ interface MatchSession {
   readonly id: string;
   readonly initial: GameState;
   readonly botSeat: number | null;
-  readonly botPreset: PresetName | null;
+  readonly botPreset: OpponentId | null;
   readonly bestTurn: number;
 }
 

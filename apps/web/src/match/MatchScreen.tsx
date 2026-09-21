@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { chooseBotAction, createPreset, type BotPolicy, type PresetName } from '@farkle/bots';
+import { chooseBotActionAsync, type AsyncBotPolicy } from '@farkle/bots';
 import {
   IllegalActionError,
   LocalHost,
@@ -12,6 +12,7 @@ import {
   type KeepOption,
 } from '@farkle/engine';
 
+import { createOpponentPolicy, type OpponentId } from '../opponents';
 import { clearMatch, recordMatch, saveMatch } from '../storage';
 import { Board } from './Board';
 import { ConfirmDialog } from './ConfirmDialog';
@@ -26,7 +27,7 @@ import { TurnLog } from './TurnLog';
 export interface MatchScreenProps {
   initial: GameState;
   botSeat: number | null;
-  botPreset: PresetName | null;
+  botPreset: OpponentId | null;
   /** The player's best banked turn carried over from a resumed match — events aren't persisted, so this arrives from the save rather than from the log. */
   initialBestTurn: number;
   onExit: () => void;
@@ -59,9 +60,9 @@ export function MatchScreen({
   onRestart,
 }: MatchScreenProps) {
   const [host] = useState(() => new LocalHost(initial));
-  const [bot] = useState<BotPolicy | null>(() =>
+  const [bot] = useState<AsyncBotPolicy | null>(() =>
     botSeat !== null && botPreset !== null
-      ? createPreset(botPreset, botSeedFrom(initial.config.seed))
+      ? createOpponentPolicy(botPreset, botSeedFrom(initial.config.seed))
       : null,
   );
   const [events, setEvents] = useState<readonly GameEvent[]>([]);
@@ -189,6 +190,20 @@ export function MatchScreen({
     });
   }, [host, botSeat, botPreset, youSeat]);
 
+  /*
+   * The bot's own copy of the match log. `ClientView` is a snapshot and holds
+   * no history, so a policy that plays on how the game has gone — Jev does,
+   * it sends the whole log with every decision — has to be told. What it sees
+   * is exactly what `TurnLog` renders for the player beside it; nothing
+   * hidden reaches it.
+   */
+  useEffect(() => {
+    if (bot?.observe === undefined) {
+      return;
+    }
+    return host.subscribe((newEvents) => bot.observe?.(newEvents));
+  }, [host, bot]);
+
   // Counts the farkle hold down and releases it when it expires.
   useEffect(() => {
     if (farkleHold === null) {
@@ -224,12 +239,24 @@ export function MatchScreen({
         return;
       }
       const view = host.view(botSeat);
-      const action = chooseBotAction(view, bot);
-      host.dispatch(botSeat, action).catch((error: unknown) => {
-        // A bot only ever builds actions from what the engine already
-        // offered it, so this would mean a real bug, not a bad move.
-        console.error('bot action was rejected unexpectedly', error);
-      });
+      // Deciding may now be a network round trip (Jev), so the action is
+      // awaited rather than computed. `cancelled` is re-checked afterwards
+      // for that reason: a preset answers within the same tick and cannot be
+      // unmounted mid-decision, but a request in flight very much can.
+      void chooseBotActionAsync(view, bot)
+        .then((action) => {
+          if (cancelled) {
+            return;
+          }
+          return host.dispatch(botSeat, action);
+        })
+        .catch((error: unknown) => {
+          // A bot only ever builds actions from what the engine already
+          // offered it, so a rejected action would mean a real bug. A policy
+          // that throws outright is the other case — `JevBot` rethrows an
+          // authentication failure rather than pretending to play on.
+          console.error('bot action was rejected unexpectedly', error);
+        });
     }, botThinkTime(state.phase));
 
     return () => {

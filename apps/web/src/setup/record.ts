@@ -1,4 +1,4 @@
-import type { PresetName } from '@farkle/bots';
+import type { OpponentId } from '../opponents';
 
 import type { MatchRecord } from '../storage';
 
@@ -40,7 +40,7 @@ const tally = (matches: readonly MatchRecord[]): HeadToHead => ({
  */
 export function summarizeHistory(
   history: readonly MatchRecord[],
-  preset: PresetName | null,
+  preset: OpponentId | null,
 ): RecordSummary | null {
   const botMatches = history.filter((match) => match.opponent !== null);
   if (botMatches.length < MIN_MATCHES_TO_SHOW) {

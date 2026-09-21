@@ -6,6 +6,7 @@ export default defineConfig({
     alias: {
       '@farkle/engine': path.resolve(import.meta.dirname, 'packages/engine/src/index.ts'),
       '@farkle/bots': path.resolve(import.meta.dirname, 'packages/bots/src/index.ts'),
+      '@farkle/jev': path.resolve(import.meta.dirname, 'packages/jev/src/index.ts'),
     },
   },
   test: {

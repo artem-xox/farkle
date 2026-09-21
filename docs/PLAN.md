@@ -473,6 +473,52 @@ Two complications to expect. The solution depends on the dice loadout, so it mus
 be recomputed or memoised per loadout rather than shipped as one table. And it
 must run off the main thread.
 
+### M6.1 — Jev, a model as the policy
+
+Done. A third kind of opponent, alongside the tuned presets and the solver M6
+still describes: `jev` asks [TypeSafe's Jev](https://docs.typesafe.ai) — a
+System One model, which answers typed questions rather than writing text — for
+every move. `packages/jev`, with the reasoning in
+[DESIGN.md §6](DESIGN.md#a-model-as-the-policy) and the numbers in
+[docs/researches/2026-09-21-jev-as-a-policy.md](researches/2026-09-21-jev-as-a-policy.md):
+48.3% [44.8%, 51.7%] against `smart` over 800 matches, at 295 ms and about a
+tenth of a cent per move.
+
+Where it is playable, and why not everywhere:
+
+- **CLI**: `farkle --opponent jev`, with `TYPESAFE_API_KEY` set.
+- **Web, in dev only.** The key lives in the Vite dev server, which proxies
+  `/jev` and attaches the header, so it never enters the bundle. The deployed
+  site is static files (M4) with nowhere to keep a key, and its build contains
+  no Jev code at all — `__JEV_ENABLED__` folds to `false` and the import is
+  dropped. Putting Jev on the public site needs a server that holds the key
+  and rate-limits it, which is M8's problem, not a flag.
+
+What it cost elsewhere: `AsyncBotPolicy` and `playBotMatchAsync` in
+`@farkle/bots`, for policies whose decision is I/O. `BotPolicy`,
+`playBotMatch` and `runSimulation` are untouched and still synchronous —
+`farkle sim` runs a hundred thousand matches in seconds and must keep doing
+so. The paid, network-bound benchmark lives in `scripts/jev/bench.mjs`
+instead.
+
+Still open:
+
+- The confidence threshold and the Noul deadband are still guesses, and the
+  case for the first one is now weaker: enriching the prompt lifted mean
+  confidence from 0.386 to 0.499 without moving the win rate at all, so
+  confidence is not tracking move quality. The run that would settle it — the
+  same 800 matches with `minConfidence: 0` — has not been done; it is about $1.
+- Whether `jev`'s 58% on the roster's best set at target 8 000 is the dice,
+  the match length or the prompt. That run moved two variables at once; one
+  more run on the base prompt separates them.
+- Only symmetric loadouts have been benchmarked — both seats always hold the
+  same dice. Whether Jev prices an *opponent's* strong dice correctly (the
+  state names them) needs a second loadout flag on `bench.mjs`.
+- One request per decision. The docs' speculative fan-out pattern would let a
+  keep request also carry the press question, halving the round trips at the
+  cost of asking one question about a state the answer to the other has not
+  produced yet.
+
 ## M7 — Meta-game
 
 Opponents with names, loadouts and personalities; wagers and a purse; dice won

@@ -7,7 +7,7 @@ import {
   type GameState,
 } from '@farkle/engine';
 
-import type { BotPolicy } from './policy.js';
+import type { AsyncBotPolicy, BotPolicy } from './policy.js';
 
 export interface BotMatchResult {
   readonly state: GameState;
@@ -59,6 +59,65 @@ export function playBotMatch(state: GameState, bots: readonly BotPolicy[]): BotM
     const result = reduce(current, action);
     current = result.state;
     events.push(...result.events);
+  }
+
+  return { state: current, events };
+}
+
+/**
+ * `chooseBotAction` for a policy whose decisions may be I/O. Identical logic;
+ * the only difference is that the two decisions are awaited. Kept as a
+ * separate function rather than making `chooseBotAction` async, because
+ * `runSimulation` calls it millions of times in a tight loop and a promise per
+ * decision there is pure cost for no policy that needs it.
+ */
+export async function chooseBotActionAsync(
+  view: ClientView,
+  bot: AsyncBotPolicy,
+): Promise<GameAction> {
+  if (view.phase === 'AwaitingThrow') {
+    return { type: 'Throw' };
+  }
+  if (view.phase === 'AwaitingKeep') {
+    const choice = await bot.chooseKeep(view, view.keeps);
+    return { type: 'Keep', indices: choice.indices };
+  }
+  if (view.phase === 'AwaitingBankOrThrow') {
+    return (await bot.decideAfterKeep(view)) === 'Bank' ? { type: 'Bank' } : { type: 'Throw' };
+  }
+  throw new RangeError(`chooseBotActionAsync: no action to take in phase "${view.phase}"`);
+}
+
+/**
+ * `playBotMatch` for policies that may be asynchronous, and the only driver
+ * that feeds `observe` — a policy that wants the match log gets it here,
+ * event batch by event batch, in the order the engine produced them. Every
+ * seat sees the whole log, exactly as both clients show it to their human.
+ */
+export async function playBotMatchAsync(
+  state: GameState,
+  bots: readonly AsyncBotPolicy[],
+): Promise<BotMatchResult> {
+  if (bots.length !== state.config.players.length) {
+    throw new RangeError(
+      `match has ${state.config.players.length} players but ${bots.length} bots were given`,
+    );
+  }
+
+  let current = state;
+  const events: GameEvent[] = [];
+
+  while (current.phase !== 'MatchOver') {
+    const bot = bots[current.current]!;
+    const view = viewOf(current, current.current);
+    const action = await chooseBotActionAsync(view, bot);
+
+    const result = reduce(current, action);
+    current = result.state;
+    events.push(...result.events);
+    for (const observer of bots) {
+      observer.observe?.(result.events);
+    }
   }
 
   return { state: current, events };

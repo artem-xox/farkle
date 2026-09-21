@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { chooseBotAction, createPreset, isPresetName, PRESET_NAMES, type PresetName } from '@farkle/bots';
+import { chooseBotActionAsync } from '@farkle/bots';
+import { JevBot } from '@farkle/jev';
 import {
   BALANCED_DIE,
   createMatch,
@@ -12,6 +13,14 @@ import {
   type PlayerConfig,
 } from '@farkle/engine';
 
+import {
+  createOpponent,
+  isOpponentName,
+  jevUnavailable,
+  OPPONENT_NAMES,
+  summarizeJev,
+  type OpponentName,
+} from './opponent.js';
 import { Prompt } from './prompt.js';
 import {
   bold,
@@ -31,10 +40,10 @@ interface Options {
   readonly names: readonly string[];
   readonly target: number;
   readonly seed: number;
-  readonly opponent: PresetName | null;
+  readonly opponent: OpponentName | null;
 }
 
-const PRESET_LIST = PRESET_NAMES.join(', ');
+const PRESET_LIST = OPPONENT_NAMES.join(', ');
 
 const USAGE = `
   farkle — hot-seat dice, KCD2 rules
@@ -45,6 +54,8 @@ const USAGE = `
     --players <a,b,...>   player names (default: "Player 1,Player 2")
     --opponent <preset>   play against a bot instead of a second human
                            (${PRESET_LIST}) — makes it a two-player match
+                           "jev" plays through TypeSafe's Jev model and needs
+                           TYPESAFE_API_KEY set
     --target <n>          score to win (default: 2000)
     --seed <n>            replay a previous match exactly
     --help                this message
@@ -59,7 +70,7 @@ function parseArgs(argv: readonly string[]): Options | 'help' | Error {
   let names = ['Player 1', 'Player 2'];
   let target = 2000;
   let seed = ((Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0);
-  let opponent: PresetName | null = null;
+  let opponent: OpponentName | null = null;
 
   for (let index = 0; index < argv.length; index++) {
     const flag = argv[index]!;
@@ -84,7 +95,7 @@ function parseArgs(argv: readonly string[]): Options | 'help' | Error {
         break;
       }
       case '--opponent': {
-        if (!isPresetName(value)) {
+        if (!isOpponentName(value)) {
           return new Error(`unknown bot preset "${value}" — choose from ${PRESET_LIST}`);
         }
         opponent = value;
@@ -274,11 +285,26 @@ async function main(): Promise<number> {
     return 1;
   }
 
+  // Jev plays over the network, so it can be unplayable for a reason no
+  // amount of dice will fix. Say so now rather than mid-turn.
+  if (parsed.opponent === 'jev') {
+    const problem = jevUnavailable();
+    if (problem !== null) {
+      console.error(`\n  ${red(problem)}\n`);
+      return 1;
+    }
+  }
+
   // --opponent makes it a two-player match: a human seat and a bot seat.
   const names = parsed.opponent
     ? [parsed.names[0] ?? 'You', capitalize(parsed.opponent)]
     : parsed.names;
-  const bot = parsed.opponent ? createPreset(parsed.opponent, botSeedFrom(parsed.seed)) : null;
+  const bot = parsed.opponent
+    ? createOpponent(parsed.opponent, {
+        seed: botSeedFrom(parsed.seed),
+        onNotice: (text) => console.log(`   ${dim(text)}`),
+      })
+    : null;
   const botSeat = bot === null ? null : 1;
 
   const players: PlayerConfig[] = names.map((name) => ({
@@ -289,6 +315,12 @@ async function main(): Promise<number> {
   const host = new LocalHost(createMatch({ players, target: parsed.target, seed: parsed.seed }));
   const printEvent = makeEventPrinter(names);
   host.subscribe((events) => events.forEach(printEvent));
+  // The bot's own view of the match log. `ClientView` is a snapshot, so a
+  // policy that plays on the history of the game — Jev does — has to be told.
+  // It sees exactly the log the human above is reading.
+  if (bot?.observe !== undefined) {
+    host.subscribe((events) => bot.observe?.(events));
+  }
 
   console.log(`\n  ${bold('FARKLE')} ${dim(`· first to ${parsed.target} · seed ${parsed.seed}`)}`);
   console.log(dim(`  ── turn 1 ${'─'.repeat(40)}`));
@@ -298,11 +330,17 @@ async function main(): Promise<number> {
     while (host.state.phase !== 'MatchOver') {
       const action =
         bot !== null && host.state.current === botSeat
-          ? chooseBotAction(host.view(botSeat), bot)
+          ? await chooseBotActionAsync(host.view(botSeat), bot)
           : await nextAction(prompt, host);
 
       if (action === null) {
-        console.log(dim(`\n  stopped. replay this match with --seed ${parsed.seed}\n`));
+        console.log(
+          dim(
+            parsed.opponent === 'jev'
+              ? `\n  stopped. --seed ${parsed.seed} replays these dice, but not Jev's moves\n`
+              : `\n  stopped. replay this match with --seed ${parsed.seed}\n`,
+          ),
+        );
         return 0;
       }
       try {
@@ -318,7 +356,18 @@ async function main(): Promise<number> {
     prompt.close();
   }
 
-  console.log(dim(`  replay this match with --seed ${parsed.seed}\n`));
+  if (bot instanceof JevBot) {
+    // Not decoration: it is the only way to see how much of that match was
+    // actually the model and how much was its fallback.
+    console.log(dim(`  ${summarizeJev(bot.stats)}`));
+  }
+  console.log(
+    dim(
+      parsed.opponent === 'jev'
+        ? `  --seed ${parsed.seed} replays these dice, but not Jev's moves — see DESIGN.md §6\n`
+        : `  replay this match with --seed ${parsed.seed}\n`,
+    ),
+  );
   return 0;
 }
 
