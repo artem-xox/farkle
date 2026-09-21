@@ -1,0 +1,3 @@
+# Secrets — never index or let the AI agent read these
+.env
+.env.*
