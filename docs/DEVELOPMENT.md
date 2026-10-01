@@ -331,7 +331,8 @@ it immediately; `Bank`/`Throw` appear once at least one die is kept.
 `apps/web` ships as a static site on DigitalOcean App Platform. Plan and cost
 model: [PLAN.md#m4](PLAN.md#m4--deployment-on-digitalocean).
 
-**One app.** `farkle-prod` deploys only when somebody presses the button. It
+**One app.** `farkle-prod` deploys on every push to `main`, after the suite
+passes, and on demand from Actions. It
 has a single component called **`farkle`**, and the GitHub repo is
 `artem-xox/farkle`. `name` in the spec must match the *app*, and the `ingress`
 rule must match the *component*. Getting either wrong fails at deploy time, not
@@ -343,7 +344,7 @@ exists.
 |---|---|
 | Spec | `.do/app.prod.yaml` |
 | Workflow | `deploy-prod.yml` |
-| Trigger | the button, plus an approval |
+| Trigger | push to `main`, or the button |
 | Branch it builds | `main` |
 | URL | `farkle.iamxox.space` |
 | Indexable | yes |
@@ -358,9 +359,10 @@ exists.
   push to `main` and deletes the `farkle-dev` app if it still exists — the
   deploy action only creates and updates apps, so removing the dev spec alone
   would have left it running. It is a no-op once the app is gone and can be
-  dropped then. **Merging to `main` never deploys anything.**
-- **`.github/workflows/deploy-prod.yml`** is the button: Actions → *Deploy to
-  production* → **Run workflow**. It runs the full suite against `main`, applies
+  dropped then. Nothing in `ci.yml` deploys.
+- **`.github/workflows/deploy-prod.yml`** deploys prod. It runs on every push to
+  `main`, and by hand from Actions → *Deploy to production* → **Run workflow**
+  to re-deploy without a new commit. It runs the full suite against `main`, applies
   `.do/app.prod.yaml`, then fetches the app's own live URL from the action's
   `app` output and checks the page actually answers — the action reports success
   when DigitalOcean calls the deployment ACTIVE, which is not the same thing.
@@ -369,15 +371,14 @@ exists.
 - **Prod builds `main`, and deploys its tip.** An App Platform GitHub
   source names a *branch*, never a commit, and DigitalOcean resolves it when the
   build runs — the action even passes `UpdateAllSourceVersions: true`. So there
-  is no such thing as deploying a chosen SHA here: pressing the button ships
-  whatever `main` points at right then. That is also why `deploy-prod.yml`
+  is no such thing as deploying a chosen SHA here: a deploy ships whatever
+  `main` points at right then. That is also why `deploy-prod.yml`
   checks out `ref: main` explicitly instead of the dispatch ref — testing one
   commit while DigitalOcean builds another would make the suite meaningless.
   Rolling prod back means the dashboard, not the button.
-- **What keeps prod behind the button** is two lines, and nothing else:
-  `deploy_on_push: false` in the prod spec, so DigitalOcean's own webhook never
-  fires, and the absence of any push trigger in `deploy-prod.yml`. Setting
-  either wrong turns every merge to `main` into a production release.
+- **What keeps prod deploys behind the tests** is `deploy_on_push: false` in the
+  prod spec, so DigitalOcean's own webhook never fires. Set it to `true` and
+  every merge to `main` deploys twice, the first time before the suite runs.
 - **`SITE_URL` and `SITE_INDEXABLE`** are build-time envs set in the spec. `apps/web/vite.config.ts` substitutes `SITE_URL` into the `%SITE_URL%`
   placeholders in `index.html` — `og:url`, `og:image` and `canonical`, all of
   which have to be absolute — and generates `robots.txt`, which is why there
@@ -438,12 +439,13 @@ exists.
   tab → pick a previous successful deployment → **Rebuild and Deploy** (or
   **Revert to this deployment** if offered). This does not touch `main` — no
   `git revert` is required to get the site back, only to fix the branch itself.
-  This is the only rollback prod has — the button always ships the tip of
-  `main`, so getting an old build back means either the dashboard or a
-  `git revert` on `main` followed by another dispatch.
-- **The `production` GitHub environment** is what makes the button ask before it
-  fires: Settings → Environments → `production` lists a required reviewer, and
-  the dispatched run waits on that approval before its first step. Delete the
+  This is the only rollback prod has — every deploy ships the tip of `main`,
+  so getting an old build back means either the dashboard or a `git revert`
+  on `main`, which deploys on its own.
+- **The `production` GitHub environment** can make a deploy ask before it
+  fires: if Settings → Environments → `production` lists a required reviewer,
+  every run — push-triggered included — waits on that approval before its first
+  step, so remove the reviewer for deploys to be fully automatic. Delete the
   environment and the workflow still runs — GitHub recreates a nameless one with
   no protection — so the gate is a repository setting, not something this
   repository can hold in a file.

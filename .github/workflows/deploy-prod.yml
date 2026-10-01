@@ -1,10 +1,13 @@
 name: Deploy to production
 
-# The button. Prod has no automatic trigger at all: `.do/app.prod.yaml` sets
-# `deploy_on_push: false`, so DigitalOcean never deploys farkle-prod off its own
-# webhook, and nothing in ci.yml touches the prod spec. This workflow is the
+# Runs on every push to main, and on demand as a button for re-deploying.
+# `.do/app.prod.yaml` sets `deploy_on_push: false`, so DigitalOcean never
+# deploys farkle-prod off its own webhook — that deploy would not wait for
+# tests — and nothing in ci.yml touches the prod spec. This workflow is the
 # only path to farkle.iamxox.space.
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 # Two prod deploys at once would race for the same app. Queue rather than
@@ -17,8 +20,8 @@ jobs:
   deploy:
     name: Deploy to production
     runs-on: ubuntu-latest
-    # Requires a reviewer's approval before any step runs — see
-    # Settings → Environments → production. The environment is also where a
+    # If Settings → Environments → production lists a required reviewer, every
+    # run — push-triggered included — waits for that approval before any step. The environment is also where a
     # prod-scoped DIGITALOCEAN_ACCESS_TOKEN would live if the repository secret
     # is ever narrowed.
     environment: production
