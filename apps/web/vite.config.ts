@@ -20,19 +20,17 @@ const devCsp = (): Plugin => ({
     html.replace("style-src 'self'", "style-src 'self' 'unsafe-inline'; worker-src 'self' blob:"),
 });
 
-// Two deployments serve this same build from two origins — farkle-prod on
-// farkle.iamxox.space and farkle-dev on its ondigitalocean.app hostname — and
-// three tags have to name the origin absolutely: og:url, og:image (relative
+// Three tags have to name the origin absolutely: og:url, og:image (relative
 // image URLs are not resolved by most scrapers) and canonical. So the origin
-// arrives as a build-time env var, set per app in .do/app.{dev,prod}.yaml, and
+// arrives as a build-time env var, set in .do/app.prod.yaml, and
 // is substituted into %SITE_URL% placeholders here. The placeholder is not
 // Vite's own `%VITE_*%` mechanism: this runs `enforce: 'pre'` and does the
 // replacement itself, so the var needs no VITE_ prefix and a missing value is
 // a build failure rather than a literal `%SITE_URL%` shipped inside a meta tag.
 //
 // robots.txt is generated rather than checked in for the same reason. Prod
-// alone sets SITE_INDEXABLE; everywhere else emits a blanket disallow, so the
-// dev hostname doesn't compete with the real domain in search results. The
+// alone sets SITE_INDEXABLE; everywhere else emits a blanket disallow, so no
+// other hostname competes with the real domain in search results. The
 // canonical tag is the other half of that: App Platform cannot issue redirects,
 // so prod stays reachable at *both* farkle.iamxox.space and its
 // ondigitalocean.app hostname no matter what, and the tag is the only way to

@@ -19,11 +19,9 @@ farkle, win detection. `farkle sim` runs headless bot-vs-bot matches from the
 CLI.
 
 M4 (deployment) is live: the game is served from
-<https://farkle-game-frkhm.ondigitalocean.app/>, built and deployed by CI on
-every push to `main`. That app is now called `farkle-dev` and is being joined by
-`farkle-prod`, deployed by hand from Actions → *Deploy to production*. The DNS
-record for `farkle.iamxox.space` is still to come, so until then prod answers
-only on its own `ondigitalocean.app` hostname. What else remains of the
+<https://farkle.iamxox.space/> by `farkle-prod`, deployed by hand from Actions →
+*Deploy to production*. The former `farkle-dev` app, which CI deployed on every
+push to `main`, has been retired. What else remains of the
 milestone is analytics and error reporting, which need an account somewhere
 rather than a commit.
 Cache and security headers turned out not to be a checklist item at all: App
@@ -333,39 +331,34 @@ it immediately; `Bank`/`Throw` appear once at least one die is kept.
 `apps/web` ships as a static site on DigitalOcean App Platform. Plan and cost
 model: [PLAN.md#m4](PLAN.md#m4--deployment-on-digitalocean).
 
-**Two apps, and the names don't all match.** `farkle-dev` deploys itself from
-every green push to `main`; `farkle-prod` deploys only when somebody presses the
-button. Both have a single component called **`farkle`**, and the GitHub repo is
-`artem-xox/farkle`. `name` in a spec must match the *app*, and the `ingress`
+**One app.** `farkle-prod` deploys only when somebody presses the button. It
+has a single component called **`farkle`**, and the GitHub repo is
+`artem-xox/farkle`. `name` in the spec must match the *app*, and the `ingress`
 rule must match the *component*. Getting either wrong fails at deploy time, not
-at review time. `farkle-dev` was renamed from `farkle-game` and kept the
-hostname it was born with, so `farkle-game-frkhm.ondigitalocean.app` is current,
-not stale.
+at review time. There used to be a second app, `farkle-dev`, deployed by CI on
+every push to `main`; it has been retired, and `ci.yml` deletes it if it still
+exists.
 
-| | `farkle-dev` | `farkle-prod` |
-|---|---|---|
-| Spec | `.do/app.dev.yaml` | `.do/app.prod.yaml` |
-| Workflow | `ci.yml` | `deploy-prod.yml` |
-| Trigger | push to `main`, after tests | the button, plus an approval |
-| Branch it builds | `main` | `main` |
-| URL | `farkle-game-frkhm.ondigitalocean.app` | `farkle.iamxox.space` |
-| Indexable | no | yes |
+| | `farkle-prod` |
+|---|---|
+| Spec | `.do/app.prod.yaml` |
+| Workflow | `deploy-prod.yml` |
+| Trigger | the button, plus an approval |
+| Branch it builds | `main` |
+| URL | `farkle.iamxox.space` |
+| Indexable | yes |
 
-- **The two specs** are the same file bar name, branch, `envs` and the custom
-  domain — one `static_sites` component, built with `npm ci && npm run build -w
+- **The spec** is one `static_sites` component, built with `npm ci && npm run build -w
   @farkle/web`, serving `apps/web/dist`, with `catchall_document: index.html` so
   client-side routes and page refreshes don't 404. `environment_slug: node-js`
-  is load-bearing in both: left unset, DigitalOcean auto-detects a runtime from
-  the repo and has picked an invalid `typescript:default` off the tsconfig
-  files. Keep them in sync by hand; nothing enforces it.
-- **`.github/workflows/ci.yml`** has two jobs. `test` runs on every branch push:
-  typecheck, the full test suite, and a build — this is the only thing that
-  happens on a feature branch. `deploy` runs only on push to `main`, `needs:
-  test`, so a red suite blocks that job entirely; it then calls
-  `digitalocean/app_action/deploy@v2` with
-  `app_spec_location: .do/app.dev.yaml`, which applies the spec from the
-  checked-out commit. **Only `farkle-dev` is reachable this way** — merging to
-  `main` can never move prod.
+  is load-bearing: left unset, DigitalOcean auto-detects a runtime from the
+  repo and has picked an invalid `typescript:default` off the tsconfig files.
+- **`.github/workflows/ci.yml`** runs `test` on every branch push: typecheck,
+  the full test suite, and a build. Its only other job, `retire-dev`, runs on
+  push to `main` and deletes the `farkle-dev` app if it still exists — the
+  deploy action only creates and updates apps, so removing the dev spec alone
+  would have left it running. It is a no-op once the app is gone and can be
+  dropped then. **Merging to `main` never deploys anything.**
 - **`.github/workflows/deploy-prod.yml`** is the button: Actions → *Deploy to
   production* → **Run workflow**. It runs the full suite against `main`, applies
   `.do/app.prod.yaml`, then fetches the app's own live URL from the action's
@@ -373,7 +366,7 @@ not stale.
   when DigitalOcean calls the deployment ACTIVE, which is not the same thing.
   It also queues rather than cancels on a second run, since a half-applied spec
   is worse than a wait.
-- **Both apps build `main`, and prod deploys its tip.** An App Platform GitHub
+- **Prod builds `main`, and deploys its tip.** An App Platform GitHub
   source names a *branch*, never a commit, and DigitalOcean resolves it when the
   build runs — the action even passes `UpdateAllSourceVersions: true`. So there
   is no such thing as deploying a chosen SHA here: pressing the button ships
@@ -381,12 +374,11 @@ not stale.
   checks out `ref: main` explicitly instead of the dispatch ref — testing one
   commit while DigitalOcean builds another would make the suite meaningless.
   Rolling prod back means the dashboard, not the button.
-- **What actually separates prod from dev** is two lines, and nothing else:
+- **What keeps prod behind the button** is two lines, and nothing else:
   `deploy_on_push: false` in the prod spec, so DigitalOcean's own webhook never
   fires, and the absence of any push trigger in `deploy-prod.yml`. Setting
   either wrong turns every merge to `main` into a production release.
-- **`SITE_URL` and `SITE_INDEXABLE`** are build-time envs set per app in the
-  spec. `apps/web/vite.config.ts` substitutes `SITE_URL` into the `%SITE_URL%`
+- **`SITE_URL` and `SITE_INDEXABLE`** are build-time envs set in the spec. `apps/web/vite.config.ts` substitutes `SITE_URL` into the `%SITE_URL%`
   placeholders in `index.html` — `og:url`, `og:image` and `canonical`, all of
   which have to be absolute — and generates `robots.txt`, which is why there
   isn't one in `apps/web/public`. Both default to failing safe: unset
@@ -455,7 +447,7 @@ not stale.
   environment and the workflow still runs — GitHub recreates a nameless one with
   no protection — so the gate is a repository setting, not something this
   repository can hold in a file.
-- **`project_id` only applies at creation.** Both workflows pass the `farkle`
+- **`project_id` only applies at creation.** `deploy-prod.yml` passes the `farkle`
   project's id, but the action reads it solely on the `Create` path — an update
   never moves an app between projects. Omit it and a newly created app lands in
   the account's default project, which is exactly how the first `farkle-prod`
@@ -467,8 +459,8 @@ not stale.
   *not* have to exist first — given `app_spec_location`, the action creates an
   app when it finds no match for the spec's `name`. That is a convenience and a
   hazard in equal measure: a typo in `name` silently creates a second app rather
-  than failing, which is exactly what would have happened had `.do/app.dev.yaml`
-  been merged still saying `farkle-game` after the rename.
+  than failing, which is exactly what would have happened had the old dev spec
+  been merged still saying `farkle-game` after a rename.
 - **The component must be a Static Site, not a Web Service.** DigitalOcean sees
   a Node.js repo and defaults new components to Web Service, which then
   crash-loops with `determine start command: when there is no default process a

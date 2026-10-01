@@ -21,30 +21,27 @@ jobs:
       - run: npm test
       - run: npm run build
 
-  deploy:
-    name: Deploy to DigitalOcean
+  # farkle-dev is gone: prod is the only app, deployed by deploy-prod.yml.
+  # Dropping .do/app.dev.yaml alone would not remove it — the deploy action only
+  # ever creates or updates apps — so this deletes it outright. Idempotent: once
+  # the app is gone every later run is a no-op, and the job can be dropped.
+  retire-dev:
+    name: Retire farkle-dev
     needs: test
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
-      - uses: actions/checkout@v4
-
-      # `app_spec_location` and `app_name` are mutually exclusive, and picking
-      # the wrong one inverts what deploys: given `app_name`, the action pulls
-      # the spec off the *live app* and the in-repository spec is ignored
-      # entirely. That is how `.do/app.yaml` sat unapplied long enough for the
-      # live app to drift back to `deploy_on_push: true`. Point at the file.
-      - name: Deploy app spec
-        uses: digitalocean/app_action/deploy@v2
+      - uses: digitalocean/action-doctl@v2
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
-          app_spec_location: .do/app.dev.yaml
-          # The `farkle` project. Only read when the action *creates* an app —
-          # updates never move one — so this is a safety net for a rebuild from
-          # scratch rather than something that takes effect on an ordinary
-          # deploy. Left unset, a created app lands in the account's default
-          # project, which is what happened to farkle-prod. Not a secret: a
-          # project id is inert without a token.
-          project_id: 95f07e53-8bdc-41ee-a053-00497fce225e
+
+      - name: Delete farkle-dev if it still exists
+        run: |
+          id=$(doctl apps list --output json \
+               | jq -r '.[]? | select(.spec.name == "farkle-dev") | .id')
+          if [ -z "$id" ]; then
+            echo "farkle-dev is already gone"
+            exit 0
+          fi
+          doctl apps delete "$id" --force
+          echo "Deleted farkle-dev ($id)" >> "$GITHUB_STEP_SUMMARY"
